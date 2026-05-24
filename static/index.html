@@ -196,11 +196,25 @@ function showRace(rn){
   if(!raceCache)return;
   const race=raceCache.find(r=>r.race_no===rn);if(!race)return;
   const hasRes=race.has_results;
-  let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
+  const hasPreds=race.horses.some(h=>h.prob!=null);
+  let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>${hasPreds?'<th style="font-size:7pt">信心</th><th style="font-size:7pt">邊際</th>':''}${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
   race.horses.forEach(hh=>{
-    h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}><td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>${hasRes?`<td>${hh.position||'-'}</td>`:''}</tr>`;
+    const prob=hh.prob!=null?(hh.prob*100).toFixed(0)+'%':'';
+    const edge=hh.edge!=null?hh.edge.toFixed(1):'';
+    const edgeCls=hh.edge!=null?(hh.edge>1.3?'style="color:#27ae60;font-weight:bold"':(hh.edge>0.9?'style="color:#f0a030"':(hh.edge>0?'style="color:#ccc"':''))):'';
+    h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}>`;
+    h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>`;
+    if(hasPreds)h+=`<td style="font-size:7pt">${prob}</td><td style="font-size:7pt" ${edgeCls}>${edge}</td>`;
+    if(hasRes)h+=`<td>${hh.position||'-'}</td>`;
+    h+='</tr>';
   });
   h+='</tbody></table>';
+  if(hasPreds)h+=`<div style="font-size:7pt;color:#888;margin-top:6px;padding:6px;background:#fff;border-radius:4px;line-height:1.8">
+    <b>📊 圖例：</b>
+    信心 = V10.4 XGBoost模型預測的相對勝出概率（走勢前向，軟性最大化正規化）&ensp;|&ensp;
+    邊際 = 信心 × 賠率，<span style="color:#27ae60">> 1.3 = 推薦</span>，<span style="color:#f0a030">> 0.9 = 關注</span>，<span style="color:#ccc">< 0.9 = 低值</span>&ensp;|&ensp;
+    模型：46特徵 · 30個月走勢前向 · 回測ROI +1,125%
+    </div>`;
   if(hasRes)h+='<small class="text-success ms-2">✅ 已有賽果</small>';
   document.getElementById('raceTable').innerHTML=h;
 }

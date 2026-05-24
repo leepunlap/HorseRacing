@@ -209,6 +209,13 @@ async def get_races(date: str, auth = Depends(verify_token)):
             with open(rc_path) as f:
                 racecard = json.load(f)
 
+    # Load model predictions (prob/edge per horse)
+    predictions = {}
+    pred_json_path = pred_dir / "predictions.json"
+    if pred_json_path.exists():
+        with open(pred_json_path, encoding='utf-8') as f:
+            predictions = json.load(f)
+
     # Get results for this date
     results = {}
     for r in db.execute("""
@@ -241,7 +248,9 @@ async def get_races(date: str, auth = Depends(verify_token)):
             "results": results.get(rn, []),
             "has_results": rn in results,
         }
-        # Merge card horses with their results
+        # Merge card horses with their results and predictions
+        pred_race = predictions.get(rn) or predictions.get(str(int(rn))) or {}
+        pred_horses = {str(ph['no']): ph for ph in pred_race.get('horses', [])}
         for h in rc.get("horses", []):
             horse_entry = {
                 "no": h.get("no", ""),
@@ -257,7 +266,14 @@ async def get_races(date: str, auth = Depends(verify_token)):
                 "gear": h.get("gear", ""),
                 "win_odds": h.get("win_odds", ""),
                 "place_odds": h.get("place_odds", ""),
+                "prob": None,
+                "edge": None,
             }
+            # Merge model prediction
+            ph = pred_horses.get(str(h.get("no", "")))
+            if ph:
+                horse_entry["prob"] = ph.get("prob")
+                horse_entry["edge"] = ph.get("edge")
             # Check if this horse has a result
             for res in race["results"]:
                 if res["horse_name"] and h.get("name","") in res["horse_name"]:
