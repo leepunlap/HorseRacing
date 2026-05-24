@@ -124,7 +124,7 @@ a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:unde
 
 <script>
 let token=localStorage.getItem('racing_token');
-if(token)checkAuth().then(o=>o?showApp():logout());
+if(token)checkAuth().then(o=>o?showApp():clearAndShowLogin());
 
 async function login(){
   const pw=document.getElementById('passwordInput').value;
@@ -133,9 +133,10 @@ async function login(){
   else document.getElementById('loginError').style.display='block';
 }
 async function checkAuth(){try{return (await fetch('/api/auth/check',{headers:{'Authorization':'Bearer '+token}})).ok}catch{return false}}
+function clearAndShowLogin(){token=null;localStorage.removeItem('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
 function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('authenticated');loadDashboard()}
-function logout(){localStorage.removeItem('racing_token');token=null;location.reload()}
-function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.ok?r.json():Promise.reject(r.status)).catch(e=>{if(e===401)logout();throw e})}
+function logout(){clearAndShowLogin()}
+function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>{if(r.status===401){clearAndShowLogin();throw 401}return r.ok?r.json():Promise.reject(r.status)}).catch(e=>{if(e!==401)throw e})}
 
 function nav(name){
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
