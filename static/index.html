@@ -18,11 +18,17 @@ body{background:#f0f2f5}
 .login-box button{width:100%;padding:12px;margin-top:16px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:13pt;cursor:pointer}
 .login-box .error{color:#e74c3c;margin-top:12px;font-size:10pt;display:none}
 .app{display:none}.app.authenticated{display:flex}
-.sidebar{width:200px;background:#1a3a5c;color:#fff;padding:16px 0;min-height:100vh;position:sticky;top:0;align-self:flex-start;flex-shrink:0}
-.sidebar-header{padding:8px 14px;font-size:13pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap}
+.sidebar{width:200px;background:#1a3a5c;color:#fff;padding:16px 0;min-height:100vh;position:sticky;top:0;align-self:flex-start;flex-shrink:0;transition:width .25s}
+.sidebar.collapsed{width:48px}
+.sidebar.collapsed .sidebar-header,.sidebar.collapsed .nav-item span{display:none}
+.sidebar.collapsed .nav-item .icon{margin-right:0;font-size:16px;text-align:center;width:100%}
+.sidebar.collapsed .nav-item{padding:10px 0;text-align:center;justify-content:center}
+.sidebar-header{padding:8px 14px;font-size:13pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;display:flex;justify-content:space-between;align-items:center}
 .nav-item{display:flex;align-items:center;padding:8px 14px;cursor:pointer;color:rgba(255,255,255,0.7);transition:.15s;white-space:nowrap;border-left:3px solid transparent;font-size:9pt}
 .nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1);border-left-color:#f0c060}
 .nav-item .icon{width:20px;text-align:center;margin-right:8px;font-size:12px}
+.collapse-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px}
+.logout-btn{background:#c0392b;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:8pt;cursor:pointer;position:absolute;top:8px;right:12px;z-index:10}.logout-btn:hover{background:#e74c3c}
 .main{flex:1;padding:16px;overflow-y:auto;max-width:100vw}
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .header h2{font-size:14pt;color:#1a3a5c;margin:0}
@@ -65,16 +71,16 @@ a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:unde
 <button onclick="login()">登入</button><div class="error" id="loginError">密碼錯誤</div></div></div>
 
 <div class="app" id="app">
-  <div class="sidebar">
-    <div class="sidebar-header">🏇 Racing</div>
-    <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard')"><span class="icon">📊</span>儀表板</div>
-    <div class="nav-item" data-page="horses" onclick="nav('horses')"><span class="icon">🐴</span>馬匹</div>
-    <div class="nav-item" data-page="jockeys" onclick="nav('jockeys')"><span class="icon">🏇</span>騎師</div>
-    <div class="nav-item" data-page="trainers" onclick="nav('trainers')"><span class="icon">👨‍🏫</span>練馬師</div>
-    <div class="nav-item" data-page="models" onclick="nav('models')"><span class="icon">🧠</span>模型</div>
-    <div class="nav-item mt-auto pt-3 border-top border-white border-opacity-10" onclick="logout()"><span class="icon">🚪</span>登出</div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header"><span>🏇 Racing</span><button class="collapse-btn" onclick="toggleSidebar()">◀</button></div>
+    <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard')"><span class="icon">📊</span><span>儀表板</span></div>
+    <div class="nav-item" data-page="horses" onclick="nav('horses')"><span class="icon">🐴</span><span>馬匹</span></div>
+    <div class="nav-item" data-page="jockeys" onclick="nav('jockeys')"><span class="icon">🏇</span><span>騎師</span></div>
+    <div class="nav-item" data-page="trainers" onclick="nav('trainers')"><span class="icon">👨‍🏫</span><span>練馬師</span></div>
+    <div class="nav-item" data-page="models" onclick="nav('models')"><span class="icon">🧠</span><span>模型</span></div>
   </div>
   <div class="main">
+    <button class="logout-btn" onclick="logout()">登出</button>
     <div class="header"><h2 id="pageTitle">儀表板</h2></div>
 
     <div class="page active" id="page-dashboard">
@@ -135,19 +141,28 @@ a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:unde
 <div class="detail-panel" id="detailPanel"><button class="detail-close" onclick="closeDetail()">✕</button><div id="detailContent"></div></div>
 
 <script>
-let token=localStorage.getItem('racing_token');
+let token = getCookie('racing_token');
 if(token)checkAuth().then(o=>o?showApp():clearAndShowLogin());
+
+function setCookie(name,value,days=30){const d=new Date();d.setTime(d.getTime()+days*864e5);document.cookie=name+'='+value+';expires='+d.toUTCString()+';path=/;SameSite=Lax'}
+function getCookie(name){const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():null}
+function delCookie(name){document.cookie=name+'=;expires=Thu,01 Jan 1970 00:00:00 UTC;path=/'}
 
 async function login(){
   const pw=document.getElementById('passwordInput').value;
   const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
-  if(r.ok){const d=await r.json();token=d.token;localStorage.setItem('racing_token',token);showApp();}
+  if(r.ok){const d=await r.json();token=d.token;setCookie('racing_token',token);showApp();}
   else document.getElementById('loginError').style.display='block';
 }
+function clearAndShowLogin(){token=null;delCookie('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
 async function checkAuth(){try{return (await fetch('/api/auth/check',{headers:{'Authorization':'Bearer '+token}})).ok}catch{return false}}
 function clearAndShowLogin(){token=null;localStorage.removeItem('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
 function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('authenticated');loadDashboard()}
 function logout(){clearAndShowLogin()}
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');sb.classList.toggle('collapsed');
+  const btn=sb.querySelector('.collapse-btn');btn.textContent=sb.classList.contains('collapsed')?'▶':'◀';
+}
 function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>{if(r.status===401){clearAndShowLogin();return null}return r.json()})}
 
 function nav(name){
