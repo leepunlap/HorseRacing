@@ -390,10 +390,13 @@ async def get_filter_options(auth = Depends(verify_token)):
     """Get available filter values for dropdowns."""
     db = get_db()
     sexes = [r[0] for r in db.execute("SELECT DISTINCT sex FROM horses WHERE sex IS NOT NULL").fetchall()]
+    # Map English sex terms to Chinese
+    sex_map = {'Gelding':'閹','Mare':'雌','Colt':'雄','Rig':'隱睪','Horse':'雄','Filly':'雌'}
+    sexes_display = [{'value': s, 'label': sex_map.get(s, s)} for s in sexes]
     trainers = [r[0] for r in db.execute("SELECT DISTINCT trainer FROM results ORDER BY trainer LIMIT 100").fetchall()]
     jockeys = [r[0] for r in db.execute("SELECT DISTINCT jockey FROM results ORDER BY jockey LIMIT 100").fetchall()]
     db.close()
-    return {"sexes": sexes, "trainers": trainers, "jockeys": jockeys}
+    return {"sexes": sexes_display, "trainers": trainers, "jockeys": jockeys}
 @app.websocket("/ws/odds")
 async def ws_odds(websocket: WebSocket):
     await broadcaster.connect(websocket)

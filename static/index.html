@@ -247,7 +247,7 @@ function closeDetail(){document.getElementById('detailPanel').classList.remove('
   try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});
     if(!f.ok) return;
     const d=await f.json();
-    d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;document.getElementById('horseSex').appendChild(o)});
+    d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)});
   }catch(e){}
 })();
 </script>
