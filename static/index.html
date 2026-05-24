@@ -168,7 +168,7 @@ async function loadDashboard(dateStr){
     const dd=await api('/api/dates');
     if(dd&&dd.dates){
       const sel=document.getElementById('dateSelect');
-      sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.result_count?'✅'+d.result_count+'場':''}</option>`).join('');
+      sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.race_count?'R'+d.race_count+'場':''} ${d.horse_count?d.horse_count+'匹':''}</option>`).join('');
     }
   }
   document.getElementById('dateSelect').value=dateStr;

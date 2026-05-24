@@ -606,13 +606,15 @@ async def available_dates(auth = Depends(verify_token)):
                 has_predictions = (dp / "predictions.json").exists()
                 # Check if results exist in DB for this date
                 db = get_db()
-                res_count = db.execute("SELECT COUNT(*) FROM results WHERE date=?", (d,)).fetchone()[0]
+                res_count = db.execute("SELECT COUNT(DISTINCT race_no) FROM results WHERE date=?", (d,)).fetchone()[0]
+                horse_count = db.execute("SELECT COUNT(*) FROM results WHERE date=?", (d,)).fetchone()[0]
                 db.close()
                 dates.append({
                     "date": d,
                     "has_racecard": has_racecard,
                     "has_predictions": has_predictions,
-                    "result_count": res_count
+                    "race_count": res_count,
+                    "horse_count": horse_count
                 })
     return {"dates": dates}
 
