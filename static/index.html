@@ -44,10 +44,9 @@ table{width:100%;border-collapse:collapse;font-size:10pt}th{background:#1a3a5c;c
 .pagination{display:flex;justify-content:center;gap:4px;margin-top:12px}
 .pagination button{padding:5px 10px;font-size:10pt}
 /* Feature bar chart - 8 category combined scores */
-.feat-chart{display:flex;gap:3px;height:48px;align-items:flex-end}
+.feat-chart{display:flex;gap:2px;height:28px;align-items:flex-end}
 .feat-cat-bar{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:44px}
-.feat-cat-label{font-size:6pt;color:#666;line-height:1.2;margin-bottom:2px;text-align:center}
-.feat-cat-inner{width:20px;position:relative;flex:1;min-height:40px}
+.feat-cat-inner{width:20px;position:relative;height:26px}
 .feat-cat-inner::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#ddd;z-index:0}
 .feat-cat-pos{position:absolute;bottom:50%;left:25%;right:25%;background:#27ae60;border-radius:2px 2px 0 0;min-height:2px}
 .feat-cat-neg{position:absolute;top:50%;left:25%;right:25%;background:#e74c3c;border-radius:0 0 2px 2px;min-height:2px}
@@ -238,11 +237,11 @@ function buildFeatChart(hh, featMin, featMax){
     const h=Math.min(Math.round(Math.abs(score)*20),20);
     const title=`${cat.label.replace('\r\n','')} 綜合分: ${score.toFixed(2)}\n${desc.trim()}`;
     if(score>0.01){
-      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-label">${cat.label}</div><div class="feat-cat-inner"><div class="feat-cat-pos" style="height:${h}px"></div></div></div>`;
+      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-inner"><div class="feat-cat-pos" style="height:${h}px"></div></div></div>`;
     }else if(score<-0.01){
-      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-label">${cat.label}</div><div class="feat-cat-inner"><div class="feat-cat-neg" style="height:${h}px"></div></div></div>`;
+      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-inner"><div class="feat-cat-neg" style="height:${h}px"></div></div></div>`;
     }else{
-      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-label">${cat.label}</div><div class="feat-cat-inner"></div></div>`;
+      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-inner"></div></div>`;
     }
   });
   return`<div class="feat-chart">${cats}</div>`;
