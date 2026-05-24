@@ -68,6 +68,9 @@ a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:unde
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box"><h1>🏇 Racing Data</h1><p>輸入密碼</p>
 <input type="password" id="passwordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+<div style="display:flex;align-items:center;gap:6px;margin-top:8px;justify-content:center;font-size:9pt;color:#888">
+<input type="checkbox" id="rememberPw" onchange="rememberPassword()"> 記住密碼
+</div>
 <button onclick="login()">登入</button><div class="error" id="loginError">密碼錯誤</div></div></div>
 
 <div class="app" id="app">
@@ -151,7 +154,7 @@ function delCookie(name){document.cookie=name+'=;expires=Thu,01 Jan 1970 00:00:0
 async function login(){
   const pw=document.getElementById('passwordInput').value;
   const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
-  if(r.ok){const d=await r.json();token=d.token;setCookie('racing_token',token);showApp();}
+  if(r.ok){const d=await r.json();token=d.token;setCookie('racing_token',token);rememberPassword();showApp();}
   else document.getElementById('loginError').style.display='block';
 }
 function clearAndShowLogin(){token=null;delCookie('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
@@ -308,7 +311,26 @@ async function showTrainer(name){
 }
 function closeDetail(){document.getElementById('detailPanel').classList.remove('show')}
 
-// Load filter options only when authenticated
+// Load filter options when authenticated
+(async function loadFilters(){
+  if(!token)return;
+  try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});
+    if(!f.ok)return;const d=await f.json();
+    d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)});
+  }catch(e){}
+})();
+
+function rememberPassword(){
+  const pw=document.getElementById('passwordInput').value;
+  if(document.getElementById('rememberPw').checked) setCookie('saved_pw',pw,365);
+  else delCookie('saved_pw');
+}
+
+// Pre-fill saved password and auto-login if token exists
+(function(){
+  const saved=getCookie('saved_pw');
+  if(saved){document.getElementById('passwordInput').value=saved;document.getElementById('rememberPw').checked=true}
+})();
 (async function loadFilters(){
   if(!token) return;
   try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});
