@@ -268,12 +268,14 @@ async def get_races(date: str, auth = Depends(verify_token)):
                 "place_odds": h.get("place_odds", ""),
                 "prob": None,
                 "edge": None,
+                "features": None,
             }
             # Merge model prediction
             ph = pred_horses.get(str(h.get("no", "")))
             if ph:
                 horse_entry["prob"] = ph.get("prob")
                 horse_entry["edge"] = ph.get("edge")
+                horse_entry["features"] = ph.get("features")
             # Check if this horse has a result
             for res in race["results"]:
                 if res["horse_name"] and h.get("name","") in res["horse_name"]:

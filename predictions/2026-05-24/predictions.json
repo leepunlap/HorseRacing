@@ -14,7 +14,20 @@
         "rating": "34",
         "win_odds": "16",
         "prob": 0.122,
-        "edge": 1.95
+        "edge": 1.95,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9303,
+          "gear_change": 1.0,
+          "rating_trend": 16.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "13",
@@ -27,7 +40,20 @@
         "rating": "21",
         "win_odds": "9.1",
         "prob": 0.1122,
-        "edge": 1.02
+        "edge": 1.02,
+        "features": {
+          "jockey_wr": 0.0824,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.0294,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9765,
+          "gear_change": 1.0,
+          "rating_trend": 39.6667,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 116.0
+        }
       },
       {
         "no": "12",
@@ -40,7 +66,20 @@
         "rating": "23",
         "win_odds": "20",
         "prob": 0.0949,
-        "edge": 1.9
+        "edge": 1.9,
+        "features": {
+          "jockey_wr": 0.0819,
+          "trainer_wr": 0.0897,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9422,
+          "gear_change": 1.0,
+          "rating_trend": 26.3333,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 118.0
+        }
       },
       {
         "no": "11",
@@ -53,7 +92,20 @@
         "rating": "28",
         "win_odds": "38",
         "prob": 0.0885,
-        "edge": 3.36
+        "edge": 3.36,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0526,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9409,
+          "gear_change": 1.0,
+          "rating_trend": 18.3333,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 123.0
+        }
       },
       {
         "no": "1",
@@ -66,7 +118,20 @@
         "rating": "40",
         "win_odds": "6.0",
         "prob": 0.0798,
-        "edge": 0.48
+        "edge": 0.48,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.0831,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9102,
+          "gear_change": 1.0,
+          "rating_trend": 8.6667,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "2",
@@ -79,7 +144,20 @@
         "rating": "39",
         "win_odds": "35",
         "prob": 0.073,
-        "edge": 2.56
+        "edge": 2.56,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.1111,
+          "dist_adapt": 0.0,
+          "days_since": 112.0,
+          "late_pace_avg": 0.9366,
+          "gear_change": 1.0,
+          "rating_trend": 4.3333,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 134.0
+        }
       },
       {
         "no": "4",
@@ -92,7 +170,20 @@
         "rating": "38",
         "win_odds": "4.5",
         "prob": 0.0615,
-        "edge": 0.28
+        "edge": 0.28,
+        "features": {
+          "jockey_wr": 0.15,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0645,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9712,
+          "gear_change": 1.0,
+          "rating_trend": 24.0,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "9",
@@ -105,7 +196,20 @@
         "rating": "33",
         "win_odds": "8.9",
         "prob": 0.0592,
-        "edge": 0.53
+        "edge": 0.53,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 53.0,
+          "late_pace_avg": 0.9335,
+          "gear_change": 1.0,
+          "rating_trend": 22.3333,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "6",
@@ -118,7 +222,20 @@
         "rating": "38",
         "win_odds": "3.2",
         "prob": 0.0582,
-        "edge": 0.19
+        "edge": 0.19,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9921,
+          "gear_change": 1.0,
+          "rating_trend": 16.0,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "5",
@@ -131,7 +248,20 @@
         "rating": "38",
         "win_odds": "30",
         "prob": 0.0536,
-        "edge": 1.61
+        "edge": 1.61,
+        "features": {
+          "jockey_wr": 0.0681,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9823,
+          "gear_change": 1.0,
+          "rating_trend": 12.3333,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "8",
@@ -144,7 +274,20 @@
         "rating": "34",
         "win_odds": "90",
         "prob": 0.0513,
-        "edge": 4.61
+        "edge": 4.61,
+        "features": {
+          "jockey_wr": 0.0787,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9765,
+          "gear_change": 1.0,
+          "rating_trend": 11.6667,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "10",
@@ -157,7 +300,20 @@
         "rating": "32",
         "win_odds": "60",
         "prob": 0.0511,
-        "edge": 3.07
+        "edge": 3.07,
+        "features": {
+          "jockey_wr": 0.08,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9479,
+          "gear_change": 0.0,
+          "rating_trend": 14.6667,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "3",
@@ -170,7 +326,20 @@
         "rating": "39",
         "win_odds": "58",
         "prob": 0.048,
-        "edge": 2.79
+        "edge": 2.79,
+        "features": {
+          "jockey_wr": 0.0527,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9407,
+          "gear_change": 1.0,
+          "rating_trend": 6.6667,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 134.0
+        }
       },
       {
         "no": "14",
@@ -183,7 +352,20 @@
         "rating": "21",
         "win_odds": "18",
         "prob": 0.0467,
-        "edge": 0.84
+        "edge": 0.84,
+        "features": {
+          "jockey_wr": 0.0426,
+          "trainer_wr": 0.0682,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9619,
+          "gear_change": 1.0,
+          "rating_trend": 27.6667,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 116.0
+        }
       }
     ]
   },
@@ -202,7 +384,20 @@
         "rating": "44",
         "win_odds": "4.2",
         "prob": 0.1093,
-        "edge": 0.46
+        "edge": 0.46,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.0682,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 70.0,
+          "late_pace_avg": 0.9564,
+          "gear_change": 1.0,
+          "rating_trend": 7.6667,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "13",
@@ -215,7 +410,20 @@
         "rating": "45",
         "win_odds": "54",
         "prob": 0.1079,
-        "edge": 5.83
+        "edge": 5.83,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.0857,
+          "dist_adapt": 0.0,
+          "days_since": 53.0,
+          "late_pace_avg": 0.972,
+          "gear_change": 1.0,
+          "rating_trend": -5.0,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 120.0
+        }
       },
       {
         "no": "8",
@@ -228,7 +436,20 @@
         "rating": "52",
         "win_odds": "5.9",
         "prob": 0.107,
-        "edge": 0.63
+        "edge": 0.63,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.0897,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9893,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "2",
@@ -241,7 +462,20 @@
         "rating": "57",
         "win_odds": "3.5",
         "prob": 0.1054,
-        "edge": 0.37
+        "edge": 0.37,
+        "features": {
+          "jockey_wr": 0.1053,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9216,
+          "gear_change": 0.0,
+          "rating_trend": -4.3333,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 132.0
+        }
       },
       {
         "no": "1",
@@ -254,7 +488,20 @@
         "rating": "60",
         "win_odds": "12",
         "prob": 0.0917,
-        "edge": 1.1
+        "edge": 1.1,
+        "features": {
+          "jockey_wr": 0.0385,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.2,
+          "dist_adapt": 0.0,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9449,
+          "gear_change": 1.0,
+          "rating_trend": -4.3333,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "4",
@@ -267,7 +514,20 @@
         "rating": "55",
         "win_odds": "46",
         "prob": 0.0798,
-        "edge": 3.67
+        "edge": 3.67,
+        "features": {
+          "jockey_wr": 0.0527,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.0714,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.958,
+          "gear_change": 1.0,
+          "rating_trend": -8.0,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 130.0
+        }
       },
       {
         "no": "3",
@@ -280,7 +540,20 @@
         "rating": "56",
         "win_odds": "66",
         "prob": 0.0727,
-        "edge": 4.8
+        "edge": 4.8,
+        "features": {
+          "jockey_wr": 0.0556,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9177,
+          "gear_change": 1.0,
+          "rating_trend": 3.6667,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 131.0
+        }
       },
       {
         "no": "11",
@@ -293,7 +566,20 @@
         "rating": "47",
         "win_odds": "9.3",
         "prob": 0.0593,
-        "edge": 0.55
+        "edge": 0.55,
+        "features": {
+          "jockey_wr": 0.0681,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9497,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 122.0
+        }
       },
       {
         "no": "12",
@@ -306,7 +592,20 @@
         "rating": "46",
         "win_odds": "64",
         "prob": 0.0542,
-        "edge": 3.47
+        "edge": 3.47,
+        "features": {
+          "jockey_wr": 0.0819,
+          "trainer_wr": 0.0859,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9658,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 121.0
+        }
       },
       {
         "no": "5",
@@ -319,7 +618,20 @@
         "rating": "54",
         "win_odds": "17",
         "prob": 0.0522,
-        "edge": 0.89
+        "edge": 0.89,
+        "features": {
+          "jockey_wr": 0.0787,
+          "trainer_wr": 0.0594,
+          "horse_wr": 0.1818,
+          "dist_adapt": 0.1667,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9281,
+          "gear_change": 1.0,
+          "rating_trend": -2.6667,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "10",
@@ -332,7 +644,20 @@
         "rating": "48",
         "win_odds": "9.7",
         "prob": 0.0488,
-        "edge": 0.47
+        "edge": 0.47,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.8988,
+          "gear_change": 1.0,
+          "rating_trend": 4.3333,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 123.0
+        }
       },
       {
         "no": "6",
@@ -345,7 +670,20 @@
         "rating": "52",
         "win_odds": "55",
         "prob": 0.0461,
-        "edge": 2.54
+        "edge": 2.54,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.8609,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "9",
@@ -358,7 +696,20 @@
         "rating": "52",
         "win_odds": "52",
         "prob": 0.0358,
-        "edge": 1.86
+        "edge": 1.86,
+        "features": {
+          "jockey_wr": 0.0548,
+          "trainer_wr": 0.0831,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.8662,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "7",
@@ -371,7 +722,20 @@
         "rating": "52",
         "win_odds": "12",
         "prob": 0.0297,
-        "edge": 0.36
+        "edge": 0.36,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9922,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 127.0
+        }
       }
     ]
   },
@@ -390,7 +754,20 @@
         "rating": "53",
         "win_odds": "2.6",
         "prob": 0.1712,
-        "edge": 0.45
+        "edge": 0.45,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 130.0
+        }
       },
       {
         "no": "2",
@@ -403,7 +780,20 @@
         "rating": "56",
         "win_odds": "24",
         "prob": 0.106,
-        "edge": 2.54
+        "edge": 2.54,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.1538,
+          "dist_adapt": 0.0,
+          "days_since": 123.0,
+          "late_pace_avg": 0.9365,
+          "gear_change": 1.0,
+          "rating_trend": -1.6667,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "12",
@@ -416,7 +806,20 @@
         "rating": "44",
         "win_odds": "5.2",
         "prob": 0.0875,
-        "edge": 0.45
+        "edge": 0.45,
+        "features": {
+          "jockey_wr": 0.15,
+          "trainer_wr": 0.0674,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 74.0,
+          "late_pace_avg": 0.9682,
+          "gear_change": 1.0,
+          "rating_trend": 19.3333,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 121.0
+        }
       },
       {
         "no": "8",
@@ -429,7 +832,20 @@
         "rating": "51",
         "win_odds": "16",
         "prob": 0.0765,
-        "edge": 1.22
+        "edge": 1.22,
+        "features": {
+          "jockey_wr": 0.0697,
+          "trainer_wr": 0.0754,
+          "horse_wr": 0.1667,
+          "dist_adapt": 0.2308,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9672,
+          "gear_change": 1.0,
+          "rating_trend": -3.6667,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "5",
@@ -442,7 +858,20 @@
         "rating": "52",
         "win_odds": "5.9",
         "prob": 0.0747,
-        "edge": 0.44
+        "edge": 0.44,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0594,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "1",
@@ -455,7 +884,20 @@
         "rating": "58",
         "win_odds": "22",
         "prob": 0.0744,
-        "edge": 1.64
+        "edge": 1.64,
+        "features": {
+          "jockey_wr": 0.1053,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.2,
+          "dist_adapt": 0.25,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9798,
+          "gear_change": 0.0,
+          "rating_trend": -6.3333,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "10",
@@ -468,7 +910,20 @@
         "rating": "50",
         "win_odds": "25",
         "prob": 0.0688,
-        "edge": 1.72
+        "edge": 1.72,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9779,
+          "gear_change": 1.0,
+          "rating_trend": 11.6667,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "3",
@@ -481,7 +936,20 @@
         "rating": "54",
         "win_odds": "12",
         "prob": 0.063,
-        "edge": 0.76
+        "edge": 0.76,
+        "features": {
+          "jockey_wr": 0.0426,
+          "trainer_wr": 0.0682,
+          "horse_wr": 0.1,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9468,
+          "gear_change": 1.0,
+          "rating_trend": -4.0,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 131.0
+        }
       },
       {
         "no": "14",
@@ -494,7 +962,20 @@
         "rating": "42",
         "win_odds": "30",
         "prob": 0.0585,
-        "edge": 1.75
+        "edge": 1.75,
+        "features": {
+          "jockey_wr": 0.0385,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.125,
+          "dist_adapt": 0.1667,
+          "days_since": 46.0,
+          "late_pace_avg": 0.9501,
+          "gear_change": 1.0,
+          "rating_trend": 3.0,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "7",
@@ -507,7 +988,20 @@
         "rating": "52",
         "win_odds": "28",
         "prob": 0.0547,
-        "edge": 1.53
+        "edge": 1.53,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.0769,
+          "dist_adapt": 0.0909,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9767,
+          "gear_change": 1.0,
+          "rating_trend": 10.3333,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "11",
@@ -520,7 +1014,20 @@
         "rating": "48",
         "win_odds": "65",
         "prob": 0.0539,
-        "edge": 3.5
+        "edge": 3.5,
+        "features": {
+          "jockey_wr": 0.0819,
+          "trainer_wr": 0.0859,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 56.0,
+          "late_pace_avg": 0.9057,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 125.0
+        }
       },
       {
         "no": "9",
@@ -533,7 +1040,20 @@
         "rating": "50",
         "win_odds": "11",
         "prob": 0.0469,
-        "edge": 0.52
+        "edge": 0.52,
+        "features": {
+          "jockey_wr": 0.0556,
+          "trainer_wr": 0.0831,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.956,
+          "gear_change": 1.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "6",
@@ -546,7 +1066,20 @@
         "rating": "52",
         "win_odds": "53",
         "prob": 0.0354,
-        "edge": 1.88
+        "edge": 1.88,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "13",
@@ -559,7 +1092,20 @@
         "rating": "42",
         "win_odds": "99",
         "prob": 0.0284,
-        "edge": 2.81
+        "edge": 2.81,
+        "features": {
+          "jockey_wr": 0.0266,
+          "trainer_wr": 0.0543,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 67.0,
+          "late_pace_avg": 0.9209,
+          "gear_change": 0.0,
+          "rating_trend": 5.3333,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 119.0
+        }
       }
     ]
   },
@@ -578,7 +1124,20 @@
         "rating": "54",
         "win_odds": "2.1",
         "prob": 0.1788,
-        "edge": 0.38
+        "edge": 0.38,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.3333,
+          "dist_adapt": 0.3333,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9803,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 131.0
+        }
       },
       {
         "no": "1",
@@ -591,7 +1150,20 @@
         "rating": "58",
         "win_odds": "14",
         "prob": 0.1168,
-        "edge": 1.64
+        "edge": 1.64,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.5,
+          "dist_adapt": 0.5,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0104,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "4",
@@ -604,7 +1176,20 @@
         "rating": "53",
         "win_odds": "10",
         "prob": 0.1077,
-        "edge": 1.08
+        "edge": 1.08,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.0833,
+          "dist_adapt": 0.0833,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9926,
+          "gear_change": 1.0,
+          "rating_trend": 8.6667,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 130.0
+        }
       },
       {
         "no": "6",
@@ -617,7 +1202,20 @@
         "rating": "52",
         "win_odds": "17",
         "prob": 0.0908,
-        "edge": 1.54
+        "edge": 1.54,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0859,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "2",
@@ -630,7 +1228,20 @@
         "rating": "56",
         "win_odds": "12",
         "prob": 0.083,
-        "edge": 1.0
+        "edge": 1.0,
+        "features": {
+          "jockey_wr": 0.15,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.16,
+          "dist_adapt": 0.1111,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9968,
+          "gear_change": 1.0,
+          "rating_trend": -5.6667,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "14",
@@ -643,7 +1254,20 @@
         "rating": "42",
         "win_odds": "13",
         "prob": 0.0615,
-        "edge": 0.8
+        "edge": 0.8,
+        "features": {
+          "jockey_wr": 0.0824,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0909,
+          "dist_adapt": 0.1667,
+          "days_since": 60.0,
+          "late_pace_avg": 0.9319,
+          "gear_change": 0.0,
+          "rating_trend": 6.6667,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "11",
@@ -656,7 +1280,20 @@
         "rating": "45",
         "win_odds": "44",
         "prob": 0.0549,
-        "edge": 2.42
+        "edge": 2.42,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.1111,
+          "dist_adapt": 0.0909,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9451,
+          "gear_change": 1.0,
+          "rating_trend": 1.6667,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 122.0
+        }
       },
       {
         "no": "8",
@@ -669,7 +1306,20 @@
         "rating": "50",
         "win_odds": "5.9",
         "prob": 0.0511,
-        "edge": 0.3
+        "edge": 0.3,
+        "features": {
+          "jockey_wr": 0.0819,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.8762,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "9",
@@ -682,7 +1332,20 @@
         "rating": "50",
         "win_odds": "63",
         "prob": 0.051,
-        "edge": 3.21
+        "edge": 3.21,
+        "features": {
+          "jockey_wr": 0.0787,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9306,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "5",
@@ -695,7 +1358,20 @@
         "rating": "52",
         "win_odds": "15",
         "prob": 0.0508,
-        "edge": 0.76
+        "edge": 0.76,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "7",
@@ -708,7 +1384,20 @@
         "rating": "52",
         "win_odds": "33",
         "prob": 0.0453,
-        "edge": 1.49
+        "edge": 1.49,
+        "features": {
+          "jockey_wr": 0.0426,
+          "trainer_wr": 0.0897,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "13",
@@ -721,7 +1410,20 @@
         "rating": "42",
         "win_odds": "85",
         "prob": 0.039,
-        "edge": 3.32
+        "edge": 3.32,
+        "features": {
+          "jockey_wr": 0.0527,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 1.0036,
+          "gear_change": 0.0,
+          "rating_trend": 5.3333,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "10",
@@ -734,7 +1436,20 @@
         "rating": "49",
         "win_odds": "23",
         "prob": 0.0351,
-        "edge": 0.81
+        "edge": 0.81,
+        "features": {
+          "jockey_wr": 0.0556,
+          "trainer_wr": 0.0831,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0043,
+          "gear_change": 1.0,
+          "rating_trend": 1.0,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "12",
@@ -747,7 +1462,20 @@
         "rating": "42",
         "win_odds": "49",
         "prob": 0.0345,
-        "edge": 1.69
+        "edge": 1.69,
+        "features": {
+          "jockey_wr": 0.062,
+          "trainer_wr": 0.0754,
+          "horse_wr": 0.0909,
+          "dist_adapt": 0.1111,
+          "days_since": 133.0,
+          "late_pace_avg": 0.9883,
+          "gear_change": 0.0,
+          "rating_trend": 6.0,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 119.0
+        }
       }
     ]
   },
@@ -766,7 +1494,20 @@
         "rating": "52",
         "win_odds": "5.3",
         "prob": 0.191,
-        "edge": 1.01
+        "edge": 1.01,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.0897,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "1",
@@ -779,7 +1520,20 @@
         "rating": "59",
         "win_odds": "7.5",
         "prob": 0.1096,
-        "edge": 0.82
+        "edge": 0.82,
+        "features": {
+          "jockey_wr": 0.08,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.1111,
+          "dist_adapt": 0.0,
+          "days_since": 46.0,
+          "late_pace_avg": 0.942,
+          "gear_change": 1.0,
+          "rating_trend": 1.3333,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "3",
@@ -792,7 +1546,20 @@
         "rating": "56",
         "win_odds": "10",
         "prob": 0.0787,
-        "edge": 0.79
+        "edge": 0.79,
+        "features": {
+          "jockey_wr": 0.1053,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.0769,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9553,
+          "gear_change": 1.0,
+          "rating_trend": 6.3333,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 132.0
+        }
       },
       {
         "no": "8",
@@ -805,7 +1572,20 @@
         "rating": "52",
         "win_odds": "61",
         "prob": 0.0751,
-        "edge": 4.58
+        "edge": 4.58,
+        "features": {
+          "jockey_wr": 0.118,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 46.0,
+          "late_pace_avg": 0.9707,
+          "gear_change": 1.0,
+          "rating_trend": 7.3333,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "7",
@@ -818,7 +1598,20 @@
         "rating": "53",
         "win_odds": "4.3",
         "prob": 0.073,
-        "edge": 0.31
+        "edge": 0.31,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.8972,
+          "gear_change": 0.0,
+          "rating_trend": 1.0,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "5",
@@ -831,7 +1624,20 @@
         "rating": "54",
         "win_odds": "11",
         "prob": 0.0626,
-        "edge": 0.69
+        "edge": 0.69,
+        "features": {
+          "jockey_wr": 0.0787,
+          "trainer_wr": 0.0594,
+          "horse_wr": 0.1053,
+          "dist_adapt": 0.125,
+          "days_since": 175.0,
+          "late_pace_avg": 0.988,
+          "gear_change": 1.0,
+          "rating_trend": 10.0,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 130.0
+        }
       },
       {
         "no": "4",
@@ -844,7 +1650,20 @@
         "rating": "56",
         "win_odds": "25",
         "prob": 0.0619,
-        "edge": 1.55
+        "edge": 1.55,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 70.0,
+          "late_pace_avg": 0.9194,
+          "gear_change": 1.0,
+          "rating_trend": 11.6667,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 132.0
+        }
       },
       {
         "no": "2",
@@ -857,7 +1676,20 @@
         "rating": "57",
         "win_odds": "5.6",
         "prob": 0.061,
-        "edge": 0.34
+        "edge": 0.34,
+        "features": {
+          "jockey_wr": 0.062,
+          "trainer_wr": 0.0754,
+          "horse_wr": 0.1111,
+          "dist_adapt": 1.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9355,
+          "gear_change": 1.0,
+          "rating_trend": 15.6667,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "10",
@@ -870,7 +1702,20 @@
         "rating": "52",
         "win_odds": "16",
         "prob": 0.0554,
-        "edge": 0.89
+        "edge": 0.89,
+        "features": {
+          "jockey_wr": 0.0556,
+          "trainer_wr": 0.0674,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9695,
+          "gear_change": 1.0,
+          "rating_trend": 7.3333,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "14",
@@ -883,7 +1728,20 @@
         "rating": "43",
         "win_odds": "57",
         "prob": 0.0525,
-        "edge": 2.99
+        "edge": 2.99,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.995,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "11",
@@ -896,7 +1754,20 @@
         "rating": "50",
         "win_odds": "37",
         "prob": 0.0502,
-        "edge": 1.86
+        "edge": 1.86,
+        "features": {
+          "jockey_wr": 0.0669,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 1.0573,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "13",
@@ -909,7 +1780,20 @@
         "rating": "48",
         "win_odds": "11",
         "prob": 0.0484,
-        "edge": 0.53
+        "edge": 0.53,
+        "features": {
+          "jockey_wr": 0.0548,
+          "trainer_wr": 0.0822,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.8783,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 124.0
+        }
       },
       {
         "no": "6",
@@ -922,7 +1806,20 @@
         "rating": "53",
         "win_odds": "32",
         "prob": 0.0481,
-        "edge": 1.54
+        "edge": 1.54,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.125,
+          "dist_adapt": 0.0,
+          "days_since": 67.0,
+          "late_pace_avg": 0.9877,
+          "gear_change": 1.0,
+          "rating_trend": 3.0,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "12",
@@ -935,7 +1832,20 @@
         "rating": "48",
         "win_odds": "37",
         "prob": 0.0326,
-        "edge": 1.21
+        "edge": 1.21,
+        "features": {
+          "jockey_wr": 0.0527,
+          "trainer_wr": 0.0494,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 84.0,
+          "late_pace_avg": 1.0081,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 124.0
+        }
       }
     ]
   },
@@ -954,7 +1864,20 @@
         "rating": "52",
         "win_odds": "12",
         "prob": 0.1301,
-        "edge": 1.56
+        "edge": 1.56,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.8525,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "5",
@@ -967,7 +1890,20 @@
         "rating": "57",
         "win_odds": "5.9",
         "prob": 0.1114,
-        "edge": 0.66
+        "edge": 0.66,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.0769,
+          "dist_adapt": 0.0,
+          "days_since": 46.0,
+          "late_pace_avg": 0.9342,
+          "gear_change": 1.0,
+          "rating_trend": -7.6667,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 132.0
+        }
       },
       {
         "no": "3",
@@ -980,7 +1916,20 @@
         "rating": "59",
         "win_odds": "4.9",
         "prob": 0.1089,
-        "edge": 0.53
+        "edge": 0.53,
+        "features": {
+          "jockey_wr": 0.08,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9522,
+          "gear_change": 0.0,
+          "rating_trend": -11.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 134.0
+        }
       },
       {
         "no": "4",
@@ -993,7 +1942,20 @@
         "rating": "59",
         "win_odds": "10",
         "prob": 0.0797,
-        "edge": 0.8
+        "edge": 0.8,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0754,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9883,
+          "gear_change": 1.0,
+          "rating_trend": 3.3333,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 134.0
+        }
       },
       {
         "no": "13",
@@ -1006,7 +1968,20 @@
         "rating": "46",
         "win_odds": "36",
         "prob": 0.0759,
-        "edge": 2.73
+        "edge": 2.73,
+        "features": {
+          "jockey_wr": 0.118,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9507,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 121.0
+        }
       },
       {
         "no": "2",
@@ -1019,7 +1994,20 @@
         "rating": "60",
         "win_odds": "9.6",
         "prob": 0.0668,
-        "edge": 0.64
+        "edge": 0.64,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0714,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9522,
+          "gear_change": 1.0,
+          "rating_trend": -6.6667,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "6",
@@ -1032,7 +2020,20 @@
         "rating": "53",
         "win_odds": "49",
         "prob": 0.0663,
-        "edge": 3.25
+        "edge": 3.25,
+        "features": {
+          "jockey_wr": 0.0385,
+          "trainer_wr": 0.0822,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 25.0,
+          "late_pace_avg": 0.9907,
+          "gear_change": 1.0,
+          "rating_trend": 7.3333,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "14",
@@ -1045,7 +2046,20 @@
         "rating": "44",
         "win_odds": "4.2",
         "prob": 0.0603,
-        "edge": 0.25
+        "edge": 0.25,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 252.0,
+          "late_pace_avg": 0.9428,
+          "gear_change": 1.0,
+          "rating_trend": 13.0,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "8",
@@ -1058,7 +2072,20 @@
         "rating": "51",
         "win_odds": "16",
         "prob": 0.0597,
-        "edge": 0.96
+        "edge": 0.96,
+        "features": {
+          "jockey_wr": 0.0556,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9615,
+          "gear_change": 1.0,
+          "rating_trend": 15.6667,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "11",
@@ -1071,7 +2098,20 @@
         "rating": "47",
         "win_odds": "30",
         "prob": 0.058,
-        "edge": 1.74
+        "edge": 1.74,
+        "features": {
+          "jockey_wr": 0.062,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.0909,
+          "dist_adapt": 0.5,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9797,
+          "gear_change": 1.0,
+          "rating_trend": 14.3333,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 122.0
+        }
       },
       {
         "no": "9",
@@ -1084,7 +2124,20 @@
         "rating": "49",
         "win_odds": "23",
         "prob": 0.0527,
-        "edge": 1.21
+        "edge": 1.21,
+        "features": {
+          "jockey_wr": 0.0697,
+          "trainer_wr": 0.0897,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9279,
+          "gear_change": 1.0,
+          "rating_trend": 11.6667,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 124.0
+        }
       },
       {
         "no": "1",
@@ -1097,7 +2150,20 @@
         "rating": "50",
         "win_odds": "16",
         "prob": 0.0479,
-        "edge": 0.77
+        "edge": 0.77,
+        "features": {
+          "jockey_wr": 0.0787,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 67.0,
+          "late_pace_avg": 0.9875,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 125.0
+        }
       },
       {
         "no": "12",
@@ -1110,7 +2176,20 @@
         "rating": "47",
         "win_odds": "17",
         "prob": 0.0412,
-        "edge": 0.7
+        "edge": 0.7,
+        "features": {
+          "jockey_wr": 0.0548,
+          "trainer_wr": 0.0831,
+          "horse_wr": 0.1429,
+          "dist_adapt": 0.0,
+          "days_since": 119.0,
+          "late_pace_avg": 0.943,
+          "gear_change": 1.0,
+          "rating_trend": 3.3333,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 122.0
+        }
       },
       {
         "no": "10",
@@ -1123,7 +2202,20 @@
         "rating": "48",
         "win_odds": "61",
         "prob": 0.0411,
-        "edge": 2.51
+        "edge": 2.51,
+        "features": {
+          "jockey_wr": 0.0824,
+          "trainer_wr": 0.0543,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0114,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 123.0
+        }
       }
     ]
   },
@@ -1142,7 +2234,20 @@
         "rating": "82",
         "win_odds": "7.1",
         "prob": 0.183,
-        "edge": 1.3
+        "edge": 1.3,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 63.0,
+          "late_pace_avg": 0.9678,
+          "gear_change": 1.0,
+          "rating_trend": -3.6667,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "11",
@@ -1155,7 +2260,20 @@
         "rating": "67",
         "win_odds": "8.0",
         "prob": 0.1593,
-        "edge": 1.27
+        "edge": 1.27,
+        "features": {
+          "jockey_wr": 0.1053,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.2222,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.974,
+          "gear_change": 1.0,
+          "rating_trend": -9.6667,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 118.0
+        }
       },
       {
         "no": "8",
@@ -1168,7 +2286,20 @@
         "rating": "74",
         "win_odds": "8.7",
         "prob": 0.1212,
-        "edge": 1.05
+        "edge": 1.05,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.0543,
+          "horse_wr": 0.0667,
+          "dist_adapt": 0.0,
+          "days_since": 63.0,
+          "late_pace_avg": 0.956,
+          "gear_change": 1.0,
+          "rating_trend": -4.0,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 125.0
+        }
       },
       {
         "no": "3",
@@ -1181,7 +2312,20 @@
         "rating": "82",
         "win_odds": "16",
         "prob": 0.0933,
-        "edge": 1.49
+        "edge": 1.49,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.1,
+          "dist_adapt": 0.0,
+          "days_since": 140.0,
+          "late_pace_avg": 0.9698,
+          "gear_change": 1.0,
+          "rating_trend": -12.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "9",
@@ -1194,7 +2338,20 @@
         "rating": "72",
         "win_odds": "33",
         "prob": 0.0673,
-        "edge": 2.22
+        "edge": 2.22,
+        "features": {
+          "jockey_wr": 0.118,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.2667,
+          "dist_adapt": 0.0,
+          "days_since": 39.0,
+          "late_pace_avg": 0.9751,
+          "gear_change": 1.0,
+          "rating_trend": -17.3333,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 123.0
+        }
       },
       {
         "no": "14",
@@ -1207,7 +2364,20 @@
         "rating": "60",
         "win_odds": "20",
         "prob": 0.0609,
-        "edge": 1.22
+        "edge": 1.22,
+        "features": {
+          "jockey_wr": 0.0426,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9319,
+          "gear_change": 1.0,
+          "rating_trend": 7.0,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 115.0
+        }
       },
       {
         "no": "13",
@@ -1220,7 +2390,20 @@
         "rating": "61",
         "win_odds": "45",
         "prob": 0.0577,
-        "edge": 2.59
+        "edge": 2.59,
+        "features": {
+          "jockey_wr": 0.0527,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.125,
+          "dist_adapt": 0.0,
+          "days_since": 46.0,
+          "late_pace_avg": 1.0099,
+          "gear_change": 0.0,
+          "rating_trend": -13.3333,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 115.0
+        }
       },
       {
         "no": "12",
@@ -1233,7 +2416,20 @@
         "rating": "61",
         "win_odds": "7.5",
         "prob": 0.0482,
-        "edge": 0.36
+        "edge": 0.36,
+        "features": {
+          "jockey_wr": 0.0266,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.0714,
+          "dist_adapt": 0.0,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9743,
+          "gear_change": 1.0,
+          "rating_trend": -13.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 115.0
+        }
       },
       {
         "no": "6",
@@ -1246,7 +2442,20 @@
         "rating": "80",
         "win_odds": "26",
         "prob": 0.0463,
-        "edge": 1.2
+        "edge": 1.2,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.1429,
+          "dist_adapt": 0.6,
+          "days_since": 74.0,
+          "late_pace_avg": 0.9713,
+          "gear_change": 1.0,
+          "rating_trend": -15.6667,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 131.0
+        }
       },
       {
         "no": "5",
@@ -1259,7 +2468,20 @@
         "rating": "81",
         "win_odds": "23",
         "prob": 0.045,
-        "edge": 1.04
+        "edge": 1.04,
+        "features": {
+          "jockey_wr": 0.0548,
+          "trainer_wr": 0.0822,
+          "horse_wr": 0.0968,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.977,
+          "gear_change": 1.0,
+          "rating_trend": 16.6667,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 132.0
+        }
       },
       {
         "no": "4",
@@ -1272,7 +2494,20 @@
         "rating": "82",
         "win_odds": "9.7",
         "prob": 0.0329,
-        "edge": 0.32
+        "edge": 0.32,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9946,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 133.0
+        }
       },
       {
         "no": "1",
@@ -1285,7 +2520,20 @@
         "rating": "84",
         "win_odds": "11",
         "prob": 0.0323,
-        "edge": 0.36
+        "edge": 0.36,
+        "features": {
+          "jockey_wr": 0.15,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.15,
+          "dist_adapt": 0.25,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9351,
+          "gear_change": 1.0,
+          "rating_trend": -32.0,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "7",
@@ -1298,7 +2546,20 @@
         "rating": "74",
         "win_odds": "4.0",
         "prob": 0.0304,
-        "edge": 0.12
+        "edge": 0.12,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 74.0,
+          "late_pace_avg": 0.933,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 125.0
+        }
       },
       {
         "no": "10",
@@ -1311,7 +2572,20 @@
         "rating": "67",
         "win_odds": "53",
         "prob": 0.0223,
-        "edge": 1.18
+        "edge": 1.18,
+        "features": {
+          "jockey_wr": 0.0681,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 118.0
+        }
       }
     ]
   },
@@ -1330,7 +2604,20 @@
         "rating": "139",
         "win_odds": "1.1",
         "prob": 0.3168,
-        "edge": 0.35
+        "edge": 0.35,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.7857,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 1.0447,
+          "gear_change": 0.0,
+          "rating_trend": -5.6667,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "5",
@@ -1343,7 +2630,20 @@
         "rating": "103",
         "win_odds": "32",
         "prob": 0.1725,
-        "edge": 5.52
+        "edge": 5.52,
+        "features": {
+          "jockey_wr": 0.0669,
+          "trainer_wr": 0.0822,
+          "horse_wr": 0.2,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9707,
+          "gear_change": 0.0,
+          "rating_trend": -16.3333,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "9",
@@ -1356,7 +2656,20 @@
         "rating": "82",
         "win_odds": "26",
         "prob": 0.1716,
-        "edge": 4.46
+        "edge": 4.46,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 53.0,
+          "late_pace_avg": 0.9985,
+          "gear_change": 1.0,
+          "rating_trend": 12.6667,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "6",
@@ -1369,7 +2682,20 @@
         "rating": "83",
         "win_odds": "45",
         "prob": 0.0767,
-        "edge": 3.45
+        "edge": 3.45,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0714,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 1.0057,
+          "gear_change": 1.0,
+          "rating_trend": -9.6667,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "3",
@@ -1382,7 +2708,20 @@
         "rating": "113",
         "win_odds": "16",
         "prob": 0.0577,
-        "edge": 0.92
+        "edge": 0.92,
+        "features": {
+          "jockey_wr": 0.1053,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.1111,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9894,
+          "gear_change": 1.0,
+          "rating_trend": -26.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "2",
@@ -1395,7 +2734,20 @@
         "rating": "-",
         "win_odds": "16",
         "prob": 0.056,
-        "edge": 0.9
+        "edge": 0.9,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "7",
@@ -1408,7 +2760,20 @@
         "rating": "96",
         "win_odds": "26",
         "prob": 0.053,
-        "edge": 1.38
+        "edge": 1.38,
+        "features": {
+          "jockey_wr": 0.0266,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.2667,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.976,
+          "gear_change": 1.0,
+          "rating_trend": -30.6667,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "8",
@@ -1421,7 +2786,20 @@
         "rating": "91",
         "win_odds": "38",
         "prob": 0.0485,
-        "edge": 1.84
+        "edge": 1.84,
+        "features": {
+          "jockey_wr": 0.062,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.1667,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9762,
+          "gear_change": 1.0,
+          "rating_trend": -19.0,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "4",
@@ -1434,7 +2812,20 @@
         "rating": "-",
         "win_odds": "31",
         "prob": 0.0472,
-        "edge": 1.46
+        "edge": 1.46,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 161.0,
+          "late_pace_avg": 1.065,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 126.0
+        }
       }
     ]
   },
@@ -1453,7 +2844,20 @@
         "rating": "81",
         "win_odds": "9.4",
         "prob": 0.1546,
-        "edge": 1.45
+        "edge": 1.45,
+        "features": {
+          "jockey_wr": 0.08,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.4,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0042,
+          "gear_change": 1.0,
+          "rating_trend": -16.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 121.0
+        }
       },
       {
         "no": "4",
@@ -1466,7 +2870,20 @@
         "rating": "88",
         "win_odds": "5.7",
         "prob": 0.1497,
-        "edge": 0.85
+        "edge": 0.85,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.125,
+          "dist_adapt": 1.0,
+          "days_since": 63.0,
+          "late_pace_avg": 0.9768,
+          "gear_change": 1.0,
+          "rating_trend": -18.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "7",
@@ -1479,7 +2896,20 @@
         "rating": "84",
         "win_odds": "5.0",
         "prob": 0.122,
-        "edge": 0.61
+        "edge": 0.61,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.068,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.8752,
+          "gear_change": 1.0,
+          "rating_trend": -4.0,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 124.0
+        }
       },
       {
         "no": "6",
@@ -1492,7 +2922,20 @@
         "rating": "86",
         "win_odds": "16",
         "prob": 0.1103,
-        "edge": 1.77
+        "edge": 1.77,
+        "features": {
+          "jockey_wr": 0.0787,
+          "trainer_wr": 0.0919,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9384,
+          "gear_change": 1.0,
+          "rating_trend": -15.6667,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "1",
@@ -1505,7 +2948,20 @@
         "rating": "94",
         "win_odds": "7.4",
         "prob": 0.0969,
-        "edge": 0.72
+        "edge": 0.72,
+        "features": {
+          "jockey_wr": 0.15,
+          "trainer_wr": 0.0822,
+          "horse_wr": 0.0769,
+          "dist_adapt": 0.0833,
+          "days_since": 84.0,
+          "late_pace_avg": 0.9168,
+          "gear_change": 1.0,
+          "rating_trend": 14.6667,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 134.0
+        }
       },
       {
         "no": "5",
@@ -1518,7 +2974,20 @@
         "rating": "88",
         "win_odds": "3.6",
         "prob": 0.0757,
-        "edge": 0.27
+        "edge": 0.27,
+        "features": {
+          "jockey_wr": 0.062,
+          "trainer_wr": 0.0674,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9265,
+          "gear_change": 1.0,
+          "rating_trend": -5.6667,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "10",
@@ -1531,7 +3000,20 @@
         "rating": "81",
         "win_odds": "43",
         "prob": 0.075,
-        "edge": 3.23
+        "edge": 3.23,
+        "features": {
+          "jockey_wr": 0.0819,
+          "trainer_wr": 0.0859,
+          "horse_wr": 0.125,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.8763,
+          "gear_change": 1.0,
+          "rating_trend": 15.6667,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 121.0
+        }
       },
       {
         "no": "11",
@@ -1544,7 +3026,20 @@
         "rating": "80",
         "win_odds": "7.1",
         "prob": 0.0692,
-        "edge": 0.49
+        "edge": 0.49,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.1429,
+          "dist_adapt": 0.1818,
+          "days_since": 28.0,
+          "late_pace_avg": 0.8999,
+          "gear_change": 1.0,
+          "rating_trend": -27.3333,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 120.0
+        }
       },
       {
         "no": "8",
@@ -1557,7 +3052,20 @@
         "rating": "82",
         "win_odds": "27",
         "prob": 0.0623,
-        "edge": 1.68
+        "edge": 1.68,
+        "features": {
+          "jockey_wr": 0.0527,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.1579,
+          "dist_adapt": 0.0,
+          "days_since": 63.0,
+          "late_pace_avg": 0.9587,
+          "gear_change": 1.0,
+          "rating_trend": -32.0,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 122.0
+        }
       },
       {
         "no": "3",
@@ -1570,7 +3078,20 @@
         "rating": "91",
         "win_odds": "49",
         "prob": 0.0431,
-        "edge": 2.11
+        "edge": 2.11,
+        "features": {
+          "jockey_wr": 0.0697,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.25,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9983,
+          "gear_change": 1.0,
+          "rating_trend": -39.3333,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 131.0
+        }
       },
       {
         "no": "2",
@@ -1583,7 +3104,20 @@
         "rating": "94",
         "win_odds": "27",
         "prob": 0.0412,
-        "edge": 1.11
+        "edge": 1.11,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.1667,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9444,
+          "gear_change": 0.0,
+          "rating_trend": -19.6667,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 134.0
+        }
       }
     ]
   },
@@ -1602,7 +3136,20 @@
         "rating": "63",
         "win_odds": "29",
         "prob": 0.1354,
-        "edge": 3.93
+        "edge": 3.93,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.1,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9794,
+          "gear_change": 1.0,
+          "rating_trend": 2.3333,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 118.0
+        }
       },
       {
         "no": "2",
@@ -1615,7 +3162,20 @@
         "rating": "76",
         "win_odds": "5.1",
         "prob": 0.1288,
-        "edge": 0.66
+        "edge": 0.66,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.05,
+          "dist_adapt": 0.0,
+          "days_since": 63.0,
+          "late_pace_avg": 0.9759,
+          "gear_change": 1.0,
+          "rating_trend": 1.3333,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 131.0
+        }
       },
       {
         "no": "4",
@@ -1628,7 +3188,20 @@
         "rating": "73",
         "win_odds": "13",
         "prob": 0.1199,
-        "edge": 1.56
+        "edge": 1.56,
+        "features": {
+          "jockey_wr": 0.0586,
+          "trainer_wr": 0.0754,
+          "horse_wr": 0.6,
+          "dist_adapt": 0.6,
+          "days_since": 28.0,
+          "late_pace_avg": 1.0182,
+          "gear_change": 1.0,
+          "rating_trend": -16.3333,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "14",
@@ -1641,7 +3214,20 @@
         "rating": "60",
         "win_odds": "23",
         "prob": 0.0846,
-        "edge": 1.95
+        "edge": 1.95,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.2,
+          "dist_adapt": 0.25,
+          "days_since": 112.0,
+          "late_pace_avg": 0.9711,
+          "gear_change": 0.0,
+          "rating_trend": -7.0,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 115.0
+        }
       },
       {
         "no": "10",
@@ -1654,7 +3240,20 @@
         "rating": "65",
         "win_odds": "9.3",
         "prob": 0.0836,
-        "edge": 0.78
+        "edge": 0.78,
+        "features": {
+          "jockey_wr": 0.15,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 120.0
+        }
       },
       {
         "no": "9",
@@ -1667,7 +3266,20 @@
         "rating": "67",
         "win_odds": "7.2",
         "prob": 0.0749,
-        "edge": 0.54
+        "edge": 0.54,
+        "features": {
+          "jockey_wr": 0.0824,
+          "trainer_wr": 0.068,
+          "horse_wr": 1.0,
+          "dist_adapt": 1.0,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0171,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 122.0
+        }
       },
       {
         "no": "13",
@@ -1680,7 +3292,20 @@
         "rating": "61",
         "win_odds": "15",
         "prob": 0.0682,
-        "edge": 1.02
+        "edge": 1.02,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.0859,
+          "horse_wr": 1.0,
+          "dist_adapt": 0.0,
+          "days_since": 91.0,
+          "late_pace_avg": 0.8313,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 116.0
+        }
       },
       {
         "no": "5",
@@ -1693,7 +3318,20 @@
         "rating": "73",
         "win_odds": "4.6",
         "prob": 0.0662,
-        "edge": 0.3
+        "edge": 0.3,
+        "features": {
+          "jockey_wr": 0.0697,
+          "trainer_wr": 0.0897,
+          "horse_wr": 1.0,
+          "dist_adapt": 1.0,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0012,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "6",
@@ -1706,7 +3344,20 @@
         "rating": "72",
         "win_odds": "27",
         "prob": 0.0588,
-        "edge": 1.59
+        "edge": 1.59,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.1333,
+          "dist_adapt": 0.0,
+          "days_since": 32.0,
+          "late_pace_avg": 0.9924,
+          "gear_change": 1.0,
+          "rating_trend": -13.6667,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 127.0
+        }
       },
       {
         "no": "7",
@@ -1719,7 +3370,20 @@
         "rating": "71",
         "win_odds": "6.9",
         "prob": 0.056,
-        "edge": 0.39
+        "edge": 0.39,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.0831,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 63.0,
+          "late_pace_avg": 0.9912,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 126.0
+        }
       },
       {
         "no": "1",
@@ -1732,7 +3396,20 @@
         "rating": "80",
         "win_odds": "14",
         "prob": 0.0511,
-        "edge": 0.72
+        "edge": 0.72,
+        "features": {
+          "jockey_wr": 0.0681,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.1579,
+          "dist_adapt": 0.2,
+          "days_since": 67.0,
+          "late_pace_avg": 0.9768,
+          "gear_change": 1.0,
+          "rating_trend": -13.0,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "3",
@@ -1745,7 +3422,20 @@
         "rating": "75",
         "win_odds": "20",
         "prob": 0.0304,
-        "edge": 0.61
+        "edge": 0.61,
+        "features": {
+          "jockey_wr": 0.0556,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 130.0
+        }
       },
       {
         "no": "8",
@@ -1758,7 +3448,20 @@
         "rating": "69",
         "win_odds": "43",
         "prob": 0.0235,
-        "edge": 1.01
+        "edge": 1.01,
+        "features": {
+          "jockey_wr": 0.08,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 124.0
+        }
       },
       {
         "no": "11",
@@ -1771,7 +3474,20 @@
         "rating": "64",
         "win_odds": "52",
         "prob": 0.0186,
-        "edge": 0.97
+        "edge": 0.97,
+        "features": {
+          "jockey_wr": 0.0266,
+          "trainer_wr": 0.0543,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 119.0
+        }
       }
     ]
   },
@@ -1790,7 +3506,20 @@
         "rating": "72",
         "win_odds": "6.3",
         "prob": 0.1582,
-        "edge": 1.0
+        "edge": 1.0,
+        "features": {
+          "jockey_wr": 0.2125,
+          "trainer_wr": 0.1045,
+          "horse_wr": 0.3333,
+          "dist_adapt": 0.5,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9091,
+          "gear_change": 1.0,
+          "rating_trend": -17.6667,
+          "class_num": 4.0,
+          "draw": 10.0,
+          "weight": 128.0
+        }
       },
       {
         "no": "4",
@@ -1803,7 +3532,20 @@
         "rating": "73",
         "win_odds": "6.7",
         "prob": 0.146,
-        "edge": 0.98
+        "edge": 0.98,
+        "features": {
+          "jockey_wr": 0.177,
+          "trainer_wr": 0.1067,
+          "horse_wr": 0.25,
+          "dist_adapt": 0.0,
+          "days_since": 60.0,
+          "late_pace_avg": 0.9808,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 2.0,
+          "weight": 129.0
+        }
       },
       {
         "no": "6",
@@ -1816,7 +3558,20 @@
         "rating": "69",
         "win_odds": "13",
         "prob": 0.1187,
-        "edge": 1.54
+        "edge": 1.54,
+        "features": {
+          "jockey_wr": 0.0548,
+          "trainer_wr": 0.0822,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9674,
+          "gear_change": 1.0,
+          "rating_trend": -3.0,
+          "class_num": 4.0,
+          "draw": 3.0,
+          "weight": 125.0
+        }
       },
       {
         "no": "11",
@@ -1829,7 +3584,20 @@
         "rating": "62",
         "win_odds": "31",
         "prob": 0.0805,
-        "edge": 2.49
+        "edge": 2.49,
+        "features": {
+          "jockey_wr": 0.1515,
+          "trainer_wr": 0.0965,
+          "horse_wr": 0.1,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9078,
+          "gear_change": 1.0,
+          "rating_trend": 5.3333,
+          "class_num": 4.0,
+          "draw": 13.0,
+          "weight": 118.0
+        }
       },
       {
         "no": "14",
@@ -1842,7 +3610,20 @@
         "rating": "60",
         "win_odds": "15",
         "prob": 0.0728,
-        "edge": 1.09
+        "edge": 1.09,
+        "features": {
+          "jockey_wr": 0.0819,
+          "trainer_wr": 0.0702,
+          "horse_wr": 0.0952,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9936,
+          "gear_change": 1.0,
+          "rating_trend": 2.3333,
+          "class_num": 4.0,
+          "draw": 4.0,
+          "weight": 116.0
+        }
       },
       {
         "no": "12",
@@ -1855,7 +3636,20 @@
         "rating": "60",
         "win_odds": "21",
         "prob": 0.0706,
-        "edge": 1.48
+        "edge": 1.48,
+        "features": {
+          "jockey_wr": 0.0877,
+          "trainer_wr": 0.0797,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9295,
+          "gear_change": 1.0,
+          "rating_trend": 4.6667,
+          "class_num": 4.0,
+          "draw": 12.0,
+          "weight": 116.0
+        }
       },
       {
         "no": "1",
@@ -1868,7 +3662,20 @@
         "rating": "79",
         "win_odds": "18",
         "prob": 0.0699,
-        "edge": 1.26
+        "edge": 1.26,
+        "features": {
+          "jockey_wr": 0.0697,
+          "trainer_wr": 0.0897,
+          "horse_wr": 0.2308,
+          "dist_adapt": 0.3333,
+          "days_since": 84.0,
+          "late_pace_avg": 0.9675,
+          "gear_change": 1.0,
+          "rating_trend": -23.3333,
+          "class_num": 4.0,
+          "draw": 7.0,
+          "weight": 135.0
+        }
       },
       {
         "no": "7",
@@ -1881,7 +3688,20 @@
         "rating": "68",
         "win_odds": "2.4",
         "prob": 0.0513,
-        "edge": 0.12
+        "edge": 0.12,
+        "features": {
+          "jockey_wr": 0.0976,
+          "trainer_wr": 0.119,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 1.0118,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 1.0,
+          "weight": 124.0
+        }
       },
       {
         "no": "2",
@@ -1894,7 +3714,20 @@
         "rating": "74",
         "win_odds": "13",
         "prob": 0.048,
-        "edge": 0.62
+        "edge": 0.62,
+        "features": {
+          "jockey_wr": 0.1299,
+          "trainer_wr": 0.0828,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 14.0,
+          "weight": 130.0
+        }
       },
       {
         "no": "10",
@@ -1907,7 +3740,20 @@
         "rating": "63",
         "win_odds": "29",
         "prob": 0.0439,
-        "edge": 1.27
+        "edge": 1.27,
+        "features": {
+          "jockey_wr": 0.062,
+          "trainer_wr": 0.0754,
+          "horse_wr": 0.1429,
+          "dist_adapt": 0.0,
+          "days_since": 42.0,
+          "late_pace_avg": 0.9825,
+          "gear_change": 1.0,
+          "rating_trend": -6.0,
+          "class_num": 4.0,
+          "draw": 11.0,
+          "weight": 119.0
+        }
       },
       {
         "no": "13",
@@ -1920,7 +3766,20 @@
         "rating": "60",
         "win_odds": "32",
         "prob": 0.0385,
-        "edge": 1.23
+        "edge": 1.23,
+        "features": {
+          "jockey_wr": 0.0426,
+          "trainer_wr": 0.0896,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 46.0,
+          "late_pace_avg": 1.0028,
+          "gear_change": 1.0,
+          "rating_trend": 5.0,
+          "class_num": 4.0,
+          "draw": 6.0,
+          "weight": 116.0
+        }
       },
       {
         "no": "3",
@@ -1933,7 +3792,20 @@
         "rating": "67",
         "win_odds": "38",
         "prob": 0.0382,
-        "edge": 1.45
+        "edge": 1.45,
+        "features": {
+          "jockey_wr": 0.08,
+          "trainer_wr": 0.101,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 28.0,
+          "late_pace_avg": 0.9283,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 5.0,
+          "weight": 123.0
+        }
       },
       {
         "no": "8",
@@ -1946,7 +3818,20 @@
         "rating": "67",
         "win_odds": "38",
         "prob": 0.0355,
-        "edge": 1.35
+        "edge": 1.35,
+        "features": {
+          "jockey_wr": 0.0681,
+          "trainer_wr": 0.0794,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 35.0,
+          "late_pace_avg": 0.9528,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 8.0,
+          "weight": 123.0
+        }
       },
       {
         "no": "9",
@@ -1959,7 +3844,20 @@
         "rating": "67",
         "win_odds": "30",
         "prob": 0.0281,
-        "edge": 0.84
+        "edge": 0.84,
+        "features": {
+          "jockey_wr": 0.0824,
+          "trainer_wr": 0.0674,
+          "horse_wr": 0.0,
+          "dist_adapt": 0.0,
+          "days_since": 365.0,
+          "late_pace_avg": 0.85,
+          "gear_change": 0.0,
+          "rating_trend": 0.0,
+          "class_num": 4.0,
+          "draw": 9.0,
+          "weight": 123.0
+        }
       }
     ]
   }

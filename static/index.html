@@ -197,23 +197,41 @@ function showRace(rn){
   const race=raceCache.find(r=>r.race_no===rn);if(!race)return;
   const hasRes=race.has_results;
   const hasPreds=race.horses.some(h=>h.prob!=null);
-  let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>${hasPreds?'<th style="font-size:7pt">信心</th><th style="font-size:7pt">邊際</th>':''}${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
+  const featCols=hasPreds?['jockey_wr','trainer_wr','horse_wr','dist_adapt','days_since','late_pace_avg','gear_change','rating_trend']:[];
+  const featLabel={jockey_wr:'騎勝%',trainer_wr:'練勝%',horse_wr:'馬勝%',dist_adapt:'路程',days_since:'休日',late_pace_avg:'末段',gear_change:'配備',rating_trend:'評趨'};
+  const featKeys=hasPreds&&race.horses.some(h=>h.features)?featCols:[];
+  let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
+  if(hasPreds)h+=`<th style="font-size:7pt">信心</th><th style="font-size:7pt">邊際</th>`;
+  featKeys.forEach(k=>h+=`<th style="font-size:6pt;max-width:28px;writing-mode:vertical-lr;padding:2px 1px">${featLabel[k]}</th>`);
+  h+=`${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
   race.horses.forEach(hh=>{
     const prob=hh.prob!=null?(hh.prob*100).toFixed(0)+'%':'';
     const edge=hh.edge!=null?hh.edge.toFixed(1):'';
-    const edgeCls=hh.edge!=null?(hh.edge>1.3?'style="color:#27ae60;font-weight:bold"':(hh.edge>0.9?'style="color:#f0a030"':(hh.edge>0?'style="color:#ccc"':''))):'';
+    const edgeCls=hh.edge!=null?(hh.edge>1.3?'style="color:#27ae60;font-weight:bold"':(hh.edge>0.9?'style="color:#f0a030"':'')):'';
     h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}>`;
     h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>`;
     if(hasPreds)h+=`<td style="font-size:7pt">${prob}</td><td style="font-size:7pt" ${edgeCls}>${edge}</td>`;
+    featKeys.forEach(k=>{
+      const v=hh.features?hh.features[k]:null;
+      const vt=v!=null?((v<1&&k!=='days_since'&&k!=='gear_change'&&k!=='rating_trend'?(v*100).toFixed(0)+'%':(k==='days_since'?Math.round(v):(k==='gear_change'||k==='rating_trend'?v.toFixed(1):v.toFixed(2)))):'-');
+      h+=`<td style="font-size:6pt;padding:1px 2px;text-align:center">${vt}</td>`;
+    });
     if(hasRes)h+=`<td>${hh.position||'-'}</td>`;
     h+='</tr>';
   });
   h+='</tbody></table>';
-  if(hasPreds)h+=`<div style="font-size:7pt;color:#888;margin-top:6px;padding:6px;background:#fff;border-radius:4px;line-height:1.8">
-    <b>📊 圖例：</b>
-    信心 = V10.4 XGBoost模型預測的相對勝出概率（走勢前向，軟性最大化正規化）&ensp;|&ensp;
-    邊際 = 信心 × 賠率，<span style="color:#27ae60">> 1.3 = 推薦</span>，<span style="color:#f0a030">> 0.9 = 關注</span>，<span style="color:#ccc">< 0.9 = 低值</span>&ensp;|&ensp;
-    模型：46特徵 · 30個月走勢前向 · 回測ROI +1,125%
+  h+=`<div style="font-size:7pt;color:#888;margin-top:6px;padding:6px;background:#fff;border-radius:4px;line-height:1.8">
+    <b>V10.4 模型參數圖例：</b>
+    <span style="color:#27ae60">騎勝%</span> = 騎師勝率 &ensp;
+    <span style="color:#27ae60">練勝%</span> = 練馬師勝率 &ensp;
+    <span style="color:#27ae60">馬勝%</span> = 馬匹勝率 &ensp;
+    路程 = 路程適應性 &ensp;
+    休日 = 上次出賽後日數 &ensp;
+    末段 = 平均末段速度 &ensp;
+    配備 = 配備變更(1=是) &ensp;
+    評趨 = 評分趨勢 &ensp;|&ensp;
+    信心 = 模型預測概率 &ensp;
+    <span style="color:#27ae60">邊際 > 1.3 = 👍推薦</span>，<span style="color:#f0a030">> 0.9 = 👀關注</span>
     </div>`;
   if(hasRes)h+='<small class="text-success ms-2">✅ 已有賽果</small>';
   document.getElementById('raceTable').innerHTML=h;
