@@ -123,20 +123,23 @@ async def dashboard(auth = Depends(verify_token)):
     # Today's races (if any)
     today = datetime.now().strftime("%Y-%m-%d")
     today_races = [dict(r) for r in db.execute("""
-        SELECT race_no, course, distance, class, going, participants
-        FROM races WHERE date = ? ORDER BY race_no
+        SELECT raceno as race_no, course, CAST(distance AS INTEGER) as distance,
+               CASE WHEN CAST(class AS INTEGER) = 1 THEN 'G1' WHEN CAST(class AS INTEGER) = 2 THEN 'G2'
+                    WHEN CAST(class AS INTEGER) = 3 THEN 'G3' ELSE CAST(CAST(class AS INTEGER) AS TEXT) END as class,
+               going, participants
+        FROM races WHERE date = ? ORDER BY raceno
     """, (today,)).fetchall()]
 
     # Latest results (last 20)
     recent_results = [dict(r) for r in db.execute("""
         SELECT r.date, r.race_no, r.course, r.position, r.horse_name, r.jockey, r.trainer, r.odds, rc.distance, rc.class
-        FROM results r JOIN races rc ON r.race_id = rc.id
-        WHERE r.position = 1 AND r.date = ?
+        FROM results r JOIN races rc ON r.date = rc.date AND r.race_no = rc.raceno AND r.course = rc.course
+        WHERE r.position = '1' AND r.date = ?
         ORDER BY r.race_no LIMIT 20
     """, (latest_date,)).fetchall()] if latest_date else []
 
     # Model accuracy stats
-    total_races = db.execute("SELECT COUNT(DISTINCT race_id) FROM results WHERE position IS NOT NULL").fetchone()[0]
+    total_races = db.execute("SELECT COUNT(DISTINCT date || '-' || race_no) FROM results WHERE position IS NOT NULL").fetchone()[0]
     total_results = db.execute("SELECT COUNT(*) FROM results").fetchone()[0]
     horse_count = db.execute("SELECT COUNT(*) FROM horses").fetchone()[0]
     jockey_count = db.execute("SELECT COUNT(DISTINCT jockey) FROM results").fetchone()[0]
@@ -160,15 +163,15 @@ async def dashboard(auth = Depends(verify_token)):
     draw_stats = [dict(r) for r in db.execute("""
         SELECT draw, COUNT(*) as total, SUM(won) as wins,
         ROUND(CAST(SUM(won) AS FLOAT)/MAX(COUNT(*),1)*100,1) as win_pct
-        FROM results WHERE draw BETWEEN 1 AND 14 GROUP BY draw ORDER BY draw
+        FROM results WHERE CAST(draw AS INTEGER) BETWEEN 1 AND 14 GROUP BY draw ORDER BY CAST(draw AS INTEGER)
     """).fetchall()]
 
     # Win rate by odds range
     odds_stats = [dict(r) for r in db.execute("""
-        SELECT CASE WHEN odds < 3 THEN '1-3x' WHEN odds < 6 THEN '3-6x' WHEN odds < 10 THEN '6-10x'
-        WHEN odds < 20 THEN '10-20x' ELSE '20x+' END as odds_range,
+        SELECT CASE WHEN CAST(odds AS REAL) < 3 THEN '1-3x' WHEN CAST(odds AS REAL) < 6 THEN '3-6x'
+        WHEN CAST(odds AS REAL) < 10 THEN '6-10x' WHEN CAST(odds AS REAL) < 20 THEN '10-20x' ELSE '20x+' END as odds_range,
         COUNT(*) as total, SUM(won) as wins
-        FROM results WHERE odds > 1 GROUP BY odds_range ORDER BY MIN(odds)
+        FROM results WHERE CAST(odds AS REAL) > 1 GROUP BY odds_range ORDER BY MIN(CAST(odds AS REAL))
     """).fetchall()]
 
     db.close()
@@ -196,15 +199,76 @@ async def dashboard(auth = Depends(verify_token)):
 
 @app.get("/api/races/{date}")
 async def get_races(date: str, auth = Depends(verify_token)):
-    """Get race card for a specific date."""
-    # Look for race data in predictions folder
-    pred_dir = BASE_DIR.parent / "predictions" / date
+    """Get merged race data: card + results + predictions for a date."""
+    db = get_db()
+    pred_dir = BASE_DIR / "predictions" / date
+    racecard = {}
     if pred_dir.exists():
         rc_path = pred_dir / "racecard_parsed.json"
         if rc_path.exists():
             with open(rc_path) as f:
-                return json.load(f)
-    return {"error": "No data for this date", "races": {}}
+                racecard = json.load(f)
+
+    # Get results for this date
+    results = {}
+    for r in db.execute("""
+        SELECT r.race_no, r.position, r.horse_name, r.jockey, r.trainer, r.odds as res_odds, r.draw, r.act_wt
+        FROM results r JOIN races rc ON r.date = rc.date AND r.race_no = rc.raceno AND r.course = rc.course
+        WHERE rc.date = ? ORDER BY r.race_no, r.position
+    """, (date,)).fetchall():
+        rn = str(r['race_no'])
+        if rn not in results: results[rn] = []
+        results[rn].append(dict(r))
+
+    # Get race metadata from DB
+    db_races = {}
+    for r in db.execute("SELECT * FROM races WHERE date = ? ORDER BY raceno", (date,)).fetchall():
+        db_races[str(r['raceno'])] = dict(r)
+
+    # Merge everything
+    races_output = []
+    all_keys = set(list(racecard.keys()) + list(results.keys()) + list(db_races.keys()))
+    for rn in sorted(all_keys, key=int):
+        rc = racecard.get(rn, {})
+        race_info = db_races.get(rn, {})
+        race = {
+            "race_no": int(rn),
+            "distance": rc.get("distance") or race_info.get("distance", "?"),
+            "class": rc.get("class") or race_info.get("class", "?"),
+            "going": race_info.get("going", "Good"),
+            "participants": len(rc.get("horses", [])),
+            "horses": [],
+            "results": results.get(rn, []),
+            "has_results": rn in results,
+        }
+        # Merge card horses with their results
+        for h in rc.get("horses", []):
+            horse_entry = {
+                "no": h.get("no", ""),
+                "name": h.get("name", ""),
+                "brand": h.get("brand", ""),
+                "jockey": h.get("jockey", ""),
+                "trainer": h.get("trainer", ""),
+                "draw": h.get("draw", ""),
+                "weight": h.get("weight", ""),
+                "rating": h.get("rating", ""),
+                "age": h.get("age", ""),
+                "sex": h.get("sex", ""),
+                "gear": h.get("gear", ""),
+                "win_odds": h.get("win_odds", ""),
+                "place_odds": h.get("place_odds", ""),
+            }
+            # Check if this horse has a result
+            for res in race["results"]:
+                if res["horse_name"] and h.get("name","") in res["horse_name"]:
+                    horse_entry["position"] = res.get("position")
+                    horse_entry["result_odds"] = res.get("res_odds")
+                    break
+            race["horses"].append(horse_entry)
+        races_output.append(race)
+
+    db.close()
+    return {"date": date, "races": races_output, "count": len(races_output)}
 
 @app.get("/api/models")
 async def list_models(auth = Depends(verify_token)):
@@ -314,11 +378,11 @@ async def horse_detail(brand: str, auth = Depends(verify_token)):
 
     # Win rate by distance
     dist_stats = [dict(r) for r in db.execute("""
-        SELECT r.distance, COUNT(*) as runs, SUM(r.won) as wins,
+        SELECT rc.distance, COUNT(*) as runs, SUM(r.won) as wins,
         ROUND(CAST(SUM(r.won) AS FLOAT)/MAX(COUNT(*),1)*100,1) as win_pct
-        FROM results r JOIN races rc ON r.race_id = rc.id
-        WHERE r.brand = ? AND r.distance IS NOT NULL
-        GROUP BY r.distance ORDER BY runs DESC LIMIT 10
+        FROM results r JOIN races rc ON r.date = rc.date AND r.race_no = rc.raceno AND r.course = rc.course
+        WHERE r.brand = ? AND rc.distance IS NOT NULL
+        GROUP BY rc.distance ORDER BY runs DESC LIMIT 10
     """, (brand,)).fetchall()]
 
     # Recent results
