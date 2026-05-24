@@ -73,7 +73,22 @@ def parse_race_meta(soup):
 
 
 def parse_race_results(soup, date, race_no, course):
-    """Parse horse result rows from a results page. Returns list of dicts."""
+    """Parse horse result rows from a results page.
+
+    HKJC column layout (fixed):
+      [0] 名次  position
+      [1] 馬號  horse number
+      [2] 馬名  horse name (Brand)
+      [3] 騎師  jockey
+      [4] 練馬師 trainer
+      [5] 實際負磅 actual carried weight (lbs)
+      [6] 排位體重 declared horse body weight (lbs) — NOT odds
+      [7] 檔位  draw
+      [8] 頭馬距離 lengths behind winner
+      [9] 沿途走位 running positions
+      [10] 完成時間 finish time
+      [11] 獨贏賠率 win odds
+    """
     tables = soup.find_all('table', class_=re.compile(r'table_bd|bigborder'))
     if not tables:
         tables = soup.find_all('table')
@@ -82,51 +97,33 @@ def parse_race_results(soup, date, race_no, course):
     for table in tables:
         for row in table.find_all('tr'):
             cells = row.find_all('td')
-            if len(cells) < 8:
+            if len(cells) < 10:
                 continue
             pos_text = cells[0].get_text(strip=True)
             if not re.match(r'^\d+$', pos_text):
                 continue
 
             try:
-                position = int(pos_text)
                 texts = [c.get_text(strip=True) for c in cells]
+                position = int(texts[0])
 
-                brand = horse_name = jockey = trainer = ''
-                draw = act_wt = odds = lbw = running = finish_time = ''
-
-                for i, t in enumerate(texts):
-                    m = re.search(r'\(([A-Z]\d+)\)', t)
-                    if not m:
-                        continue
-                    brand = m.group(1)
-                    horse_name = re.sub(r'\s*\([A-Z]\d+\)', '', t).strip()
-                    if i + 1 < len(texts): jockey  = texts[i + 1]
-                    if i + 2 < len(texts): trainer = texts[i + 2]
-
-                    for tt in texts[i + 3:]:
-                        # finish time e.g. 1:09.50 or 69.50
-                        if re.match(r'^\d+:\d{2}\.\d+$', tt) or re.match(r'^\d{2}\.\d{2}$', tt):
-                            if not finish_time: finish_time = tt
-                        # lbw: decimal < 30, not already captured as act_wt
-                        elif re.match(r'^\d+(\.\d+)?$', tt) and float(tt) < 30 and act_wt and not lbw:
-                            lbw = tt
-                        # act_wt: 3-digit weight e.g. 126.0 or 133
-                        elif re.match(r'^\d{3}(\.\d)?$', tt) and not act_wt:
-                            act_wt = tt
-                        # odds: number with optional decimal
-                        elif re.match(r'^\d+(\.\d+)?$', tt) and act_wt and not odds and float(tt) >= 1:
-                            odds = tt
-                        # draw: short integer
-                        elif re.match(r'^\d{1,2}$', tt) and not draw:
-                            draw = tt
-                        # running style: Chinese text, not time/number
-                        elif len(tt) >= 2 and not re.match(r'^[\d:\.]+$', tt) and not running:
-                            running = tt
-                    break
-
-                if not brand:
+                # Extract brand from horse name cell (col 2)
+                m = re.search(r'\(([A-Z]\d+)\)', texts[2])
+                if not m:
                     continue
+                brand      = m.group(1)
+                horse_name = re.sub(r'\s*\([A-Z]\d+\)', '', texts[2]).strip()
+                jockey     = texts[3]
+                trainer    = texts[4]
+                act_wt     = texts[5]
+                draw       = texts[7]
+                lbw_raw    = texts[8]
+                running    = texts[9]  if len(texts) > 9  else ''
+                finish_time= texts[10] if len(texts) > 10 else ''
+                odds       = texts[11] if len(texts) > 11 else ''
+
+                # Normalise lbw: winner has '---', others have fractional lengths
+                lbw = '' if lbw_raw in ('---', '-', '') else lbw_raw
 
                 results.append({
                     'date': date, 'race_no': race_no, 'course': course,
