@@ -219,7 +219,7 @@ async def get_races(date: str, auth = Depends(verify_token)):
     # Get results for this date
     results = {}
     for r in db.execute("""
-        SELECT r.race_no, r.position, r.horse_name, r.jockey, r.trainer, r.odds as res_odds, r.draw, r.act_wt
+        SELECT r.race_no, r.position, r.horse_name, r.jockey, r.trainer, r.odds as res_odds, r.draw, r.act_wt, r.lbw, r.running_style
         FROM results r JOIN races rc ON r.date = rc.date AND r.race_no = rc.raceno AND r.course = rc.course
         WHERE rc.date = ? ORDER BY r.race_no, r.position
     """, (date,)).fetchall():
@@ -283,6 +283,8 @@ async def get_races(date: str, auth = Depends(verify_token)):
                 if res["horse_name"] and h.get("name","") in res["horse_name"]:
                     horse_entry["position"] = res.get("position")
                     horse_entry["result_odds"] = res.get("res_odds")
+                    horse_entry["lbw"] = res.get("lbw")
+                    horse_entry["running"] = res.get("running_style")
                     break
             race["horses"].append(horse_entry)
         races_output.append(race)
