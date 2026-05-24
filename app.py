@@ -267,6 +267,7 @@ async def get_races(date: str, auth = Depends(verify_token)):
                 "win_odds": h.get("win_odds", ""),
                 "place_odds": h.get("place_odds", ""),
                 "prob": None,
+                "win_prob": None,
                 "edge": None,
                 "features": None,
             }
@@ -274,6 +275,7 @@ async def get_races(date: str, auth = Depends(verify_token)):
             ph = pred_horses.get(str(h.get("no", "")))
             if ph:
                 horse_entry["prob"] = ph.get("prob")
+                horse_entry["win_prob"] = ph.get("win_prob")
                 horse_entry["edge"] = ph.get("edge")
                 horse_entry["features"] = ph.get("features")
             # Check if this horse has a result
