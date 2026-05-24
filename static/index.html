@@ -67,6 +67,7 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
   <div class="sidebar closed" id="sidebar">
     <div class="sidebar-header"><span>🏇 Racing</span><button class="close-btn" onclick="closeSidebar()">✕</button></div>
     <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">📊</span><span>儀表板</span></div>
+    <div class="nav-item" data-page="model" onclick="go('model')"><span class="icon">🤖</span><span>模型</span></div>
     <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">🐴</span><span>馬匹</span></div>
     <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">🏇</span><span>騎師</span></div>
     <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">👨‍🏫</span><span>練馬師</span></div>
@@ -79,8 +80,10 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
     <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px"><span id="pageTitle">儀表板</span> <span id="dashInfo" style="font-size:12pt;color:#666"></span></h2>
 
     <div class="page show" id="page-dashboard">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <select id="modelSelect" onchange="onModelChange()" style="padding:4px 8px;font-size:9pt;border:1px solid #ddd;border-radius:4px;background:#fff;min-width:130px"></select>
         <select id="dateSelect" onchange="selectDate()" style="padding:4px 8px;font-size:9pt;border:1px solid #ddd;border-radius:4px"></select>
+        <span id="betSummary" style="font-size:9pt;color:#666"></span>
       </div>
       <div class="race-nav" id="raceTabs"></div>
       <div id="raceTable"></div>
@@ -115,6 +118,19 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
       <div class="card-grid" id="trainerGrid"></div>
       <div class="pagination" id="trainerPages"></div>
     </div>
+
+    <!-- ─── Model Page ─────────────────────────────────────── -->
+    <div class="page" id="page-model">
+      <div id="modelList" style="margin-bottom:16px"></div>
+      <ul class="nav nav-tabs" id="modelTabs" style="font-size:10pt">
+        <li class="nav-item"><a class="nav-link active" href="#" onclick="showModelTab('features');return false">特徵列表</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('xgb');return false">XGB 參數</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('pace');return false">步速×檔位矩陣</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('going');return false">場地編碼</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('layoff');return false">久休懲罰</a></li>
+      </ul>
+      <div id="modelTabContent" style="background:#fff;border:1px solid #dee2e6;border-top:none;padding:14px;border-radius:0 0 6px 6px"></div>
+    </div>
   </div>
 </div>
 
@@ -136,7 +152,7 @@ async function login(){
 }
 async function checkAuth(){try{return(await fetch('/api/auth/check',{headers:{'Authorization':'Bearer '+token}})).ok}catch{return false}}
 function clearAndShowLogin(){token=null;delCookie('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('auth')}
-function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('auth');loadDashboard()}
+function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('auth');initModelSelect().then(()=>loadDashboard())}
 function logout(){clearAndShowLogin()}
 function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.status===401?(clearAndShowLogin(),null):r.json())}
 
@@ -150,43 +166,92 @@ function go(name){
   document.querySelector(`[data-page="${name}"]`)?.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('show');
-  document.getElementById('pageTitle').textContent={dashboard:'今日賽事',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'}[name]||'';
+  const titles={dashboard:'今日賽事',model:'模型',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'};
+  document.getElementById('pageTitle').textContent=titles[name]||'';
   closeSidebar();
   if(name==='dashboard')loadDashboard();
+  if(name==='model')loadModelPage();
   if(name==='horses')loadHorses(1);
   if(name==='jockeys')loadJockeys(1);
   if(name==='trainers')loadTrainers(1);
 }
 
 // ─── Dashboard ────────────────────────────────────────────
-let raceCache=null, featWeights={}, featSorted=[];
+let raceCache=null, featWeights={}, featSorted=[], activeModel=null;
+
+function getSelectedModel(){return document.getElementById('modelSelect').value||null}
+
+async function initModelSelect(){
+  const ms=document.getElementById('modelSelect');
+  if(ms.options.length>0)return;
+  const d=await api('/api/models');
+  if(!d||!d.models)return;
+  ms.innerHTML=d.models.map(m=>`<option value="${m.name}"${m.active?' selected':''}>${m.name}${m.active?' ✓':''}</option>`).join('');
+  activeModel=ms.value;
+}
+
+async function onModelChange(){
+  activeModel=getSelectedModel();
+  // Reset date list so it reloads for the new model
+  document.getElementById('dateSelect').innerHTML='';
+  await loadDashboard();
+}
 
 async function loadDashboard(dateStr){
-  if(!dateStr)dateStr=new Date().toISOString().slice(0,10);
-  // Populate date selector on first load
+  await initModelSelect();
+  const model=getSelectedModel();
+  const modelParam=model?'&model='+model:'';
+
+  if(!dateStr){
+    // Use currently selected date if any, otherwise today
+    dateStr=document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
+  }
+
+  // Populate date selector
   if(!document.getElementById('dateSelect').options.length){
-    const dd=await api('/api/dates');
+    const dd=await api('/api/dates?model='+(model||''));
     if(dd&&dd.dates){
-      dd.dates.sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:0);
       const sel=document.getElementById('dateSelect');
       sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.race_count?'R'+d.race_count+'場':''} ${d.horse_count?d.horse_count+'匹':''}</option>`).join('');
+      if(!dd.dates.find(d=>d.date===dateStr)&&dd.dates.length)dateStr=dd.dates[0].date;
     }
   }
   document.getElementById('dateSelect').value=dateStr;
 
-  const rc=await api('/api/races/'+dateStr);
+  const rc=await api('/api/races/'+dateStr+'?model='+(model||''));
   if(!rc||!rc.races){document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">暫無賽事數據</div>';return;}
-  const venue=rc.races[0]?.course||'沙田';
-  document.getElementById('dashInfo').textContent=`${dateStr} · ${venue} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
+  document.getElementById('dashInfo').textContent=`${dateStr} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
   raceCache=rc.races;
   featWeights=rc._feature_weights||{};
   featSorted=rc._feature_cols||[];
+
+  // Show overall bet summary for the day
+  const bets=rc.races.filter(r=>r.bet&&r.bet.placed&&r.has_results);
+  if(bets.length){
+    const wins=bets.filter(r=>r.bet.correct).length;
+    const totalPnl=bets.reduce((s,r)=>s+(r.bet.pnl||0),0);
+    const pnlStyle=totalPnl>=0?'color:#27ae60':'color:#e74c3c';
+    document.getElementById('betSummary').innerHTML=`📊 ${model||''} 預測: ${bets.length}場下注 ${wins}勝 <span style="${pnlStyle};font-weight:bold">${totalPnl>=0?'+':''}${totalPnl.toFixed(2)} 單位</span>`;
+  } else {
+    document.getElementById('betSummary').textContent='';
+  }
+
   const tabs=document.getElementById('raceTabs');
-  tabs.innerHTML=rc.races.map(r=>`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}<small>${r.distance}m ${r.class}</small></button>`).join('');
+  tabs.innerHTML=rc.races.map(r=>{
+    const b=r.bet;
+    let badge='';
+    if(b&&r.has_results){
+      badge=b.correct?'<span style="color:#27ae60;font-size:8pt">✓</span>':'<span style="color:#e74c3c;font-size:8pt">✗</span>';
+    }
+    return`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}${badge}<small>${r.distance}m ${r.class}</small></button>`;
+  }).join('');
   if(rc.races.length)showRace(rc.races[0].race_no);
 }
 
-function selectDate(){loadDashboard(document.getElementById('dateSelect').value)}
+function selectDate(){
+  document.getElementById('dateSelect');
+  loadDashboard(document.getElementById('dateSelect').value);
+}
 
 // Feature descriptions for hover
 const fDesc={age:'年齡',sex_gelding:'騸馬',rating:'評分',races_count:'出賽次數',
@@ -324,21 +389,35 @@ function showRace(rn){
   });
   h+='</tbody></table>';
 
-  // Race-level profit summary
+  // Race-level bet summary from backend analysis
+  const bet=race.bet;
+  if(bet){
+    const predIcon = bet.placed ? (bet.correct ? '✅' : (race.has_results ? '❌' : '⏳')) : '—';
+    const pnlStr  = bet.pnl!=null ? (bet.pnl>=0?`+${bet.pnl.toFixed(2)}`:bet.pnl.toFixed(2)) : '';
+    const pnlStyle= bet.pnl!=null ? (bet.pnl>=0?'color:#27ae60':'color:#e74c3c') : '';
+    h+=`<div style="font-size:9pt;color:#555;margin-top:6px;padding:6px 10px;background:#f8f9fa;border-radius:4px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <span>${predIcon} <b>預測馬:</b> ${bet.top_predicted||'-'}</span>
+      <span><b>下注:</b> ${bet.placed?(bet.horse_name+' (賠'+bet.win_odds+'x)'):'-'}</span>
+      ${bet.placed&&bet.edge!=null?`<span><b>值博率:</b> ${bet.edge.toFixed(2)}</span>`:''}
+      ${race.has_results?`<span><b>冠軍:</b> ${bet.actual_winner||'-'}</span>`:''}
+      ${pnlStr?`<span style="${pnlStyle};font-weight:bold">盈虧: ${pnlStr} 單位</span>`:''}
+    </div>`;
+  }
+  // Also show manual bet calculation (existing logic)
+  function isLongCheck(h){return(parseFloat(h.win_odds)||0)>6.5}
   let totalBet=0, totalProfit=0;
   sortedHorses.forEach(hh=>{
-    const b=!isLongCheck(hh)&&hh.edge>1.3?200:(!isLongCheck(hh)&&hh.edge>0.9?100:0);
+    const b=!isLongCheck(hh)&&(hh.edge||0)>1.3?200:(!isLongCheck(hh)&&(hh.edge||0)>0.9?100:0);
     if(b>0&&hh.position!=null){
       totalBet+=b;
       if(hh.position==1||hh.position=='1') totalProfit+=b*(parseFloat(hh.win_odds)||0);
     }
   });
-  function isLongCheck(h){return(parseFloat(h.win_odds)||0)>6.5}
   const netProfit=totalProfit-totalBet;
   const profitPct=totalBet>0?((netProfit/totalBet)*100).toFixed(1):'0';
-  h+=`<div style="font-size:9pt;color:#666;margin-top:4px;padding:4px 8px;background:#fff;border-radius:4px">
-    <b>本場注碼: $${totalBet}</b> &ensp; 回報: $${totalProfit} &ensp;
-    淨盈虧: <span style="color:${netProfit>=0?'#27ae60':'#e74c3c'};font-weight:bold">$${netProfit} (${netProfit>=0?'+':''}${profitPct}%)</span>
+  if(totalBet>0)h+=`<div style="font-size:9pt;color:#666;margin-top:4px;padding:4px 8px;background:#fff;border-radius:4px">
+    <b>注碼($): ${totalBet}</b> &ensp; 回報: ${totalProfit} &ensp;
+    淨盈虧: <span style="color:${netProfit>=0?'#27ae60':'#e74c3c'};font-weight:bold">${netProfit>=0?'+':''}$${netProfit} (${netProfit>=0?'+':''}${profitPct}%)</span>
     </div>`;
 
   if(hasFeat)h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;line-height:2">
@@ -378,6 +457,155 @@ async function loadTrainers(page){
   if(!token)return;
   try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});if(!f.ok)return;const d=await f.json();d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)})}catch(e){}
 })();
+
+// ─── Model Page ─────────────────────────────────────────────
+let modelConfigCache={}, modelTabActive='features';
+
+async function loadModelPage(){
+  const d=await api('/api/models');
+  if(!d)return;
+  // Model list + activate buttons
+  document.getElementById('modelList').innerHTML=d.models.map(m=>{
+    const s=m.summary||{};
+    const acc=s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—';
+    const roi=s.roi_units!=null?(s.roi_units>=0?'+':'')+s.roi_units.toFixed(2)+'u':'—';
+    return `<div style="display:inline-block;margin:0 8px 8px 0;padding:8px 14px;background:${m.active?'#1a3a5c':'#fff'};color:${m.active?'#fff':'#333'};border:1px solid #ddd;border-radius:6px;font-size:10pt">
+      <b>${m.name}</b>${m.active?' ✓':''}<br>
+      <span style="font-size:8pt;color:${m.active?'rgba(255,255,255,0.7)':'#888'}">${m.description||''}</span><br>
+      <span style="font-size:8pt">準確率: ${acc} &ensp; ROI: ${roi}</span>
+      ${!m.active?`<br><button onclick="activateModel('${m.name}')" style="margin-top:4px;font-size:8pt;padding:2px 8px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">設為使用中</button>`:''}
+    </div>`;
+  }).join('');
+  // Load config for active model
+  const active=d.models.find(m=>m.active)||d.models[0];
+  if(active)await loadModelConfig(active.name);
+  showModelTab(modelTabActive);
+}
+
+async function loadModelConfig(name){
+  const d=await api('/api/model-config/'+name);
+  if(!d)return;
+  modelConfigCache=d;
+  // Pre-render all tabs
+  renderModelFeatures(d);
+  renderModelXGB(d.config);
+  renderModelPace(d.config);
+  renderModelGoing(d.config);
+  renderModelLayoff(d.config);
+}
+
+function showModelTab(tab){
+  modelTabActive=tab;
+  document.querySelectorAll('#modelTabs .nav-link').forEach(a=>{
+    a.classList.toggle('active', a.textContent.toLowerCase().includes(
+      {features:'特徵',xgb:'xgb',pace:'步速',going:'場地',layoff:'久休'}[tab]||tab));
+  });
+  const panels={features:'mTab-features',xgb:'mTab-xgb',pace:'mTab-pace',going:'mTab-going',layoff:'mTab-layoff'};
+  document.getElementById('modelTabContent').innerHTML=`<div id="${panels[tab]}"></div>`;
+  renderActiveTab(tab);
+}
+
+function renderActiveTab(tab){
+  if(!modelConfigCache.config)return;
+  const d=modelConfigCache;
+  if(tab==='features')renderModelFeatures(d);
+  else if(tab==='xgb')renderModelXGB(d.config);
+  else if(tab==='pace')renderModelPace(d.config);
+  else if(tab==='going')renderModelGoing(d.config);
+  else if(tab==='layoff')renderModelLayoff(d.config);
+}
+
+function renderModelFeatures(d){
+  const el=document.getElementById('mTab-features');if(!el)return;
+  const cats=d.categories||[];
+  const features=d.features||[];
+  const cfg=d.config||{};
+  const disabled=new Set(cfg.features_disabled||[]);
+  let h=`<p style="font-size:9pt;color:#888">共 ${features.filter(f=>!disabled.has(f.name)).length} 個啟用特徵 / ${features.length} 個總特徵</p>`;
+  cats.forEach(cat=>{
+    const fs=features.filter(f=>f.category===cat);
+    if(!fs.length)return;
+    h+=`<h6 style="color:#1a3a5c;margin-top:12px;border-bottom:1px solid #eee;padding-bottom:4px">${cat}</h6>`;
+    h+=`<table style="width:100%;font-size:9pt;margin-bottom:8px"><thead><tr>
+      <th style="width:160px;background:#f5f5f5;color:#333">特徵</th>
+      <th style="background:#f5f5f5;color:#333;text-align:left">說明</th>
+      <th style="width:60px;background:#f5f5f5;color:#333">可調</th>
+      <th style="width:70px;background:#f5f5f5;color:#333">狀態</th>
+    </tr></thead><tbody>`;
+    fs.forEach(f=>{
+      const on=!disabled.has(f.name);
+      h+=`<tr${on?'':' style="opacity:0.4"'}>
+        <td style="font-family:monospace;font-size:8pt;background:#f9f9f9"><code>${f.name}</code></td>
+        <td style="text-align:left;padding:4px 6px">${f.description}</td>
+        <td style="color:${f.tunable?'#1a3a5c':'#aaa'}">${f.tunable?'✓':'—'}</td>
+        <td style="color:${on?'#27ae60':'#e74c3c'};font-weight:bold">${on?'✅':'OFF'}</td>
+      </tr>`;
+    });
+    h+='</tbody></table>';
+  });
+  el.innerHTML=h;
+}
+
+function renderModelXGB(cfg){
+  const el=document.getElementById('mTab-xgb');if(!el)return;
+  const xgb=cfg.xgb||{};
+  let h=`<table style="width:300px;font-size:10pt"><thead><tr><th>參數</th><th>值</th></tr></thead><tbody>`;
+  Object.entries(xgb).forEach(([k,v])=>{h+=`<tr><td style="font-family:monospace;font-size:9pt;text-align:left;background:#f9f9f9">${k}</td><td>${v}</td></tr>`});
+  h+=`<tr><td style="font-family:monospace;font-size:9pt;text-align:left;background:#f9f9f9">num_boost_rounds</td><td>${cfg.num_boost_rounds||100}</td></tr>`;
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+function renderModelPace(cfg){
+  const el=document.getElementById('mTab-pace');if(!el)return;
+  const pd=cfg.pace_draw||{};
+  const paces=Object.keys(pd);
+  if(!paces.length){el.innerHTML='<p class="text-muted">無數據</p>';return;}
+  let h=`<table style="font-size:10pt"><thead><tr><th>步速</th><th>內檔(1-${cfg.draw_inner_max||5})</th><th>中檔</th><th>外檔(≥${cfg.draw_outer_min||10})</th></tr></thead><tbody>`;
+  paces.forEach(p=>{
+    const v=pd[p];
+    const fmt=x=>`<span style="color:${x>0?'#27ae60':x<0?'#e74c3c':'#888'};font-weight:bold">${x>0?'+':''}${x}</span>`;
+    h+=`<tr><td style="font-weight:bold">${p}</td><td>${fmt(v.inner)}</td><td>${fmt(v.mid)}</td><td>${fmt(v.outer)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  h+=`<p style="font-size:9pt;color:#888;margin-top:8px">正數=優勢加成 負數=劣勢懲罰 &ensp; 內檔≤${cfg.draw_inner_max||5} &ensp; 外檔≥${cfg.draw_outer_min||10}</p>`;
+  el.innerHTML=h;
+}
+
+function renderModelGoing(cfg){
+  const el=document.getElementById('mTab-going');if(!el)return;
+  const gm=cfg.going_map||{};
+  let h=`<table style="font-size:10pt;width:300px"><thead><tr><th>場地狀況</th><th>數值</th></tr></thead><tbody>`;
+  Object.entries(gm).sort((a,b)=>a[1]-b[1]).forEach(([k,v])=>{
+    h+=`<tr><td style="text-align:left">${k}</td><td>${v}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  h+=`<p style="font-size:9pt;color:#888;margin-top:8px">數值越大=場地越軟 越適合後上馬</p>`;
+  el.innerHTML=h;
+}
+
+function renderModelLayoff(cfg){
+  const el=document.getElementById('mTab-layoff');if(!el)return;
+  const lo=cfg.layoff||{};
+  let h=`<table style="font-size:10pt;width:350px"><thead><tr><th>條件</th><th>懲罰值</th></tr></thead><tbody>`;
+  h+=`<tr><td>休賽 ≤ ${lo.medium_days||14} 天</td><td style="color:#27ae60">${lo.short_penalty||0}</td></tr>`;
+  h+=`<tr><td>休賽 ${lo.medium_days||14}–${lo.long_days||28} 天</td><td style="color:#f0a030">${lo.medium_penalty||0}</td></tr>`;
+  h+=`<tr><td>休賽 > ${lo.long_days||28} 天</td><td style="color:#e74c3c">${lo.long_penalty||0}</td></tr>`;
+  h+=`<tr><td>最長計算天數</td><td>${lo.max_days||365}</td></tr>`;
+  h+='</tbody></table>';
+  h+=`<p style="font-size:9pt;color:#888;margin-top:8px">冷廄閾值: ${cfg.cold_stable_threshold||0.05} &ensp; 練馬師計算窗口: ${cfg.trainer_form_days||365} 天 &ensp; 評分趨勢窗口: ${cfg.rating_trend_window||3} 場</p>`;
+  el.innerHTML=h;
+}
+
+async function activateModel(name){
+  const r=await fetch('/api/models/'+name+'/activate',{method:'POST',headers:{'Authorization':'Bearer '+token}});
+  if(r.ok){
+    // Update model select
+    document.getElementById('modelSelect').innerHTML='';
+    activeModel=name;
+    await loadModelPage();
+  }
+}
 </script>
 </body>
 </html>

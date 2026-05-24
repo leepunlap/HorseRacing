@@ -14,16 +14,18 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from contextlib import asynccontextmanager
 import uvicorn
+from model_config import list_models as _list_model_configs, load_config, FEATURES, FEATURE_CATEGORIES
 
 # ─── Config ───────────────────────────────────────────────
 HARDCODED_PASSWORD = "168888"
 JWT_SECRET = secrets.token_hex(32)
 TOKENS = set()
 
-BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "data"
+BASE_DIR   = Path(__file__).parent
+DATA_DIR   = BASE_DIR / "data"
 STATIC_DIR = BASE_DIR / "static"
-DB_PATH = DATA_DIR / "racing.db"
+MODELS_DIR = BASE_DIR / "models"
+DB_PATH    = DATA_DIR / "racing.db"
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 
@@ -198,120 +200,216 @@ async def dashboard(auth = Depends(verify_token)):
     }
 
 @app.get("/api/races/{date}")
-async def get_races(date: str, auth = Depends(verify_token)):
+async def get_races(date: str, auth = Depends(verify_token), model: str = Query(None)):
     """Get merged race data: card + results + predictions for a date."""
     db = get_db()
-    pred_dir = BASE_DIR / "predictions" / date
+
+    # Racecard always comes from predictions/ (raw scraped data)
+    card_dir = BASE_DIR / "predictions" / date
     racecard = {}
-    if pred_dir.exists():
-        rc_path = pred_dir / "racecard_parsed.json"
+    if card_dir.exists():
+        rc_path = card_dir / "racecard_parsed.json"
         if rc_path.exists():
             with open(rc_path) as f:
                 racecard = json.load(f)
 
+    # Predictions come from model results dir if model is specified
+    if model:
+        pred_json_path = MODELS_DIR / model / "results" / date / "predictions.json"
+    else:
+        pred_json_path = card_dir / "predictions.json"
+
     # Load model predictions (prob/edge per horse)
     predictions = {}
-    pred_json_path = pred_dir / "predictions.json"
     if pred_json_path.exists():
         with open(pred_json_path, encoding='utf-8') as f:
             predictions = json.load(f)
 
-    # Get results for this date
-    results = {}
+    # Results from DB, keyed by normalised race_no then by brand
+    results_by_race = {}
+    results_by_brand = {}  # (race_no_str, brand) -> result row
     for r in db.execute("""
-        SELECT r.race_no, r.position, r.horse_name, r.jockey, r.trainer, r.odds as res_odds, r.draw, r.act_wt, r.lbw, r.running_style
-        FROM results r
-        WHERE r.date = ? ORDER BY r.race_no, r.position
+        SELECT r.race_no, r.brand, r.position, r.horse_name, r.jockey, r.trainer,
+               r.odds as res_odds, r.draw, r.act_wt, r.lbw, r.running_style
+        FROM results r WHERE r.date = ? ORDER BY r.race_no, CAST(r.position AS INTEGER)
     """, (date,)).fetchall():
-        rn = str(r['race_no'])
-        if rn not in results: results[rn] = []
-        results[rn].append(dict(r))
+        rn = str(int(r['race_no']))
+        if rn not in results_by_race:
+            results_by_race[rn] = []
+        row = dict(r)
+        results_by_race[rn].append(row)
+        results_by_brand[(rn, r['brand'])] = row
 
-    # Get race metadata from DB
+    # Race metadata from DB
     db_races = {}
     for r in db.execute("SELECT * FROM races WHERE date = ? ORDER BY raceno", (date,)).fetchall():
-        db_races[str(r['raceno'])] = dict(r)
+        db_races[str(int(r['raceno']))] = dict(r)
 
-    # Merge everything
-    # Normalize race keys: strip leading zeros, deduplicate
-    raw_keys = set(list(racecard.keys()) + list(results.keys()) + list(db_races.keys()))
+    BET_EDGE_THRESHOLD = 1.0  # bet when edge (win_prob * odds) > 1.0 (positive EV)
+
+    # Collect all race numbers from all sources
     all_keys = set()
-    for k in raw_keys:
+    for k in list(racecard.keys()) + list(results_by_race.keys()) + list(db_races.keys()):
         try: all_keys.add(str(int(k)))
-        except: all_keys.add(k)
+        except: pass
+
     races_output = []
     for rn in sorted(all_keys, key=int):
-        rc = racecard.get(rn) or racecard.get(rn.zfill(2), {})
-        race_info = db_races.get(rn) or db_races.get(rn.zfill(2), {})
+        rc         = racecard.get(rn) or racecard.get(rn.zfill(2), {})
+        race_info  = db_races.get(rn, {})
+        race_results = results_by_race.get(rn, [])
+        pred_race  = (predictions.get(rn) or predictions.get(rn.zfill(2))
+                      or predictions.get(str(int(rn))) or {})
+        pred_horses_list = pred_race.get('horses', [])
+        pred_by_brand = {ph.get('brand', ''): ph for ph in pred_horses_list}
+        pred_by_no    = {str(ph.get('no', '')): ph for ph in pred_horses_list}
+
+        dist_raw = race_info.get("distance") or rc.get("distance", "")
+        dist_str = str(dist_raw).rstrip('0').rstrip('.') if dist_raw else "?"
+        cls_raw  = race_info.get("class") or pred_race.get("class") or rc.get("class", "?")
+        cls_str  = str(cls_raw).rstrip('0').rstrip('.') if cls_raw else "?"
+
+        # Build horse list: use prediction horses as primary (they cover all participants)
+        # Fall back to racecard horses, then results-only
+        card_horses = rc.get("horses", [])
+        if pred_horses_list:
+            horse_source = pred_horses_list
+        elif card_horses:
+            horse_source = card_horses
+        else:
+            horse_source = [{"no": r.get("race_no", ""), "name": r.get("horse_name", ""),
+                             "brand": r.get("brand", ""), "jockey": r.get("jockey", ""),
+                             "trainer": r.get("trainer", ""), "draw": r.get("draw", "")}
+                            for r in race_results]
+
+        horses_out = []
+        for h in horse_source:
+            brand = h.get("brand", "")
+            # Get result for this horse
+            res = results_by_brand.get((rn, brand))
+            if not res:
+                # Try matching by horse number from racecard
+                card_h = next((ch for ch in card_horses if str(ch.get("no","")) == str(h.get("no",""))), None)
+                if card_h:
+                    res = results_by_brand.get((rn, card_h.get("brand", "")))
+            # Get prediction
+            ph = pred_by_brand.get(brand) or pred_by_no.get(str(h.get("no", "")))
+            pos = int(res["position"]) if res and res.get("position") else None
+            res_odds = float(res["res_odds"]) if res and res.get("res_odds") else None
+            prob  = ph.get("prob")   if ph else None
+            edge  = ph.get("edge")   if ph else None
+
+            horses_out.append({
+                "no":          h.get("no", ""),
+                "name":        h.get("name", ""),
+                "brand":       brand,
+                "jockey":      h.get("jockey", ""),
+                "trainer":     h.get("trainer", ""),
+                "draw":        h.get("draw", ""),
+                "weight":      h.get("weight", ""),
+                "rating":      h.get("rating", ""),
+                "win_odds":    h.get("win_odds", ""),
+                "prob":        prob,
+                "win_prob":    ph.get("win_prob") if ph else None,
+                "edge":        edge,
+                "features":    ph.get("features") if ph else None,
+                "position":    pos,
+                "result_odds": res_odds,
+                "lbw":         res.get("lbw")          if res else None,
+                "running":     res.get("running_style") if res else None,
+            })
+
+        # Per-race betting analysis
+        # Find top predicted horse (highest prob among horses with edge > threshold)
+        bettable = [h for h in horses_out if h["prob"] is not None and (h["edge"] or 0) > BET_EDGE_THRESHOLD]
+        top_pred  = max(horses_out, key=lambda h: h["prob"] or 0, default=None) if horses_out else None
+        bet_horse = max(bettable, key=lambda h: h["prob"], default=None)
+        actual_winner = next((h for h in horses_out if h["position"] == 1), None)
+
+        bet_pnl = None
+        if bet_horse and actual_winner:
+            if bet_horse["brand"] == actual_winner["brand"]:
+                odds_used = bet_horse.get("result_odds") or float(bet_horse.get("win_odds") or 0)
+                bet_pnl = round(odds_used - 1, 2) if odds_used else 1.0
+            else:
+                bet_pnl = -1.0
+
         race = {
-            "race_no": int(rn),
-            "distance": rc.get("distance", "") or str(race_info.get("distance", "?")).rstrip('0').rstrip('.').rstrip('?').rstrip('0') or "?",
-            "class": (rc.get("class", "") and rc.get("class") != "?" and rc.get("class")) or predictions.get(rn, {}).get("class") or predictions.get(rn.zfill(2), {}).get("class") or str(race_info.get("class", "?")).rstrip('0').rstrip('.') or "?",
-            "going": race_info.get("going", "Good"),
-            "participants": len(rc.get("horses", [])),
-            "horses": [],
-            "results": results.get(rn) or results.get(str(int(rn)), []),
-            "has_results": (rn in results) or (str(int(rn)) in results),
+            "race_no":       int(rn),
+            "distance":      dist_str,
+            "class":         cls_str,
+            "going":         race_info.get("going", ""),
+            "participants":  len(horses_out),
+            "has_results":   bool(race_results),
+            "horses":        horses_out,
+            "results":       race_results,
+            "bet": {
+                "placed":        bet_horse is not None,
+                "horse_no":      bet_horse["no"]   if bet_horse else None,
+                "horse_name":    bet_horse["name"]  if bet_horse else None,
+                "horse_brand":   bet_horse["brand"] if bet_horse else None,
+                "prob":          bet_horse["prob"]  if bet_horse else None,
+                "edge":          bet_horse["edge"]  if bet_horse else None,
+                "win_odds":      bet_horse.get("win_odds") if bet_horse else None,
+                "result_odds":   bet_horse.get("result_odds") if bet_horse else None,
+                "correct":       (bet_horse and actual_winner and
+                                  bet_horse["brand"] == actual_winner["brand"]),
+                "pnl":           bet_pnl,
+                "top_predicted": top_pred["name"] if top_pred else None,
+                "actual_winner": actual_winner["name"] if actual_winner else None,
+            } if pred_horses_list else None,
         }
-        # Merge card horses with their results and predictions
-        pred_race = predictions.get(rn) or predictions.get(rn.zfill(2)) or predictions.get(str(int(rn))) or {}
-        pred_horses = {str(ph['no']): ph for ph in pred_race.get('horses', [])}
-        for h in rc.get("horses", []):
-            horse_entry = {
-                "no": h.get("no", ""),
-                "name": h.get("name", ""),
-                "brand": h.get("brand", ""),
-                "jockey": h.get("jockey", ""),
-                "trainer": h.get("trainer", ""),
-                "draw": h.get("draw", ""),
-                "weight": h.get("weight", ""),
-                "rating": h.get("rating", ""),
-                "age": h.get("age", ""),
-                "sex": h.get("sex", ""),
-                "gear": h.get("gear", ""),
-                "win_odds": h.get("win_odds", ""),
-                "place_odds": h.get("place_odds", ""),
-                "prob": None,
-                "win_prob": None,
-                "edge": None,
-                "features": None,
-            }
-            # Merge model prediction
-            ph = pred_horses.get(str(h.get("no", "")))
-            if ph:
-                horse_entry["prob"] = ph.get("prob")
-                horse_entry["win_prob"] = ph.get("win_prob")
-                horse_entry["edge"] = ph.get("edge")
-                horse_entry["features"] = ph.get("features")
-            # Check if this horse has a result
-            for res in race["results"]:
-                if res["horse_name"] and h.get("name","") in res["horse_name"]:
-                    horse_entry["position"] = res.get("position")
-                    horse_entry["result_odds"] = res.get("res_odds")
-                    horse_entry["lbw"] = res.get("lbw")
-                    horse_entry["running"] = res.get("running_style")
-                    break
-            race["horses"].append(horse_entry)
         races_output.append(race)
 
     db.close()
-    return {"date": date, "races": races_output, "count": len(races_output), "_feature_cols": predictions.get("_feature_cols", [])}
+    return {
+        "date":          date,
+        "races":         races_output,
+        "count":         len(races_output),
+        "_feature_cols": predictions.get("_feature_cols", []),
+        "model":         model,
+    }
 
 @app.get("/api/models")
-async def list_models(auth = Depends(verify_token)):
-    """List available models and their latest backtest results."""
-    models_dir = BASE_DIR.parent / "models"
-    models = []
-    if (models_dir / "V10_iterations").exists():
-        rundir = models_dir / "V10_iterations"
-        for d in sorted(os.listdir(rundir)):
-            if d.startswith("V10.") and os.path.isdir(rundir / d):
-                summary_path = rundir / d / "SUMMARY.txt"
-                if summary_path.exists():
-                    with open(summary_path) as f:
-                        summary = f.read()
-                    models.append({"name": d, "summary": summary})
-    return {"models": models}
+async def list_models_endpoint(auth = Depends(verify_token)):
+    """List all model configs with summary stats."""
+    configs = _list_model_configs()
+    out = []
+    for cfg in configs:
+        summary = cfg.pop('_summary', {})
+        out.append({
+            "name":        cfg.get("name"),
+            "description": cfg.get("description", ""),
+            "active":      cfg.get("active", False),
+            "created":     cfg.get("created", ""),
+            "summary":     summary,
+        })
+    return {"models": out}
+
+
+@app.get("/api/model-config/{name}")
+async def get_model_config(name: str, auth = Depends(verify_token)):
+    """Return full config + feature catalogue for a named model."""
+    try:
+        cfg = load_config(name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    return {
+        "config":     cfg,
+        "features":   FEATURES,
+        "categories": FEATURE_CATEGORIES,
+    }
+
+
+@app.post("/api/models/{name}/activate")
+async def activate_model(name: str, auth = Depends(verify_token)):
+    """Set a model as the active model."""
+    from model_config import set_active_model
+    cfg_path = MODELS_DIR / name / "config.json"
+    if not cfg_path.exists():
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    set_active_model(name)
+    return {"success": True, "active": name}
 
 # ─── Data Exploration APIs ──────────────────────────────────
 
@@ -594,28 +692,38 @@ async def health():
     return {"status": "ok", "time": datetime.now().isoformat()}
 
 @app.get("/api/dates")
-async def available_dates(auth = Depends(verify_token)):
-    """List available prediction/result dates."""
-    pred_dir = BASE_DIR / "predictions"
+async def available_dates(auth = Depends(verify_token), model: str = Query(None)):
+    """List dates that have results in DB, with prediction status per model."""
+    db = get_db()
+    db_dates = [r[0] for r in db.execute(
+        "SELECT DISTINCT date FROM results ORDER BY date DESC"
+    ).fetchall()]
+    db.close()
+
+    # Determine prediction source directory
+    if model:
+        pred_dir = MODELS_DIR / model / "results"
+    else:
+        pred_dir = BASE_DIR / "predictions"
+
     dates = []
-    if pred_dir.exists():
-        for d in sorted(os.listdir(pred_dir), reverse=True):
-            dp = pred_dir / d
-            if dp.is_dir() and len(d) == 10 and d[4] == '-':
-                has_racecard = (dp / "racecard_parsed.json").exists()
-                has_predictions = (dp / "predictions.json").exists()
-                # Check if results exist in DB for this date
-                db = get_db()
-                res_count = db.execute("SELECT COUNT(DISTINCT race_no) FROM results WHERE date=?", (d,)).fetchone()[0]
-                horse_count = db.execute("SELECT COUNT(*) FROM results WHERE date=?", (d,)).fetchone()[0]
-                db.close()
-                dates.append({
-                    "date": d,
-                    "has_racecard": has_racecard,
-                    "has_predictions": has_predictions,
-                    "race_count": res_count,
-                    "horse_count": horse_count
-                })
+    for d in db_dates:
+        if len(d) != 10 or d[4] != '-':
+            continue
+        dp = pred_dir / d
+        has_predictions = (dp / "predictions.json").exists() if dp.exists() else False
+
+        db = get_db()
+        res_count   = db.execute("SELECT COUNT(DISTINCT race_no) FROM results WHERE date=?", (d,)).fetchone()[0]
+        horse_count = db.execute("SELECT COUNT(*) FROM results WHERE date=?", (d,)).fetchone()[0]
+        db.close()
+
+        dates.append({
+            "date":            d,
+            "has_predictions": has_predictions,
+            "race_count":      res_count,
+            "horse_count":     horse_count,
+        })
     return {"dates": dates}
 
 # ─── Main ──────────────────────────────────────────────────
