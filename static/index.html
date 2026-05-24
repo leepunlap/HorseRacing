@@ -43,13 +43,12 @@ table{width:100%;border-collapse:collapse;font-size:10pt}th{background:#1a3a5c;c
 .chart-box{width:100%;height:280px;margin:10px 0}
 .pagination{display:flex;justify-content:center;gap:4px;margin-top:12px}
 .pagination button{padding:5px 10px;font-size:10pt}
-/* Feature bar chart - horizontal bars stacked per category */
-.feat-col{display:flex;flex-direction:column;gap:0;padding:1px 2px;vertical-align:middle;min-width:36px}
-.feat-row{display:flex;align-items:center;height:8px;position:relative}
-.feat-row::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:#eee;z-index:0}
-.feat-bar{height:6px;border-radius:2px;z-index:1;min-width:2px}
-.feat-bar-pos{background:#27ae60;margin-left:auto;margin-right:50%}
-.feat-bar-neg{background:#e74c3c;margin-left:50%;margin-right:auto}
+/* Feature bar chart - horizontal bars, weight-sorted */
+.feat-chart{display:flex;align-items:flex-end;height:44px;padding:0;position:relative;gap:1px}
+.feat-chart::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#ddd;z-index:0}
+.feat-bar-wrap{width:3px;height:44px;position:relative;z-index:1;flex-shrink:0}
+.feat-bar-pos{position:absolute;bottom:50%;left:0;right:0;background:#27ae60;border-radius:1px 1px 0 0;min-height:1px}
+.feat-bar-neg{position:absolute;top:50%;left:0;right:0;background:#e74c3c;border-radius:0 0 1px 1px;min-height:1px}
 </style>
 </head>
 <body>
@@ -163,7 +162,7 @@ function go(name){
 }
 
 // ─── Dashboard ────────────────────────────────────────────
-let raceCache=null, featWeights={}, allKeys=[];
+let raceCache=null, featWeights={}, featSorted=[];
 
 async function loadDashboard(){
   const d=await api('/api/dashboard');if(!d)return;
@@ -179,7 +178,7 @@ async function loadDashboard(){
   document.getElementById('dashInfo').textContent=`${today} · ${venue} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
   raceCache=rc.races;
   featWeights=rc._feature_weights||{};
-  allKeys=featCats.flatMap(c=>c.keys);
+  featSorted=rc._feature_cols||[];
   const tabs=document.getElementById('raceTabs');
   tabs.innerHTML=rc.races.map(r=>`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}<small>${r.distance}m ${r.class}</small></button>`).join('');
   if(rc.races.length)showRace(rc.races[0].race_no);
@@ -214,12 +213,11 @@ const featCats=[
   {label:'交互\r\n特徵', keys:['cold_stable_x_wide','chri_score','draw_x_hv','draw_x_going','inner_x_pace','outer_x_fast','late_x_outer']},
 ];
 
-function buildFeatCol(catIdx, hh, featMin, featMax){
-  const cat=featCats[catIdx];
-  let maxW=1; cat.keys.forEach(k=>{const w=featWeights[k]||1; if(w>maxW)maxW=w;});
-  let rows='';
-  cat.keys.forEach(k=>{
-    let norm=0, rawV='-', w1=featWeights[k]||1;
+function buildFeatChart(hh, featMin, featMax){
+  let bars='';
+  for(let i=0;i<featSorted.length;i++){
+    const k=featSorted[i];
+    let norm=0, rawV='-';
     if(hh.features){
       let v=hh.features[k];
       if(v!=null){
@@ -228,18 +226,20 @@ function buildFeatCol(catIdx, hh, featMin, featMax){
         if(mx!==mn&&mx!=null)norm=(v-mn)/(mx-mn)*2-1;
       }
     }
-    const bw=Math.max(4,Math.round(w1/maxW*30));
+    const abs=Math.abs(norm);
+    const h=Math.min(Math.round(abs*20),20);
     const desc=fDesc[k]||k||'';
-    const title=`${k}: ${rawV}\n${desc}\n權重: ${w1}`;
+    const w=featWeights[k]||0;
+    const title=`${k}: ${rawV}\n${desc}\n權重: ${w.toFixed(1)}`;
     if(norm>0.005){
-      rows+=`<div class="feat-row" title="${title}"><div class="feat-bar feat-bar-pos" style="width:${bw}px"></div></div>`;
+      bars+=`<div class="feat-bar-wrap" title="${title}"><div class="feat-bar-pos" style="height:${h}px"></div></div>`;
     }else if(norm<-0.005){
-      rows+=`<div class="feat-row" title="${title}"><div class="feat-bar feat-bar-neg" style="width:${bw}px"></div></div>`;
+      bars+=`<div class="feat-bar-wrap" title="${title}"><div class="feat-bar-neg" style="height:${h}px"></div></div>`;
     }else{
-      rows+=`<div class="feat-row" title="${title}"></div>`;
+      bars+=`<div class="feat-bar-wrap" title="${title}"></div>`;
     }
-  });
-  return`<div class="feat-col">${rows}</div>`;
+  }
+  return`<div class="feat-chart">${bars}</div>`;
 }
 
 function showRace(rn){
@@ -252,13 +252,12 @@ function showRace(rn){
   const hasFeat=hasPreds&&race.horses.some(h=>h.features);
 
   // Compute feature min/max across all today's horses for normalization
-  let featMin={}, featMax={}, allKeys=[];
-  if(hasFeat){
-    allKeys=featCats.flatMap(c=>c.keys);
-    allKeys.forEach(k=>{featMin[k]=Infinity;featMax[k]=-Infinity});
+  let featMin={}, featMax={};
+  if(hasFeat&&featSorted.length){
+    featSorted.forEach(k=>{featMin[k]=Infinity;featMax[k]=-Infinity});
     raceCache.forEach(r=>r.horses.forEach(hh=>{
       if(!hh.features)return;
-      allKeys.forEach(k=>{
+      featSorted.forEach(k=>{
         const v=hh.features[k];if(v==null)return;
         if(v<featMin[k])featMin[k]=v;if(v>featMax[k])featMax[k]=v;
       });
@@ -267,7 +266,7 @@ function showRace(rn){
 
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(hasPreds)h+=`<th style="font-size:9pt">信心</th><th style="font-size:9pt">邊際</th>`;
-  if(hasFeat)featCats.forEach(c=>h+=`<th style="font-size:6pt;max-width:40px;writing-mode:vertical-lr;padding:2px 1px">${c.label.replace('\r\n','')}</th>`);
+  if(hasFeat)h+=`<th style="font-size:8pt;width:190px">特徵圖譜</th>`;
   h+=`${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
   race.horses.forEach(hh=>{
     const prob=hh.prob!=null?(hh.prob*100).toFixed(0)+'%':'';
@@ -276,18 +275,17 @@ function showRace(rn){
     h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}>`;
     h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>`;
     if(hasPreds)h+=`<td style="font-size:9pt">${prob}</td><td style="font-size:9pt"${ec?` style="${ec}"`:''}>${edge}</td>`;
-    if(hasFeat)featCats.forEach((c,i)=>h+=`<td style="padding:1px">${buildFeatCol(i,hh,featMin,featMax)}</td>`);
+    if(hasFeat)h+=`<td style="padding:2px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`;
     if(hasRes)h+=`<td>${hh.position||'-'}</td>`;
     h+='</tr>';
   });
   h+='</tbody></table>';
 
   if(hasFeat)h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;line-height:2">
-    <b>特徵分類圖譜：</b>8大類別，按XGBoost權重排序，每格代表一個特徵<br>
+    <b>特徵圖譜：</b>44個V10.4模型特徵，按XGBoost權重排序(左→右)，高低=標準化值<br>
     <span style="color:#27ae60;font-weight:bold">▌綠色向上</span> = 正面 &ensp;
     <span style="color:#e74c3c;font-weight:bold">▌紅色向下</span> = 負面 &ensp;
-    高度 = 標準化強度 &ensp;|&ensp;
-    懸停 = 特徵名、值、描述<br>
+    懸停 = 特徵名、值、權重、描述 &ensp;|&ensp;
     信心=模型概率 &ensp; <span style="color:#27ae60;font-weight:bold">邊際>1.3=👍</span> <span style="color:#f0a030">>0.9=👀</span>
     </div>`;
   if(hasRes)h+='<br><small class="text-success">✅ 已有賽果</small>';
