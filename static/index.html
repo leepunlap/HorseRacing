@@ -167,7 +167,7 @@ async function loadHorses(page){
     return `<div class="horse-card" onclick="showHorse('${h.brand}')">
       <div class="brand">#${h.brand}</div>
       <div class="name">${h.name||''}</div>
-      <div class="stats"><span>${h.age||'?'}歲 ${h.sex||''}</span><span>評${h.rating||0}</span><span>${h.races||0}場</span><span>${h.wins||0}W</span><span style="color:#27ae60">${wr}%</span></div>
+      <div class="stats"><span>${h.age||'?'}歲 ${h.sex_cn||h.sex||''}</span><span>評${h.rating||0}</span><span>${h.races||0}場</span><span>${h.wins||0}W</span><span style="color:#27ae60">${wr}%</span></div>
       <div class="win-rate-bar"><div class="fill" style="width:${Math.min(wr,100)}%"></div></div>
     </div>`;
   }).join('');

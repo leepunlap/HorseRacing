@@ -206,7 +206,9 @@ async def list_horses(
     sort_col = allowed_sorts.get(sort, "h.rating")
     order_dir = "DESC" if order == "desc" else "ASC"
 
-    sql = f"""SELECT h.brand, COALESCE(rn.name, h.brand) as name, h.age, h.sex, h.rating, h.race_count as races,
+    sql = f"""SELECT h.brand, COALESCE(rn.name, h.brand) as name, h.age, h.sex,
+        CASE WHEN h.sex = 'Gelding' THEN '閹' WHEN h.sex = 'Mare' THEN '雌' WHEN h.sex IN ('Colt','Horse') THEN '雄' WHEN h.sex = 'Rig' THEN '隱睪' WHEN h.sex = 'Filly' THEN '雌' ELSE h.sex END as sex_cn,
+        h.rating, h.race_count as races,
         COALESCE(w.wins,0) as wins, COALESCE(w.win_rate,0) as win_rate
         FROM horses h
         LEFT JOIN (SELECT brand, MAX(horse_name) as name FROM results GROUP BY brand) rn ON h.brand = rn.brand
@@ -226,7 +228,8 @@ async def list_horses(
 async def horse_detail(brand: str, auth = Depends(verify_token)):
     """Full dashboard for a single horse."""
     db = get_db()
-    horse = dict(db.execute("SELECT * FROM horses WHERE brand = ?", (brand,)).fetchone() or {})
+    row = db.execute("SELECT *, CASE WHEN sex = 'Gelding' THEN '閹' WHEN sex = 'Mare' THEN '雌' WHEN sex IN ('Colt','Horse') THEN '雄' WHEN sex = 'Rig' THEN '隱睪' WHEN sex = 'Filly' THEN '雌' ELSE sex END as sex_cn FROM horses WHERE brand = ?", (brand,)).fetchone()
+    horse = dict(row) if row else {}
     if not horse:
         raise HTTPException(status_code=404, detail="Horse not found")
 
@@ -385,6 +388,9 @@ async def trainer_detail(name: str, auth = Depends(verify_token)):
     return {"stats": stats, "jockeys": jockeys, "horses": horses, "monthly": monthly}
 
 
+# ─── Helpers ─────────────────────────────────────────────────
+SEX_MAP = {'Gelding':'閹','Mare':'雌','Colt':'雄','Rig':'隱睪','Horse':'雄','Filly':'雌'}
+
 @app.get("/api/filters")
 async def get_filter_options(auth = Depends(verify_token)):
     """Get available filter values for dropdowns."""
@@ -392,7 +398,7 @@ async def get_filter_options(auth = Depends(verify_token)):
     sexes = [r[0] for r in db.execute("SELECT DISTINCT sex FROM horses WHERE sex IS NOT NULL").fetchall()]
     # Map English sex terms to Chinese
     sex_map = {'Gelding':'閹','Mare':'雌','Colt':'雄','Rig':'隱睪','Horse':'雄','Filly':'雌'}
-    sexes_display = [{'value': s, 'label': sex_map.get(s, s)} for s in sexes]
+    sexes_display = [{'value': s, 'label': SEX_MAP.get(s, s)} for s in sexes]
     trainers = [r[0] for r in db.execute("SELECT DISTINCT trainer FROM results ORDER BY trainer LIMIT 100").fetchall()]
     jockeys = [r[0] for r in db.execute("SELECT DISTINCT jockey FROM results ORDER BY jockey LIMIT 100").fetchall()]
     db.close()
