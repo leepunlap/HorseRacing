@@ -167,6 +167,7 @@ async function loadDashboard(dateStr){
   if(!document.getElementById('dateSelect').innerHTML){
     const dd=await api('/api/dates');
     if(dd&&dd.dates){
+      dd.dates.sort((a,b)=>b.date.localeCompare(a.date));
       const sel=document.getElementById('dateSelect');
       sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.race_count?'R'+d.race_count+'場':''} ${d.horse_count?d.horse_count+'匹':''}</option>`).join('');
     }
