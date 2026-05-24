@@ -164,10 +164,10 @@ let raceCache=null, featWeights={}, featSorted=[];
 async function loadDashboard(dateStr){
   if(!dateStr)dateStr=new Date().toISOString().slice(0,10);
   // Populate date selector on first load
-  if(!document.getElementById('dateSelect').innerHTML){
+  if(!document.getElementById('dateSelect').options.length){
     const dd=await api('/api/dates');
     if(dd&&dd.dates){
-      dd.dates.sort((a,b)=>b.date.localeCompare(a.date));
+      dd.dates.sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:0);
       const sel=document.getElementById('dateSelect');
       sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.race_count?'R'+d.race_count+'場':''} ${d.horse_count?d.horse_count+'匹':''}</option>`).join('');
     }
