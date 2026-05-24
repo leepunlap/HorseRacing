@@ -43,12 +43,14 @@ table{width:100%;border-collapse:collapse;font-size:10pt}th{background:#1a3a5c;c
 .chart-box{width:100%;height:280px;margin:10px 0}
 .pagination{display:flex;justify-content:center;gap:4px;margin-top:12px}
 .pagination button{padding:5px 10px;font-size:10pt}
-/* Feature bar chart - horizontal bars, weight-sorted */
-.feat-chart{display:flex;align-items:flex-end;height:44px;padding:0;position:relative;gap:1px}
-.feat-chart::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#ddd;z-index:0}
-.feat-bar-wrap{width:3px;height:44px;position:relative;z-index:1;flex-shrink:0}
-.feat-bar-pos{position:absolute;bottom:50%;left:0;right:0;background:#27ae60;border-radius:1px 1px 0 0;min-height:1px}
-.feat-bar-neg{position:absolute;top:50%;left:0;right:0;background:#e74c3c;border-radius:0 0 1px 1px;min-height:1px}
+/* Feature bar chart - 8 category combined scores */
+.feat-chart{display:flex;gap:3px;height:48px;align-items:flex-end}
+.feat-cat-bar{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:44px}
+.feat-cat-label{font-size:6pt;color:#666;line-height:1.2;margin-bottom:2px;text-align:center}
+.feat-cat-inner{width:20px;position:relative;flex:1;min-height:40px}
+.feat-cat-inner::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#ddd;z-index:0}
+.feat-cat-pos{position:absolute;bottom:50%;left:25%;right:25%;background:#27ae60;border-radius:2px 2px 0 0;min-height:2px}
+.feat-cat-neg{position:absolute;top:50%;left:25%;right:25%;background:#e74c3c;border-radius:0 0 2px 2px;min-height:2px}
 </style>
 </head>
 <body>
@@ -214,32 +216,36 @@ const featCats=[
 ];
 
 function buildFeatChart(hh, featMin, featMax){
-  let bars='';
-  for(let i=0;i<featSorted.length;i++){
-    const k=featSorted[i];
-    let norm=0, rawV='-';
-    if(hh.features){
-      let v=hh.features[k];
-      if(v!=null){
-        rawV=v.toFixed(4);
-        const mn=featMin[k], mx=featMax[k];
-        if(mx!==mn&&mx!=null)norm=(v-mn)/(mx-mn)*2-1;
+  let cats='';
+  featCats.forEach(cat=>{
+    let sumW=0, sumNorm=0;
+    let desc='';
+    cat.keys.forEach(k=>{
+      const w=featWeights[k]||1;
+      let norm=0, rawV='-';
+      if(hh.features){
+        let v=hh.features[k];
+        if(v!=null){
+          rawV=v.toFixed(4);
+          const mn=featMin[k], mx=featMax[k];
+          if(mx!==mn&&mx!=null)norm=(v-mn)/(mx-mn)*2-1;
+        }
       }
-    }
-    const abs=Math.abs(norm);
-    const h=Math.min(Math.round(abs*20),20);
-    const desc=fDesc[k]||k||'';
-    const w=featWeights[k]||0;
-    const title=`${k}: ${rawV}\n${desc}\n權重: ${w.toFixed(1)}`;
-    if(norm>0.005){
-      bars+=`<div class="feat-bar-wrap" title="${title}"><div class="feat-bar-pos" style="height:${h}px"></div></div>`;
-    }else if(norm<-0.005){
-      bars+=`<div class="feat-bar-wrap" title="${title}"><div class="feat-bar-neg" style="height:${h}px"></div></div>`;
+      sumW+=w; sumNorm+=norm*w;
+      desc+=`${fDesc[k]||k}: ${rawV} (權重${w.toFixed(1)})\n`;
+    });
+    const score=sumW>0?sumNorm/sumW:0;
+    const h=Math.min(Math.round(Math.abs(score)*20),20);
+    const title=`${cat.label.replace('\r\n','')} 綜合分: ${score.toFixed(2)}\n${desc.trim()}`;
+    if(score>0.01){
+      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-label">${cat.label}</div><div class="feat-cat-inner"><div class="feat-cat-pos" style="height:${h}px"></div></div></div>`;
+    }else if(score<-0.01){
+      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-label">${cat.label}</div><div class="feat-cat-inner"><div class="feat-cat-neg" style="height:${h}px"></div></div></div>`;
     }else{
-      bars+=`<div class="feat-bar-wrap" title="${title}"></div>`;
+      cats+=`<div class="feat-cat-bar" title="${title}"><div class="feat-cat-label">${cat.label}</div><div class="feat-cat-inner"></div></div>`;
     }
-  }
-  return`<div class="feat-chart">${bars}</div>`;
+  });
+  return`<div class="feat-chart">${cats}</div>`;
 }
 
 function showRace(rn){
@@ -266,7 +272,7 @@ function showRace(rn){
 
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(hasPreds)h+=`<th style="font-size:9pt">信心</th><th style="font-size:9pt">邊際</th>`;
-  if(hasFeat)h+=`<th style="font-size:8pt;width:190px">特徵圖譜</th>`;
+  if(hasFeat)h+=`<th style="font-size:8pt;width:390px">特徵類別</th>`;
   h+=`${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
   race.horses.forEach(hh=>{
     const prob=hh.prob!=null?(hh.prob*100).toFixed(0)+'%':'';
@@ -282,10 +288,9 @@ function showRace(rn){
   h+='</tbody></table>';
 
   if(hasFeat)h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;line-height:2">
-    <b>特徵圖譜：</b>44個V10.4模型特徵，按XGBoost權重排序(左→右)，高低=標準化值<br>
+    <b>特徵類別：</b>8大類別綜合加權分數，高度=強度，懸停顯示各特徵細節<br>
     <span style="color:#27ae60;font-weight:bold">▌綠色向上</span> = 正面 &ensp;
-    <span style="color:#e74c3c;font-weight:bold">▌紅色向下</span> = 負面 &ensp;
-    懸停 = 特徵名、值、權重、描述 &ensp;|&ensp;
+    <span style="color:#e74c3c;font-weight:bold">▌紅色向下</span> = 負面 &ensp;|&ensp;
     信心=模型概率 &ensp; <span style="color:#27ae60;font-weight:bold">邊際>1.3=👍</span> <span style="color:#f0a030">>0.9=👀</span>
     </div>`;
   if(hasRes)h+='<br><small class="text-success">✅ 已有賽果</small>';
