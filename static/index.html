@@ -136,7 +136,7 @@ async function checkAuth(){try{return (await fetch('/api/auth/check',{headers:{'
 function clearAndShowLogin(){token=null;localStorage.removeItem('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
 function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('authenticated');loadDashboard()}
 function logout(){clearAndShowLogin()}
-function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>{if(r.status===401){clearAndShowLogin();throw 401}return r.ok?r.json():Promise.reject(r.status)}).catch(e=>{if(e!==401)throw e})}
+function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>{if(r.status===401){clearAndShowLogin();return null}return r.json()})}
 
 function nav(name){
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
@@ -161,8 +161,7 @@ async function globalSearch(){
 // ─── Horses Cards ────────────────────────────────────────
 async function loadHorses(page){
   const p={page,limit:200,name:document.getElementById('horseName').value,sex:document.getElementById('horseSex').value,age_min:document.getElementById('horseAgeMin').value||0,age_max:document.getElementById('horseAgeMax').value||99,sort:document.getElementById('horseSort').value,order:'desc'};
-  const qs=new URLSearchParams(p).toString();
-  const d=await api('/api/horses?'+qs);
+  const d=await api('/api/horses?'+new URLSearchParams(p));if(!d)return;
   document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{
     const wr=(h.win_rate*100).toFixed(1);
     return `<div class="horse-card" onclick="showHorse('${h.brand}')">
@@ -179,7 +178,7 @@ async function loadHorses(page){
 // ─── Jockeys Cards ───────────────────────────────────────
 async function loadJockeys(page){
   const p={page,limit:200,name:document.getElementById('jockeyName').value,sort:document.getElementById('jockeySort').value,order:'desc'};
-  const d=await api('/api/jockeys?'+new URLSearchParams(p));
+  const d=await api('/api/jockeys?'+new URLSearchParams(p));if(!d)return;
   document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{
     const wr=parseFloat(j.win_rate)||0;const avatar=`https://ui-avatars.com/api/?name=${encodeURIComponent(j.name)}&size=40&background=1a3a5c&color=fff`;
     return `<div class="jockey-card" onclick="showJockey('${j.name}')">
@@ -194,7 +193,7 @@ async function loadJockeys(page){
 // ─── Trainers Cards ──────────────────────────────────────
 async function loadTrainers(page){
   const p={page,limit:200,name:document.getElementById('trainerName').value,sort:document.getElementById('trainerSort').value,order:'desc'};
-  const d=await api('/api/trainers?'+new URLSearchParams(p));
+  const d=await api('/api/trainers?'+new URLSearchParams(p));if(!d)return;
   document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{
     const wr=parseFloat(t.win_rate)||0;const avatar=`https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&size=40&background=1a3a5c&color=fff`;
     return `<div class="trainer-card" onclick="showTrainer('${t.name}')">
@@ -242,7 +241,15 @@ async function showTrainer(name){
 }
 function closeDetail(){document.getElementById('detailPanel').classList.remove('show')}
 
-(async function(){try{const f=await api('/api/filters');f.sexes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;document.getElementById('horseSex').appendChild(o)})}catch(e){}})();
+// Load filter options only when authenticated
+(async function loadFilters(){
+  if(!token) return;
+  try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});
+    if(!f.ok) return;
+    const d=await f.json();
+    d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;document.getElementById('horseSex').appendChild(o)});
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
