@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Horse Racing — Data Explorer</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Horse Racing V10</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
@@ -17,86 +16,68 @@ body{background:#f0f2f5}
 .login-box input:focus{outline:none;border-color:#1a3a5c}
 .login-box button{width:100%;padding:12px;margin-top:16px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:13pt;cursor:pointer}
 .login-box .error{color:#e74c3c;margin-top:12px;font-size:10pt;display:none}
-.app{display:none}.app.authenticated{display:flex}
+.app{display:none}.app.auth{display:flex}
 .sidebar{position:fixed;top:0;left:0;height:100vh;background:#1a3a5c;color:#fff;padding:12px 0;z-index:50;transition:transform .25s;transform:translateX(0);width:200px;overflow-y:auto}
-.sidebar.collapsed{transform:translateX(-100%)}
-.sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:49;display:none}
-.sidebar-backdrop.show{display:block}
-.hamburger{position:fixed;top:8px;left:8px;z-index:51;background:#1a3a5c;color:#fff;border:none;border-radius:6px;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.hamburger:hover{background:#2d6aa0}
-.sidebar.collapsed ~ .hamburger{display:flex}
-.sidebar:not(.collapsed) ~ .hamburger{display:none}
+.sidebar.closed{transform:translateX(-100%)}
+.sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:49;display:none}.sidebar-backdrop.show{display:block}
+.hamburger{position:fixed;top:8px;left:8px;z-index:51;background:#1a3a5c;color:#fff;border:none;border-radius:6px;width:36px;height:36px;cursor:pointer;font-size:18px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.sidebar.closed~.hamburger{display:flex}
 .sidebar-header{padding:8px 14px;font-size:14pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center}
-.sidebar-header .close-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px}
-.nav-item{display:flex;align-items:center;padding:10px 14px;cursor:pointer;color:rgba(255,255,255,0.7);transition:.15s;white-space:nowrap;font-size:9pt}
-.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
-.nav-item .icon{width:22px;text-align:center;margin-right:10px;font-size:13px}
-.logout-btn{background:#c0392b;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:8pt;cursor:pointer;position:absolute;top:8px;right:12px;z-index:10}.logout-btn:hover{background:#e74c3c}
-.main{flex:1;padding:16px;overflow-y:auto;max-width:100vw}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.header h2{font-size:14pt;color:#1a3a5c;margin:0}
-.search-bar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
-.search-bar input,.search-bar select{padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:8pt}
-.search-bar input{min-width:160px}.search-bar select{width:80px}
-.search-bar .btn{padding:5px 12px;font-size:8pt}
-.page{display:none}.page.active{display:block}
+.sidebar-header .close-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:16px}
+.nav-item{display:flex;align-items:center;padding:10px 14px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:9pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
+.nav-item .icon{width:22px;margin-right:10px;font-size:13px;text-align:center}
+.main{flex:1;padding:16px;overflow-y:auto;margin-left:48px}
+.logout-btn{position:fixed;top:8px;right:12px;z-index:52;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:8pt;cursor:pointer}
+.page{display:none}.page.show{display:block}
 .stat-cards{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .stat-card{flex:1;min-width:100px;background:#fff;padding:10px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);text-align:center}
 .stat-card .val{font-size:16pt;font-weight:bold;color:#1a3a5c}.stat-card .lbl{font-size:7pt;color:#888}
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
-.horse-card,.jockey-card,.trainer-card{background:#fff;border-radius:6px;padding:8px 10px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);border-left:3px solid #1a3a5c;font-size:8pt}
-.horse-card:hover,.jockey-card:hover,.trainer-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.1)}
+.horse-card{background:#fff;border-radius:6px;padding:8px 10px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);font-size:8pt}
+.horse-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.1)}
 .horse-card .brand{font-weight:bold;color:#1a3a5c;font-size:9pt}
-.horse-card .name{color:#333;font-size:8pt;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.horse-card .stats,.jockey-card .stats,.trainer-card .stats{color:#888;font-size:7pt;display:flex;gap:8px;flex-wrap:wrap}
-.jockey-card,.trainer-card{display:flex;gap:8px;align-items:center}
-.jockey-avatar,.trainer-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#eee}
-.jockey-info,.trainer-info{flex:1;min-width:0}
-.jockey-info .name,.trainer-info .name{font-weight:bold;font-size:9pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pagination{display:flex;justify-content:center;gap:3px;margin-top:10px}
-.pagination .btn{padding:4px 8px;font-size:8pt}
-.detail-panel{position:fixed;top:0;right:0;width:550px;max-width:90vw;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,0.15);z-index:100;overflow-y:auto;padding:20px;display:none;animation:slideIn .25s}
-.detail-panel.show{display:block}
-@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
-.detail-close{position:absolute;top:10px;right:14px;background:none;border:none;font-size:16pt;cursor:pointer}
+.race-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.race-nav button{padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:8pt;text-align:center;min-width:55px}
+.race-nav button.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.race-nav button small{display:block;font-size:7pt;color:#888}.race-nav button.active small{color:rgba(255,255,255,0.7)}
+table{width:100%;border-collapse:collapse;font-size:8pt}th{background:#1a3a5c;color:#fff;padding:5px 6px;text-align:center}td{padding:4px 6px;border:1px solid #eee;text-align:center}tr:nth-child(even){background:#f8f9fa}
+.search-bar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.search-bar input,.search-bar select{padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:8pt}
 .chart-box{width:100%;height:250px;margin:8px 0}
-.badge-sm{font-size:7pt;padding:2px 4px}
-.win-rate-bar{height:3px;background:#eee;border-radius:2px;margin-top:3px;overflow:hidden}
-.win-rate-bar .fill{height:100%;background:#27ae60;border-radius:2px}
-a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:underline}
+.pagination{display:flex;justify-content:center;gap:3px;margin-top:10px}
+.pagination button{padding:4px 8px;font-size:8pt}
 </style>
 </head>
 <body>
 
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box"><h1>🏇 Racing Data</h1><p>輸入密碼</p>
-<input type="password" id="passwordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-<div style="text-align:left;margin-top:8px;font-size:9pt;color:#888">
-<label style="cursor:pointer;display:flex;align-items:center;gap:6px">
-<input type="checkbox" id="rememberPw" onchange="rememberPassword()"> 記住密碼（365天）
-</label>
+<input type="password" id="pwInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+<div style="margin-top:8px;font-size:9pt;color:#888;text-align:left;padding-left:4px">
+<label style="cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="rememberPw" onchange="savePwCookie()"> 記住密碼（365天）</label>
 </div>
 <button onclick="login()">登入</button><div class="error" id="loginError">密碼錯誤</div></div></div>
 
 <div class="app" id="app">
-  <div class="sidebar" id="sidebar">
+  <div class="sidebar closed" id="sidebar">
     <div class="sidebar-header"><span>🏇 Racing</span><button class="close-btn" onclick="closeSidebar()">✕</button></div>
-    <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard');closeSidebar()"><span class="icon">📊</span><span>儀表板</span></div>
-    <div class="nav-item" data-page="horses" onclick="nav('horses');closeSidebar()"><span class="icon">🐴</span><span>馬匹</span></div>
-    <div class="nav-item" data-page="jockeys" onclick="nav('jockeys');closeSidebar()"><span class="icon">🏇</span><span>騎師</span></div>
-    <div class="nav-item" data-page="trainers" onclick="nav('trainers');closeSidebar()"><span class="icon">👨‍🏫</span><span>練馬師</span></div>
-    <div class="nav-item" data-page="models" onclick="nav('models');closeSidebar()"><span class="icon">🧠</span><span>模型</span></div>
+    <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">📊</span><span>儀表板</span></div>
+    <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">🐴</span><span>馬匹</span></div>
+    <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">🏇</span><span>騎師</span></div>
+    <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">👨‍🏫</span><span>練馬師</span></div>
   </div>
-  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
-  <button class="hamburger" id="hamburgerBtn" onclick="openSidebar()">☰</button>
-  <div class="main">
-    <button class="logout-btn" onclick="logout()">登出</button>
-    <div class="header"><h2 id="pageTitle">儀表板</h2></div>
+  <div class="sidebar-backdrop" id="backdrop" onclick="closeSidebar()"></div>
+  <button class="hamburger" id="hamBtn" onclick="openSidebar()">☰</button>
+  <button class="logout-btn" onclick="logout()">登出</button>
 
-    <div class="page active" id="page-dashboard">
+  <div class="main">
+    <h2 style="font-size:14pt;color:#1a3a5c;margin-bottom:12px;padding-left:4px" id="pageTitle">儀表板</h2>
+
+    <!-- DASHBOARD -->
+    <div class="page show" id="page-dashboard">
       <div class="stat-cards" id="dashStats"></div>
-      <div class="search-bar"><input type="text" id="globalSearch" class="form-control form-control-sm" placeholder="搜尋馬匹、騎師、練馬師..." onkeydown="if(event.key==='Enter')globalSearch()"><button class="btn btn-sm btn-primary" onclick="globalSearch()">搜尋</button></div>
-      <div id="searchResults" style="display:none;margin:8px 0"><div class="d-flex gap-3 flex-wrap"><div style="flex:1;min-width:200px"><b class="fs-6">🐴 馬匹</b><div id="searchHorses" class="mt-1"></div></div><div style="flex:1;min-width:200px"><b class="fs-6">🏇 騎師</b><div id="searchJockeys" class="mt-1"></div></div><div style="flex:1;min-width:200px"><b class="fs-6">👨‍🏫 練馬師</b><div id="searchTrainers" class="mt-1"></div></div></div></div>
+      <div class="race-nav" id="raceTabs"></div>
+      <div id="raceTable"></div>
       <div class="row g-2 mt-2">
         <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">🏆 最近頭馬</div><div class="card-body p-1" id="dashWinners" style="font-size:8pt"></div></div></div>
         <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">🏇 騎師龍虎榜</div><div class="card-body p-1" id="dashJockeys" style="font-size:8pt"></div></div></div>
@@ -105,83 +86,86 @@ a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:unde
         <div class="col-md-6"><div class="chart-box" id="chartDraw"></div></div>
         <div class="col-md-6"><div class="chart-box" id="chartOdds"></div></div>
       </div>
-      <div class="row g-2 mt-2">
-        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">👨‍🏫 練馬師龍虎榜</div><div class="card-body p-1" id="dashTrainers" style="font-size:8pt"></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">📊 模型表現</div><div class="card-body p-1" id="dashModel" style="font-size:8pt"></div></div></div>
-      </div>
     </div>
 
+    <!-- HORSES -->
     <div class="page" id="page-horses">
       <div class="search-bar">
         <input type="text" id="horseName" class="form-control form-control-sm" placeholder="馬名或烙號...">
         <select id="horseSex" class="form-select form-select-sm"><option value="">性別</option></select>
         <input type="number" id="horseAgeMin" class="form-control form-control-sm" placeholder="齡≥" style="width:60px">
         <input type="number" id="horseAgeMax" class="form-control form-control-sm" placeholder="齡≤" style="width:60px">
-        <select id="horseSort" class="form-select form-select-sm" onchange="loadHorses(1)" style="width:90px"><option value="rating">評分</option><option value="wins">勝</option><option value="races">出賽</option><option value="name">馬名</option></select>
         <button class="btn btn-sm btn-primary" onclick="loadHorses(1)">篩選</button>
       </div>
       <div class="card-grid" id="horseGrid"></div>
       <div class="pagination" id="horsePages"></div>
     </div>
 
+    <!-- JOCKEYS -->
     <div class="page" id="page-jockeys">
       <div class="search-bar">
         <input type="text" id="jockeyName" class="form-control form-control-sm" placeholder="騎師名...">
-        <select id="jockeySort" class="form-select form-select-sm" onchange="loadJockeys(1)" style="width:90px"><option value="wins">勝</option><option value="rides">出賽</option><option value="win_rate">勝率</option></select>
         <button class="btn btn-sm btn-primary" onclick="loadJockeys(1)">篩選</button>
       </div>
       <div class="card-grid" id="jockeyGrid"></div>
       <div class="pagination" id="jockeyPages"></div>
     </div>
 
+    <!-- TRAINERS -->
     <div class="page" id="page-trainers">
       <div class="search-bar">
         <input type="text" id="trainerName" class="form-control form-control-sm" placeholder="練馬師名...">
-        <select id="trainerSort" class="form-select form-select-sm" onchange="loadTrainers(1)" style="width:90px"><option value="wins">勝</option><option value="rides">出賽</option><option value="win_rate">勝率</option></select>
         <button class="btn btn-sm btn-primary" onclick="loadTrainers(1)">篩選</button>
       </div>
       <div class="card-grid" id="trainerGrid"></div>
       <div class="pagination" id="trainerPages"></div>
     </div>
-
-    <div class="page" id="page-models"><div id="modelsContent" class="p-3 text-muted">載入中...</div></div>
   </div>
 </div>
 
-<div class="detail-panel" id="detailPanel"><button class="detail-close" onclick="closeDetail()">✕</button><div id="detailContent"></div></div>
-
 <script>
-let token = getCookie('racing_token');
+// ─── Auth ──────────────────────────────────────────────────
+let token=getCookie('racing_token');
 if(token)checkAuth().then(o=>o?showApp():clearAndShowLogin());
 
-function setCookie(name,value,days=30){const d=new Date();d.setTime(d.getTime()+days*864e5);document.cookie=name+'='+value+';expires='+d.toUTCString()+';path=/;SameSite=Lax'}
-function getCookie(name){const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():null}
-function delCookie(name){document.cookie=name+'=;expires=Thu,01 Jan 1970 00:00:00 UTC;path=/'}
+function setCookie(n,v,d=30){const x=new Date();x.setTime(x.getTime()+d*864e5);document.cookie=n+'='+v+';expires='+x.toUTCString()+';path=/;SameSite=Lax'}
+function getCookie(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():null}
+function delCookie(n){document.cookie=n+'=;expires=Thu,01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'}
+function savePwCookie(){const pw=document.getElementById('pwInput').value;if(document.getElementById('rememberPw').checked)setCookie('saved_pw',pw,365);else delCookie('saved_pw')}
 
 async function login(){
-  const pw=document.getElementById('passwordInput').value;
+  const pw=document.getElementById('pwInput').value;
   const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
-  if(r.ok){const d=await r.json();token=d.token;setCookie('racing_token',token);rememberPassword();showApp();}
+  if(r.ok){const d=await r.json();token=d.token;setCookie('racing_token',token);savePwCookie();showApp()}
   else document.getElementById('loginError').style.display='block';
 }
-function clearAndShowLogin(){token=null;delCookie('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
-async function checkAuth(){try{return (await fetch('/api/auth/check',{headers:{'Authorization':'Bearer '+token}})).ok}catch{return false}}
-function clearAndShowLogin(){token=null;localStorage.removeItem('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('authenticated')}
-function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('authenticated');document.getElementById('sidebar').classList.add('collapsed');loadDashboard()}
+async function checkAuth(){try{return(await fetch('/api/auth/check',{headers:{'Authorization':'Bearer '+token}})).ok}catch{return false}}
+function clearAndShowLogin(){token=null;delCookie('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('auth')}
+function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('auth');loadDashboard()}
 function logout(){clearAndShowLogin()}
-function openSidebar(){document.getElementById('sidebar').classList.remove('collapsed');document.getElementById('sidebarBackdrop').classList.add('show')}
-function closeSidebar(){document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebarBackdrop').classList.remove('show')}
-function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>{if(r.status===401){clearAndShowLogin();return null}return r.json()})}
+function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.status===401?(clearAndShowLogin(),null):r.json())}
 
-function nav(name){
+// Pre-fill saved password
+(function(){const s=getCookie('saved_pw');if(s){document.getElementById('pwInput').value=s;document.getElementById('rememberPw').checked=true}})();
+
+// ─── Navigation ────────────────────────────────────────────
+function openSidebar(){document.getElementById('sidebar').classList.remove('closed');document.getElementById('backdrop').classList.add('show')}
+function closeSidebar(){document.getElementById('sidebar').classList.add('closed');document.getElementById('backdrop').classList.remove('show')}
+function go(name){
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.querySelector(`[data-page="${name}"]`)?.classList.add('active');
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+name)?.classList.add('active');
-  document.getElementById('pageTitle').textContent={'dashboard':'儀表板','horses':'馬匹瀏覽','jockeys':'騎師瀏覽','trainers':'練馬師瀏覽','models':'模型'}[name]||'';
-  if(name==='horses')loadHorses(1);if(name==='jockeys')loadJockeys(1);if(name==='trainers')loadTrainers(1);
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
+  const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('show');
+  document.getElementById('pageTitle').textContent={dashboard:'儀表板',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'}[name]||'';
+  closeSidebar();
+  if(name==='dashboard')loadDashboard();
+  if(name==='horses')loadHorses(1);
+  if(name==='jockeys')loadJockeys(1);
+  if(name==='trainers')loadTrainers(1);
 }
 
+// ─── Dashboard ────────────────────────────────────────────
+let raceCache=null;
 async function loadDashboard(){
   const d=await api('/api/dashboard');if(!d)return;
   const s=d.stats;
@@ -189,160 +173,67 @@ async function loadDashboard(){
     <div class="stat-card"><div class="val">${s.horses.toLocaleString()}</div><div class="lbl">馬匹</div></div>
     <div class="stat-card"><div class="val">${s.jockeys}</div><div class="lbl">騎師</div></div>
     <div class="stat-card"><div class="val">${s.total_races.toLocaleString()}</div><div class="lbl">賽事</div></div>
-    <div class="stat-card"><div class="val">${s.total_results.toLocaleString()}</div><div class="lbl">賽果</div></div>
     <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_top1}%</div><div class="lbl">V10命中率</div></div>
     <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_roi}</div><div class="lbl">V10 ROI</div></div>`;
+  document.getElementById('dashWinners').innerHTML=d.recent_winners.slice(0,12).map(w=>`<div class="d-flex justify-content-between border-bottom py-1"><span><b>${w.horse_name}</b> R${w.race_no} ${w.distance}m</span><span class="text-muted">${w.jockey} ${w.odds}x</span></div>`).join('')||'<div class="text-muted p-2">暫無</div>';
+  document.getElementById('dashJockeys').innerHTML=d.top_jockeys.map((j,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${j.jockey}</b></span><span>${j.wins}W <span style="color:#27ae60">${j.win_rate}%</span></span></div>`).join('');
+  if(d.draw_stats.length){const c=echarts.init(document.getElementById('chartDraw'));c.setOption({title:{text:'檔位勝率',left:'center',textStyle:{fontSize:11}},xAxis:{data:d.draw_stats.map(x=>x.draw)},yAxis:{name:'%'},series:[{type:'bar',data:d.draw_stats.map(x=>x.win_pct),itemStyle:{color:'#1a3a5c'}}]})}
+  if(d.odds_stats.length){const c=echarts.init(document.getElementById('chartOdds'));c.setOption({title:{text:'賠率區間',left:'center',textStyle:{fontSize:11}},xAxis:{data:d.odds_stats.map(x=>x.odds_range)},yAxis:{name:'次數'},series:[{name:'總數',type:'bar',data:d.odds_stats.map(x=>x.total),itemStyle:{color:'#1a3a5c'}},{name:'勝',type:'bar',data:d.odds_stats.map(x=>x.wins),itemStyle:{color:'#27ae60'}}]})}
 
-  document.getElementById('dashWinners').innerHTML=d.recent_winners.length?d.recent_winners.slice(0,12).map(w=>`<div class="d-flex justify-content-between border-bottom py-1"><span><b>${w.horse_name}</b> R${w.race_no} ${w.distance}m ${w.class}</span><span class="text-muted">${w.jockey} ${w.odds}x</span></div>`).join(''):`<div class="text-muted p-2">${d.latest_race_date||'無'} 賽果</div>`;
-
-  document.getElementById('dashJockeys').innerHTML=d.top_jockeys.map((j,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${j.jockey}</b></span><span>${j.wins}W/${j.rides}R <span style="color:#27ae60">${j.win_rate}%</span></span></div>`).join('');
-
-  document.getElementById('dashTrainers').innerHTML=d.top_trainers.map((t,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${t.trainer}</b></span><span>${t.wins}W/${t.rides}R <span style="color:#27ae60">${t.win_rate}%</span></span></div>`).join('');
-
-  document.getElementById('dashModel').innerHTML=`<div class="p-2"><b>V10.4</b> 回測 +1,125% | 首選命中 37.0% | 交易315筆</div><div class="p-2 text-muted">最新賽日：${d.latest_race_date||'N/A'}</div>`;
-
-  if(d.draw_stats.length){chartDraw(d.draw_stats)}
-  if(d.odds_stats.length){chartOdds(d.odds_stats)}
+  // Load race data
+  const today=new Date().toISOString().slice(0,10);
+  const rc=await api('/api/races/'+today);
+  if(!rc||!rc.races)return;
+  raceCache=rc.races;
+  const tabs=document.getElementById('raceTabs');
+  tabs.innerHTML=rc.races.map(r=>`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}<small>${r.distance}m ${r.class}</small></button>`).join('');
+  if(rc.races.length)showRace(rc.races[0].race_no);
 }
 
-function chartDraw(data){
-  const dom=document.getElementById('chartDraw');if(!dom)return;
-  const c=echarts.init(dom);
-  c.setOption({title:{text:'檔位勝率分佈',left:'center',textStyle:{fontSize:12}},tooltip:{trigger:'axis'},
-    xAxis:{data:data.map(d=>d.draw),name:'檔位'},yAxis:{name:'勝率 %'},
-    series:[{name:'勝率',type:'bar',data:data.map(d=>d.win_pct),itemStyle:{color:'#1a3a5c'}}]});
-  window.addEventListener('resize',()=>c.resize());
+function showRace(rn){
+  document.querySelectorAll('#raceTabs button').forEach(b=>b.classList.remove('active'));
+  const tab=document.getElementById('rtab'+rn);if(tab)tab.classList.add('active');
+  if(!raceCache)return;
+  const race=raceCache.find(r=>r.race_no===rn);if(!race)return;
+  const hasRes=race.has_results;
+  let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
+  race.horses.forEach(hh=>{
+    h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}><td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>${hasRes?`<td>${hh.position||'-'}</td>`:''}</tr>`;
+  });
+  h+='</tbody></table>';
+  if(hasRes)h+='<small class="text-success ms-2">✅ 已有賽果</small>';
+  document.getElementById('raceTable').innerHTML=h;
 }
 
-function chartOdds(data){
-  const dom=document.getElementById('chartOdds');if(!dom)return;
-  const c=echarts.init(dom);
-  c.setOption({title:{text:'賠率區間勝率',left:'center',textStyle:{fontSize:12}},tooltip:{trigger:'axis'},
-    xAxis:{data:data.map(d=>d.odds_range),name:'賠率'},yAxis:{name:'次數'},
-    series:[{name:'總數',type:'bar',data:data.map(d=>d.total),itemStyle:{color:'#1a3a5c'}},
-            {name:'勝',type:'bar',data:data.map(d=>d.wins),itemStyle:{color:'#27ae60'}}]});
-  window.addEventListener('resize',()=>c.resize());
-}
-
-async function globalSearch(){
-  const q=document.getElementById('globalSearch').value.trim();if(!q)return;
-  const res=await api('/api/search?q='+encodeURIComponent(q));
-  document.getElementById('searchResults').style.display='block';
-  document.getElementById('searchHorses').innerHTML=res.horses.map(h=>`<div class="mb-1" style="font-size:8pt"><a onclick="showHorse('${h.brand}')">#${h.brand}</a> ${h.name||''} (${h.age||'?'}歲 ${h.rating||0})</div>`).join('')||'<span class="text-muted">無</span>';
-  document.getElementById('searchJockeys').innerHTML=res.jockeys.map(j=>`<div class="mb-1" style="font-size:8pt"><a onclick="showJockey('${j.name}')">${j.name}</a> ${j.rides}場 ${j.wins}W</div>`).join('')||'<span class="text-muted">無</span>';
-  document.getElementById('searchTrainers').innerHTML=res.trainers.map(t=>`<div class="mb-1" style="font-size:8pt"><a onclick="showTrainer('${t.name}')">${t.name}</a> ${t.rides}場 ${t.wins}W</div>`).join('')||'<span class="text-muted">無</span>';
-}
-
-// ─── Horses Cards ────────────────────────────────────────
+// ─── Horses ───────────────────────────────────────────────
 async function loadHorses(page){
-  const p={page,limit:200,name:document.getElementById('horseName').value,sex:document.getElementById('horseSex').value,age_min:document.getElementById('horseAgeMin').value||0,age_max:document.getElementById('horseAgeMax').value||99,sort:document.getElementById('horseSort').value,order:'desc'};
+  const p={page,limit:200,name:document.getElementById('horseName').value,sex:document.getElementById('horseSex').value,age_min:document.getElementById('horseAgeMin').value||0,age_max:document.getElementById('horseAgeMax').value||99,sort:'rating',order:'desc'};
   const d=await api('/api/horses?'+new URLSearchParams(p));if(!d)return;
-  document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{
-    const wr=(h.win_rate*100).toFixed(1);
-    return `<div class="horse-card" onclick="showHorse('${h.brand}')">
-      <div class="brand">#${h.brand}</div>
-      <div class="name">${h.name||''}</div>
-      <div class="stats"><span>${h.age||'?'}歲 ${h.sex_cn||h.sex||''}</span><span>評${h.rating||0}</span><span>${h.races||0}場</span><span>${h.wins||0}W</span><span style="color:#27ae60">${wr}%</span></div>
-      <div class="win-rate-bar"><div class="fill" style="width:${Math.min(wr,100)}%"></div></div>
-    </div>`;
-  }).join('');
-  let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button class="btn btn-sm ${i===page?'btn-primary':'btn-outline-secondary'}" onclick="loadHorses(${i})">${i}</button>`;
+  document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{const wr=(h.win_rate*100).toFixed(1);return`<div class="horse-card" onclick="showHorseDetail('${h.brand}')"><div class="brand">#${h.brand}</div><div>${h.name||''}</div><div style="color:#888;font-size:7pt">${h.age||'?'}歲 ${h.sex_cn||''} 評${h.rating||0} ${h.races||0}場 ${h.wins||0}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadHorses(${i})">${i}</button>`;
   document.getElementById('horsePages').innerHTML=pg;
 }
 
-// ─── Jockeys Cards ───────────────────────────────────────
+// ─── Jockeys ──────────────────────────────────────────────
 async function loadJockeys(page){
-  const p={page,limit:200,name:document.getElementById('jockeyName').value,sort:document.getElementById('jockeySort').value,order:'desc'};
-  const d=await api('/api/jockeys?'+new URLSearchParams(p));if(!d)return;
-  document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{
-    const wr=parseFloat(j.win_rate)||0;const avatar=`https://ui-avatars.com/api/?name=${encodeURIComponent(j.name)}&size=40&background=1a3a5c&color=fff`;
-    return `<div class="jockey-card" onclick="showJockey('${j.name}')">
-      <img class="jockey-avatar" src="${avatar}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect fill=%22%231a3a5c%22 width=%2240%22 height=%2240%22/><text fill=%22%23fff%22 x=%2220%22 y=%2225%22 text-anchor=%22middle%22 font-size=%2214%22>🏇</text></svg>'">
-      <div class="jockey-info"><div class="name">${j.name}</div><div class="stats"><span>${j.rides}場</span><span>${j.wins}W</span><span style="color:#27ae60">${wr}%</span><span style="color:#f0c060">上名${j.place_pct||0}%</span></div><div class="win-rate-bar"><div class="fill" style="width:${Math.min(wr*4,100)}%"></div></div></div>
-    </div>`;
-  }).join('');
-  let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button class="btn btn-sm ${i===page?'btn-primary':'btn-outline-secondary'}" onclick="loadJockeys(${i})">${i}</button>`;
+  const d=await api('/api/jockeys?'+new URLSearchParams({page,limit:200,sort:'wins',order:'desc'}));if(!d)return;
+  document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{const wr=parseFloat(j.win_rate)||0;return`<div class="horse-card"><b>${j.name}</b><div style="color:#888;font-size:7pt">${j.rides}場 ${j.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadJockeys(${i})">${i}</button>`;
   document.getElementById('jockeyPages').innerHTML=pg;
 }
 
-// ─── Trainers Cards ──────────────────────────────────────
+// ─── Trainers ─────────────────────────────────────────────
 async function loadTrainers(page){
-  const p={page,limit:200,name:document.getElementById('trainerName').value,sort:document.getElementById('trainerSort').value,order:'desc'};
-  const d=await api('/api/trainers?'+new URLSearchParams(p));if(!d)return;
-  document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{
-    const wr=parseFloat(t.win_rate)||0;const avatar=`https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&size=40&background=1a3a5c&color=fff`;
-    return `<div class="trainer-card" onclick="showTrainer('${t.name}')">
-      <img class="trainer-avatar" src="${avatar}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect fill=%22%231a3a5c%22 width=%2240%22 height=%2240%22/><text fill=%22%23fff%22 x=%2220%22 y=%2225%22 text-anchor=%22middle%22 font-size=%2214%22>👨‍🏫</text></svg>'">
-      <div class="trainer-info"><div class="name">${t.name}</div><div class="stats"><span>${t.rides}場</span><span>${t.wins}W</span><span style="color:#27ae60">${wr}%</span><span style="color:#f0c060">上名${t.place_pct||0}%</span></div><div class="win-rate-bar"><div class="fill" style="width:${Math.min(wr*4,100)}%"></div></div></div>
-    </div>`;
-  }).join('');
-  let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button class="btn btn-sm ${i===page?'btn-primary':'btn-outline-secondary'}" onclick="loadTrainers(${i})">${i}</button>`;
+  const d=await api('/api/trainers?'+new URLSearchParams({page,limit:200,sort:'wins',order:'desc'}));if(!d)return;
+  document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{const wr=parseFloat(t.win_rate)||0;return`<div class="horse-card"><b>${t.name}</b><div style="color:#888;font-size:7pt">${t.rides}場 ${t.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadTrainers(${i})">${i}</button>`;
   document.getElementById('trainerPages').innerHTML=pg;
 }
 
-// ─── Detail Panels ───────────────────────────────────────
-async function showHorse(brand){
-  const d=await api('/api/horses/'+brand);const h=d.horse,s=d.stats;
-  document.getElementById('detailContent').innerHTML=`
-    <h4>🐴 #${h.brand} ${h.name||''}</h4>
-    <div class="stat-cards"><div class="stat-card"><div class="val">${h.age||'?'}</div><div class="lbl">馬齡</div></div><div class="stat-card"><div class="val">${h.sex||'?'}</div><div class="lbl">性別</div></div><div class="stat-card"><div class="val">${h.rating||0}</div><div class="lbl">評分</div></div><div class="stat-card"><div class="val">${s.wins||0}/${s.total_races||0}</div><div class="lbl">勝/出賽</div></div><div class="stat-card"><div class="val">${s.win_pct||0}%</div><div class="lbl">勝率</div></div></div>
-    <h5 class="mt-3">最近賽績</h5>
-    <table class="table table-sm table-striped"><thead><tr><th>日期</th><th>場</th><th>名次</th><th>賠率</th><th>騎師</th><th>練馬師</th></tr></thead><tbody>${d.recent.map(r=>`<tr><td>${r.date}</td><td>R${r.race_no}</td><td>${r.position}</td><td>${r.odds||'?'}</td><td>${r.jockey}</td><td>${r.trainer}</td></tr>`).join('')}</tbody></table>
-    <h5 class="mt-3">最佳騎師配搭</h5>
-    <table class="table table-sm table-striped"><thead><tr><th>騎師</th><th>出賽</th><th>勝</th><th>勝率</th></tr></thead><tbody>${d.jockeys.map(j=>`<tr><td><a onclick="showJockey('${j.jockey}')">${j.jockey}</a></td><td>${j.rides}</td><td>${j.wins}</td><td>${j.win_pct}%</td></tr>`).join('')}</tbody></table>`;
-  document.getElementById('detailPanel').classList.add('show');
-}
-async function showJockey(name){
-  const d=await api('/api/jockeys/'+encodeURIComponent(name));const s=d.stats;
-  document.getElementById('detailContent').innerHTML=`
-    <h4>🏇 ${name}</h4>
-    <div class="stat-cards"><div class="stat-card"><div class="val">${s.rides||0}</div><div class="lbl">出賽</div></div><div class="stat-card"><div class="val">${s.wins||0}</div><div class="lbl">勝</div></div><div class="stat-card"><div class="val">${s.win_rate||0}%</div><div class="lbl">勝率</div></div><div class="stat-card"><div class="val">${s.place_rate||0}%</div><div class="lbl">上名率</div></div></div>
-    <h5 class="mt-3">最佳練馬師配搭</h5>
-    <table class="table table-sm table-striped"><thead><tr><th>練馬師</th><th>出賽</th><th>勝</th><th>勝率</th></tr></thead><tbody>${d.trainers.map(t=>`<tr><td><a onclick="showTrainer('${t.trainer}')">${t.trainer}</a></td><td>${t.rides}</td><td>${t.wins}</td><td>${t.win_pct}%</td></tr>`).join('')}</tbody></table>
-    <h5 class="mt-3">常用坐騎</h5>
-    <table class="table table-sm table-striped"><thead><tr><th>馬匹</th><th>出賽</th><th>勝</th><th>勝率</th></tr></thead><tbody>${d.horses.map(h=>`<tr><td><a onclick="showHorse('${h.brand}')">#${h.brand} ${h.horse_name||''}</a></td><td>${h.rides}</td><td>${h.wins}</td><td>${h.win_pct}%</td></tr>`).join('')}</tbody></table>`;
-  document.getElementById('detailPanel').classList.add('show');
-}
-async function showTrainer(name){
-  const d=await api('/api/trainers/'+encodeURIComponent(name));const s=d.stats;
-  document.getElementById('detailContent').innerHTML=`
-    <h4>👨‍🏫 ${name}</h4>
-    <div class="stat-cards"><div class="stat-card"><div class="val">${s.rides||0}</div><div class="lbl">出賽</div></div><div class="stat-card"><div class="val">${s.wins||0}</div><div class="lbl">勝</div></div><div class="stat-card"><div class="val">${s.win_rate||0}%</div><div class="lbl">勝率</div></div><div class="stat-card"><div class="val">${s.place_rate||0}%</div><div class="lbl">上名率</div></div></div>
-    <h5 class="mt-3">常用騎師</h5>
-    <table class="table table-sm table-striped"><thead><tr><th>騎師</th><th>出賽</th><th>勝</th><th>勝率</th></tr></thead><tbody>${d.jockeys.map(j=>`<tr><td><a onclick="showJockey('${j.jockey}')">${j.jockey}</a></td><td>${j.rides}</td><td>${j.wins}</td><td>${j.win_pct}%</td></tr>`).join('')}</tbody></table>
-    <h5 class="mt-3">旗下馬匹</h5>
-    <table class="table table-sm table-striped"><thead><tr><th>馬匹</th><th>出賽</th><th>勝</th><th>勝率</th></tr></thead><tbody>${d.horses.map(h=>`<tr><td><a onclick="showHorse('${h.brand}')">#${h.brand} ${h.horse_name||''}</a></td><td>${h.rides}</td><td>${h.wins}</td><td>${h.win_pct}%</td></tr>`).join('')}</tbody></table>`;
-  document.getElementById('detailPanel').classList.add('show');
-}
-function closeDetail(){document.getElementById('detailPanel').classList.remove('show')}
-
-// Load filter options when authenticated
-(async function loadFilters(){
+// Load sex filter
+(async function(){
   if(!token)return;
-  try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});
-    if(!f.ok)return;const d=await f.json();
-    d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)});
-  }catch(e){}
-})();
-
-function rememberPassword(){
-  const pw=document.getElementById('passwordInput').value;
-  if(document.getElementById('rememberPw').checked) setCookie('saved_pw',pw,365);
-  else delCookie('saved_pw');
-}
-
-// Pre-fill saved password and auto-login if token exists
-(function(){
-  const saved=getCookie('saved_pw');
-  if(saved){document.getElementById('passwordInput').value=saved;document.getElementById('rememberPw').checked=true}
-})();
-(async function loadFilters(){
-  if(!token) return;
-  try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});
-    if(!f.ok) return;
-    const d=await f.json();
-    d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)});
-  }catch(e){}
+  try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});if(!f.ok)return;const d=await f.json();d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)})}catch(e){}
 })();
 </script>
 </body>
