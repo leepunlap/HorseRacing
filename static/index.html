@@ -79,6 +79,9 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
     <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px"><span id="pageTitle">儀表板</span> <span id="dashInfo" style="font-size:12pt;color:#666"></span></h2>
 
     <div class="page show" id="page-dashboard">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <select id="dateSelect" onchange="selectDate()" style="padding:4px 8px;font-size:9pt;border:1px solid #ddd;border-radius:4px"></select>
+      </div>
       <div class="race-nav" id="raceTabs"></div>
       <div id="raceTable"></div>
     </div>
@@ -158,14 +161,22 @@ function go(name){
 // ─── Dashboard ────────────────────────────────────────────
 let raceCache=null, featWeights={}, featSorted=[];
 
-async function loadDashboard(){
-  const d=await api('/api/dashboard');if(!d)return;
+async function loadDashboard(dateStr){
+  if(!dateStr)dateStr=new Date().toISOString().slice(0,10);
+  // Populate date selector on first load
+  if(!document.getElementById('dateSelect').innerHTML){
+    const dd=await api('/api/dates');
+    if(dd&&dd.dates){
+      const sel=document.getElementById('dateSelect');
+      sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.result_count?'✅'+d.result_count+'場':''}</option>`).join('');
+    }
+  }
+  document.getElementById('dateSelect').value=dateStr;
 
-  const today=new Date().toISOString().slice(0,10);
-  const rc=await api('/api/races/'+today);
-  if(!rc||!rc.races)return;
+  const rc=await api('/api/races/'+dateStr);
+  if(!rc||!rc.races){document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">暫無賽事數據</div>';return;}
   const venue=rc.races[0]?.course||'沙田';
-  document.getElementById('dashInfo').textContent=`${today} · ${venue} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
+  document.getElementById('dashInfo').textContent=`${dateStr} · ${venue} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
   raceCache=rc.races;
   featWeights=rc._feature_weights||{};
   featSorted=rc._feature_cols||[];
@@ -173,6 +184,8 @@ async function loadDashboard(){
   tabs.innerHTML=rc.races.map(r=>`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}<small>${r.distance}m ${r.class}</small></button>`).join('');
   if(rc.races.length)showRace(rc.races[0].race_no);
 }
+
+function selectDate(){loadDashboard(document.getElementById('dateSelect').value)}
 
 // Feature descriptions for hover
 const fDesc={age:'年齡',sex_gelding:'騸馬',rating:'評分',races_count:'出賽次數',
@@ -267,7 +280,7 @@ function showRace(rn){
   }
 
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
-  if(hasPreds)h+=`<th style="font-size:9pt">勝率</th><th style="font-size:9pt">值博率</th><th style="font-size:9pt">預測</th><th style="font-size:8pt">注碼</th><th style="font-size:8pt">盈虧</th>`;
+  if(hasPreds)h+=`<th style="font-size:9pt">勝率</th><th style="font-size:9pt">值博率</th><th style="font-size:8pt">注碼</th><th style="font-size:8pt">盈虧</th><th style="font-size:9pt">預測</th>`;
   if(hasFeat)h+=`<th style="font-size:8pt;width:390px">特徵類別</th>`;
   h+=`<th style="font-size:9pt">名次</th><th style="font-size:8pt">頭馬距離</th><th style="font-size:8pt">沿途走位</th></tr></thead><tbody>`;
 
@@ -297,10 +310,11 @@ function showRace(rn){
     }
     h+=`<tr${won?' style="background:#e8f5e9"':''}>`;
     h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td style="${oddsStyle}">${hh.win_odds||'?'}x${hh.place_odds&&!isLong?`<br><small style="font-size:7pt;color:#888">P ${hh.place_odds}</small>`:''}</td>`;
-    if(hasPreds)h+=`<td style="font-size:9pt;padding:1px 3px"><div style="font-size:8pt">${prob}</div><div style="height:3px;background:#27ae60;width:${Math.min(hh.win_prob*250,100)}%;border-radius:1px;margin-top:1px"></div></td><td style="font-size:9pt;padding:1px 3px;${isLong?'color:#bbb':''}"><div style="font-size:8pt;${ec?ec:''}">${edge}</div>${isLong?'':`<div class="edge-bar" style="width:${Math.min((hh.edge||0)*25,90)}%;background:${(hh.edge||0)>1.3?'#27ae60':(hh.edge||0)>0.9?'#f0a030':'#ccc'}"></div>`}</td><td style="font-size:9pt;font-weight:bold;color:#1a3a5c">${predRank[hh.no]||'-'}</td>`;
-    // Bet + Profit columns
+    if(hasPreds)h+=`<td style="font-size:9pt;padding:1px 3px"><div style="font-size:8pt">${prob}</div><div style="height:3px;background:#27ae60;width:${Math.min(hh.win_prob*250,100)}%;border-radius:1px;margin-top:1px"></div></td><td style="font-size:9pt;padding:1px 3px;${isLong?'color:#bbb':''}"><div style="font-size:8pt;${ec?ec:''}">${edge}</div>${isLong?'':`<div class="edge-bar" style="width:${Math.min((hh.edge||0)*25,90)}%;background:${(hh.edge||0)>1.3?'#27ae60':(hh.edge||0)>0.9?'#f0a030':'#ccc'}"></div>`}</td>`;
+    // Bet + Profit
     h+=`<td style="font-size:8pt;text-align:center">${bet>0?'$'+bet:''}</td>`;
     h+=`<td style="font-size:8pt;text-align:center;${profitStyle}">${profit}</td>`;
+    h+=`<td style="font-size:9pt;font-weight:bold;color:#1a3a5c">${predRank[hh.no]||'-'}</td>`;
     if(hasFeat)h+=`<td style="padding:2px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`;
     h+=`<td style="font-size:9pt;font-weight:bold">${hh.position||'-'}</td>`;
     h+=`<td style="font-size:8pt;color:#888">${hh.lbw||'-'}</td>`;

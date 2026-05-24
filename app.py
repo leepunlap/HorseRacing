@@ -593,6 +593,29 @@ async def spa_index():
 async def health():
     return {"status": "ok", "time": datetime.now().isoformat()}
 
+@app.get("/api/dates")
+async def available_dates(auth = Depends(verify_token)):
+    """List available prediction/result dates."""
+    pred_dir = BASE_DIR / "predictions"
+    dates = []
+    if pred_dir.exists():
+        for d in sorted(os.listdir(pred_dir), reverse=True):
+            dp = pred_dir / d
+            if dp.is_dir() and len(d) == 10 and d[4] == '-':
+                has_racecard = (dp / "racecard_parsed.json").exists()
+                has_predictions = (dp / "predictions.json").exists()
+                # Check if results exist in DB for this date
+                db = get_db()
+                res_count = db.execute("SELECT COUNT(*) FROM results WHERE date=?", (d,)).fetchone()[0]
+                db.close()
+                dates.append({
+                    "date": d,
+                    "has_racecard": has_racecard,
+                    "has_predictions": has_predictions,
+                    "result_count": res_count
+                })
+    return {"dates": dates}
+
 # ─── Main ──────────────────────────────────────────────────
 if __name__ == "__main__":
     import argparse
