@@ -258,18 +258,27 @@ function showRace(rn){
     }));
   }
 
-  // Compute predicted finish order by win_prob
+  // Compute predicted finish order by win_prob (exclude longshots > 6.5x)
   const predRank={};
   if(hasPreds){
-    const sorted=[...race.horses].filter(h=>h.win_prob!=null).sort((a,b)=>b.win_prob-a.win_prob);
-    sorted.forEach((h,i)=>{predRank[h.no]=i+1});
+    const eligible=race.horses.filter(h=>parseFloat(h.win_odds)<=6.5&&h.win_prob!=null);
+    eligible.sort((a,b)=>b.win_prob-a.win_prob);
+    eligible.forEach((h,i)=>{predRank[h.no]=i+1});
   }
 
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(hasPreds)h+=`<th style="font-size:9pt">勝率</th><th style="font-size:9pt">值博率</th><th style="font-size:9pt">預測</th>`;
   if(hasFeat)h+=`<th style="font-size:8pt;width:390px">特徵類別</th>`;
   h+=`<th style="font-size:9pt">名次</th><th style="font-size:8pt">距離</th><th style="font-size:8pt">走位</th></tr></thead><tbody>`;
-  race.horses.forEach(hh=>{
+
+  // Sort horses by predicted rank ascending; unranked at bottom
+  const sortedHorses=[...race.horses];
+  sortedHorses.sort((a,b)=>{
+    const ra=predRank[a.no]||999,rb=predRank[b.no]||999;
+    return ra-rb;
+  });
+
+  sortedHorses.forEach(hh=>{
     const oddsVal=parseFloat(hh.win_odds)||0;
     const prob=hh.win_prob!=null?(hh.win_prob*100).toFixed(2)+'%':'';
     const isLong=oddsVal>6.5;
