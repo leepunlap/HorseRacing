@@ -29,9 +29,6 @@ body{background:#f0f2f5}
 .main{flex:1;padding:20px;overflow-y:auto;margin-left:52px}
 .logout-btn{position:fixed;top:10px;right:16px;z-index:52;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:10pt;cursor:pointer}
 .page{display:none}.page.show{display:block}
-.stat-cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.stat-card{flex:1;min-width:120px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);text-align:center}
-.stat-card .val{font-size:20pt;font-weight:bold;color:#1a3a5c}.stat-card .lbl{font-size:9pt;color:#888;margin-top:2px}
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
 .horse-card{background:#fff;border-radius:6px;padding:10px 12px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);font-size:10pt}
 .horse-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.1)}
@@ -46,19 +43,12 @@ table{width:100%;border-collapse:collapse;font-size:10pt}th{background:#1a3a5c;c
 .chart-box{width:100%;height:280px;margin:10px 0}
 .pagination{display:flex;justify-content:center;gap:4px;margin-top:12px}
 .pagination button{padding:5px 10px;font-size:10pt}
-/* Feature heatmap grid - 2 rows x 25 cols */
-.hmgrid{display:inline-grid;grid-template-columns:repeat(25,1fr);grid-template-rows:repeat(2,1fr);gap:0;vertical-align:middle}
-.hmcell{width:14px;height:14px;border:none;display:flex;align-items:center;justify-content:center;font-size:6pt;font-weight:bold;font-family:monospace;line-height:1}
-.hmc-g9{color:#0b5e1e;background:#a8e6cf}.hmc-g8{color:#196f3d;background:#c8f7c5}
-.hmc-g7{color:#1e8449;background:#d5f5e3}.hmc-g6{color:#27ae60;background:#e8f8f5}
-.hmc-g5{color:#2ecc71;background:#f0fff4}.hmc-g4{color:#58d68d;background:#f5fff5}
-.hmc-g3{color:#82e0aa;background:#fafffa}.hmc-g2{color:#abebc6;background:#fefffe}
-.hmc-g1{color:#d5f5e3;background:#fff}.hmc-0{color:#bbb;background:#f8f8f8}
-.hmc-r1{color:#f5b7b1;background:#fff}.hmc-r2{color:#f1948a;background:#fff5f5}
-.hmc-r3{color:#e74c3c;background:#ffeaea}.hmc-r4{color:#cb4335;background:#ffdede}
-.hmc-r5{color:#b03a2e;background:#fadbd8}.hmc-r6{color:#922b21;background:#f5c6cb}
-.hmc-r7{color:#7b241c;background:#f1b8c0}.hmc-r8{color:#641e16;background:#edadb6}
-.hmc-r9{color:#4a0e0a;background:#e598a3}
+/* Feature bar chart */
+.feat-chart{display:flex;align-items:flex-end;height:44px;padding:0;position:relative;gap:1px}
+.feat-chart::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#ddd;z-index:0}
+.feat-bar-wrap{width:3px;height:44px;position:relative;z-index:1;flex-shrink:0}
+.feat-bar-pos{position:absolute;bottom:50%;left:0;right:0;background:#27ae60;border-radius:1px 1px 0 0;min-height:1px}
+.feat-bar-neg{position:absolute;top:50%;left:0;right:0;background:#e74c3c;border-radius:0 0 1px 1px;min-height:1px}
 </style>
 </head>
 <body>
@@ -84,10 +74,9 @@ table{width:100%;border-collapse:collapse;font-size:10pt}th{background:#1a3a5c;c
   <button class="logout-btn" onclick="logout()">登出</button>
 
   <div class="main">
-    <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px" id="pageTitle">儀表板</h2>
+    <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px"><span id="pageTitle">儀表板</span> <span id="dashInfo" style="font-size:12pt;color:#666"></span></h2>
 
     <div class="page show" id="page-dashboard">
-      <div class="stat-cards" id="dashStats"></div>
       <div class="race-nav" id="raceTabs"></div>
       <div id="raceTable"></div>
       <div class="row g-2 mt-2">
@@ -164,7 +153,7 @@ function go(name){
   document.querySelector(`[data-page="${name}"]`)?.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('show');
-  document.getElementById('pageTitle').textContent={dashboard:'儀表板',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'}[name]||'';
+  document.getElementById('pageTitle').textContent={dashboard:'今日賽事',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'}[name]||'';
   closeSidebar();
   if(name==='dashboard')loadDashboard();
   if(name==='horses')loadHorses(1);
@@ -177,13 +166,6 @@ let raceCache=null, featMeta=null, featCols=[];
 
 async function loadDashboard(){
   const d=await api('/api/dashboard');if(!d)return;
-  const s=d.stats;
-  document.getElementById('dashStats').innerHTML=`
-    <div class="stat-card"><div class="val">${s.horses.toLocaleString()}</div><div class="lbl">馬匹</div></div>
-    <div class="stat-card"><div class="val">${s.jockeys}</div><div class="lbl">騎師</div></div>
-    <div class="stat-card"><div class="val">${s.total_races.toLocaleString()}</div><div class="lbl">賽事</div></div>
-    <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_top1}%</div><div class="lbl">V10命中率</div></div>
-    <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_roi}</div><div class="lbl">V10 ROI</div></div>`;
   document.getElementById('dashWinners').innerHTML=d.recent_winners.slice(0,12).map(w=>`<div class="d-flex justify-content-between border-bottom py-1"><span><b>${w.horse_name}</b> R${w.race_no} ${w.distance}m</span><span class="text-muted">${w.jockey} ${w.odds}x</span></div>`).join('')||'<div class="text-muted p-2">暫無</div>';
   document.getElementById('dashJockeys').innerHTML=d.top_jockeys.map((j,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${j.jockey}</b></span><span>${j.wins}W <span style="color:#27ae60">${j.win_rate}%</span></span></div>`).join('');
   if(d.draw_stats.length){const c=echarts.init(document.getElementById('chartDraw'));c.setOption({title:{text:'檔位勝率',left:'center',textStyle:{fontSize:13}},xAxis:{data:d.draw_stats.map(x=>x.draw)},yAxis:{name:'%'},series:[{type:'bar',data:d.draw_stats.map(x=>x.win_pct),itemStyle:{color:'#1a3a5c'}}]})}
@@ -192,6 +174,8 @@ async function loadDashboard(){
   const today=new Date().toISOString().slice(0,10);
   const rc=await api('/api/races/'+today);
   if(!rc||!rc.races)return;
+  const venue=rc.races[0]?.course||'沙田';
+  document.getElementById('dashInfo').textContent=`${today} · ${venue} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
   raceCache=rc.races;
   featMeta=rc._feature_cols||[];
   featCols=featMeta;
@@ -200,36 +184,49 @@ async function loadDashboard(){
   if(rc.races.length)showRace(rc.races[0].race_no);
 }
 
-function featToClass(v){
-  // v normalized to [-1, 1], return CSS class for 1-9 green or 1-9 red
-  if(v==null||isNaN(v))return'hmc-0';
-  const abs=Math.abs(v);
-  let n=Math.round(abs*9);
-  if(n===0&&abs>0.01)n=1;
-  if(n>9)n=9;
-  if(n===0)return'hmc-0';
-  return v>0?`hmc-g${n}`:`hmc-r${n}`;
-}
+// Feature descriptions (Chinese)
+const fDesc={age:'年齡',sex_gelding:'騸馬',rating:'評分',races_count:'出賽次數',
+  horse_wr:'馬匹勝率',jockey_wr:'騎師勝率',trainer_wr:'練馬師勝率',
+  jt_pair:'騎練組合勝率',jh_pair:'人馬組合勝率',dist_adapt:'路程適應',
+  going_adapt:'場地適應',trainer_hot:'練馬師近期勝數',draw:'檔位',
+  draw_inner:'內檔(1-4)',draw_outer:'外檔(≥10)',weight:'負磅',
+  weight_allow:'負磅優勢',is_hv:'跑馬地',distance_km:'途程(km)',
+  going_num:'場地指數',class_num:'班次',participants:'參賽馬數',
+  days_since:'休後日數',layoff_penalty:'久休懲罰',race_pace:'賽事步速',
+  horse_style:'馬匹跑法',pace_style_match:'步速跑法配合',pace_draw_bonus:'檔位步速加成',
+  late_pace_avg:'末段速度',cold_stable_season:'馬房季度勝率',wide_draw:'大外檔標記',
+  cold_stable_x_wide:'弱廄大外檔',chri_score:'綜合風險指數',gear_change:'配備變更',
+  first_gear_use:'首次配備',rating_trend:'評分趨勢',class_drop:'降班',
+  inner_x_leader:'內檔×放頭',outer_x_closer:'外檔×後上',draw_x_hv:'檔位×跑馬地',
+  draw_x_going:'檔位×場地',inner_x_pace:'內檔×慢步速',outer_x_fast:'外檔×快步速',
+  late_x_outer:'末段×外檔'};
 
-function buildHeatmap(hh, featMin, featMax){
-  let cells='';
+function buildFeatChart(hh, featMin, featMax){
+  let bars='';
   for(let i=0;i<44;i++){
     const k=featCols[i];
-    if(!k){cells+='<div class="hmcell"></div>';continue;}
-    let v=hh.features?hh.features[k]:null;
-    if(v==null){cells+='<div class="hmcell"></div>';continue;}
-    const mn=featMin[k], mx=featMax[k];
-    if(mx===mn||mx==null){cells+='<div class="hmcell hmc-0">0</div>';continue;}
-    const norm=(v-mn)/(mx-mn)*2-1;
-    const cls=featToClass(norm);
+    let norm=0, rawV='-';
+    if(k&&hh.features){
+      let v=hh.features[k];
+      if(v!=null){
+        rawV=v.toFixed(4);
+        const mn=featMin[k], mx=featMax[k];
+        if(mx!==mn&&mx!=null)norm=(v-mn)/(mx-mn)*2-1;
+      }
+    }
     const abs=Math.abs(norm);
-    let num=Math.round(abs*9);
-    if(num===0&&abs>0.01)num=1;
-    if(num>9)num=9;
-    cells+=`<div class="hmcell ${cls}" title="${k}: ${v.toFixed(3)}">${num}</div>`;
+    const h=Math.min(Math.round(abs*20),20);
+    const desc=fDesc[k]||k||'';
+    const title=`${k}: ${rawV}\n${desc}`;
+    if(norm>0.005){
+      bars+=`<div class="feat-bar-wrap" title="${title}"><div class="feat-bar-pos" style="height:${h}px"></div></div>`;
+    }else if(norm<-0.005){
+      bars+=`<div class="feat-bar-wrap" title="${title}"><div class="feat-bar-neg" style="height:${h}px"></div></div>`;
+    }else{
+      bars+=`<div class="feat-bar-wrap" title="${title}"></div>`;
+    }
   }
-  for(let i=44;i<50;i++)cells+='<div class="hmcell"></div>';
-  return`<div class="hmgrid">${cells}</div>`;
+  return`<div class="feat-chart">${bars}</div>`;
 }
 
 function showRace(rn){
@@ -256,7 +253,7 @@ function showRace(rn){
 
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(hasPreds)h+=`<th style="font-size:9pt">信心</th><th style="font-size:9pt">邊際</th>`;
-  if(hasFeat)h+=`<th style="font-size:8pt;width:370px">特徵 (2×25)</th>`;
+  if(hasFeat)h+=`<th style="font-size:8pt;width:190px">特徵圖譜</th>`;
   h+=`${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
   race.horses.forEach(hh=>{
     const prob=hh.prob!=null?(hh.prob*100).toFixed(0)+'%':'';
@@ -265,18 +262,18 @@ function showRace(rn){
     h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}>`;
     h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>`;
     if(hasPreds)h+=`<td style="font-size:9pt">${prob}</td><td style="font-size:9pt"${ec?` style="${ec}"`:''}>${edge}</td>`;
-    if(hasFeat)h+=`<td style="padding:2px 3px;vertical-align:middle">${buildHeatmap(hh,featMin,featMax)}</td>`;
+    if(hasFeat)h+=`<td style="padding:2px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`;
     if(hasRes)h+=`<td>${hh.position||'-'}</td>`;
     h+='</tr>';
   });
   h+='</tbody></table>';
 
   if(hasFeat)h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;line-height:2">
-    <b>特徵數字圖例：</b>44個V10.4模型特徵，2行×25列，每格顯示標準化值(1-9)<br>
-    <span style="color:#0b5e1e">綠色 1-9 = 正面特徵</span>（值越大越有利）&ensp;
-    <span style="color:#922b21">紅色 1-9 = 負面特徵</span>（值越大越不利）&ensp;
-    0 = 中性或無數據 &ensp;|&ensp;
-    頭6個特徵: <b style="color:#1a3a5c">age sex_gelding rating races_count horse_wr jockey_wr …</b><br>
+    <b>特徵圖譜：</b>44個V10.4模型特徵，左至右顯示標準化數值<br>
+    <span style="color:#27ae60;font-weight:bold">▌綠色向上</span> = 正面特徵（對勝出有利）&ensp;
+    <span style="color:#e74c3c;font-weight:bold">▌紅色向下</span> = 負面特徵（對勝出不利）&ensp;
+    高度 = 標準化強度 &ensp;|&ensp;
+    滑鼠懸停顯示：特徵名、原始值、中文描述<br>
     信心=模型概率 &ensp; <span style="color:#27ae60;font-weight:bold">邊際>1.3=👍</span> <span style="color:#f0a030">>0.9=👀</span>
     </div>`;
   if(hasRes)h+='<br><small class="text-success">✅ 已有賽果</small>';
