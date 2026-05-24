@@ -269,7 +269,7 @@ function showRace(rn){
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(hasPreds)h+=`<th style="font-size:9pt">勝率</th><th style="font-size:9pt">值博率</th><th style="font-size:9pt">預測</th>`;
   if(hasFeat)h+=`<th style="font-size:8pt;width:390px">特徵類別</th>`;
-  h+=`<th style="font-size:9pt">名次</th><th style="font-size:8pt">距離</th><th style="font-size:8pt">走位</th></tr></thead><tbody>`;
+  h+=`<th style="font-size:9pt">名次</th><th style="font-size:8pt">頭馬距離</th><th style="font-size:8pt">沿途走位</th></tr></thead><tbody>`;
 
   // Sort horses by predicted rank ascending; unranked at bottom
   const sortedHorses=[...race.horses];
