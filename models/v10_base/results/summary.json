@@ -1,0 +1,17 @@
+{
+  "model": "v10_base",
+  "dates_run": 1,
+  "total_races": 11,
+  "top1_accuracy": 0.0,
+  "updated": "2026-05-24T23:16:19.406701",
+  "per_date": [
+    {
+      "date": "2026-05-03",
+      "races": 11,
+      "horses": 139,
+      "top1_correct": 0,
+      "top1_races": 11,
+      "elapsed": 55.1
+    }
+  ]
+}

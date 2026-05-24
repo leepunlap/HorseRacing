@@ -1,0 +1,88 @@
+{
+  "name": "v10_base",
+  "description": "Baseline V10 model — 44 features, XGBoost depth-5, walk-forward",
+  "created": "2026-05-24",
+  "active": true,
+
+  "xgb": {
+    "objective":        "binary:logistic",
+    "eval_metric":      "logloss",
+    "max_depth":        5,
+    "learning_rate":    0.03,
+    "subsample":        0.8,
+    "colsample_bytree": 0.7,
+    "min_child_weight": 10,
+    "lambda":           2.0,
+    "alpha":            1.0,
+    "scale_pos_weight": 10,
+    "verbosity":        0,
+    "nthread":          4
+  },
+  "num_boost_rounds": 100,
+
+  "features_disabled": [],
+
+  "going_map": {
+    "Good":             0,
+    "Good to Firm":     1,
+    "Good to Yielding": 2,
+    "Yielding":         3,
+    "Soft":             4,
+    "Slow":             3
+  },
+
+  "pace_draw": {
+    "very_slow":    {"inner": 18, "mid":  8, "outer": -6},
+    "slow":         {"inner": 13, "mid":  5, "outer": -2},
+    "medium":       {"inner":  6, "mid":  4, "outer":  1},
+    "medium_fast":  {"inner":  1, "mid":  3, "outer":  6},
+    "fast":         {"inner": -6, "mid": -2, "outer": 15}
+  },
+
+  "pace_bucket": {
+    "very_slow_leader_pct":    0.45,
+    "slow_leader_pct":         0.35,
+    "fast_closer_pct":         0.40,
+    "medium_fast_closer_pct":  0.30
+  },
+
+  "early_pace_thresholds": [
+    [0.95, 0],
+    [1.00, 1],
+    [1.05, 2],
+    [null, 3]
+  ],
+
+  "draw_inner_max": 5,
+  "draw_outer_min": 10,
+
+  "layoff": {
+    "long_days":       28,
+    "long_penalty":   -12,
+    "medium_days":     14,
+    "medium_penalty":  -6,
+    "short_penalty":    0,
+    "max_days":       365
+  },
+
+  "weight_allow_divisor": 20,
+
+  "cold_stable_threshold": 0.05,
+
+  "chri": {
+    "weight_allow":        0.4,
+    "wide_draw":           0.3,
+    "cold_stable_x_wide":  0.3
+  },
+
+  "pace_match": {
+    "leader_slow":   1.0,
+    "closer_fast":   1.0,
+    "stalker_slow":  0.7,
+    "default":       0.3
+  },
+
+  "trainer_form_days":    365,
+  "rating_trend_window":  3,
+  "standard_gear":        ["", "B", "TT"]
+}
