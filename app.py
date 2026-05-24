@@ -220,8 +220,8 @@ async def get_races(date: str, auth = Depends(verify_token)):
     results = {}
     for r in db.execute("""
         SELECT r.race_no, r.position, r.horse_name, r.jockey, r.trainer, r.odds as res_odds, r.draw, r.act_wt, r.lbw, r.running_style
-        FROM results r JOIN races rc ON r.date = rc.date AND r.race_no = rc.raceno AND r.course = rc.course
-        WHERE rc.date = ? ORDER BY r.race_no, r.position
+        FROM results r
+        WHERE r.date = ? ORDER BY r.race_no, r.position
     """, (date,)).fetchall():
         rn = str(r['race_no'])
         if rn not in results: results[rn] = []
@@ -233,23 +233,28 @@ async def get_races(date: str, auth = Depends(verify_token)):
         db_races[str(r['raceno'])] = dict(r)
 
     # Merge everything
+    # Normalize race keys: strip leading zeros, deduplicate
+    raw_keys = set(list(racecard.keys()) + list(results.keys()) + list(db_races.keys()))
+    all_keys = set()
+    for k in raw_keys:
+        try: all_keys.add(str(int(k)))
+        except: all_keys.add(k)
     races_output = []
-    all_keys = set(list(racecard.keys()) + list(results.keys()) + list(db_races.keys()))
     for rn in sorted(all_keys, key=int):
-        rc = racecard.get(rn, {})
-        race_info = db_races.get(rn, {})
+        rc = racecard.get(rn) or racecard.get(rn.zfill(2), {})
+        race_info = db_races.get(rn) or db_races.get(rn.zfill(2), {})
         race = {
             "race_no": int(rn),
-            "distance": rc.get("distance") or race_info.get("distance", "?"),
-            "class": rc.get("class") or race_info.get("class", "?"),
+            "distance": rc.get("distance", "") or str(race_info.get("distance", "?")).rstrip('0').rstrip('.').rstrip('?').rstrip('0') or "?",
+            "class": (rc.get("class", "") and rc.get("class") != "?" and rc.get("class")) or predictions.get(rn, {}).get("class") or predictions.get(rn.zfill(2), {}).get("class") or str(race_info.get("class", "?")).rstrip('0').rstrip('.') or "?",
             "going": race_info.get("going", "Good"),
             "participants": len(rc.get("horses", [])),
             "horses": [],
-            "results": results.get(rn, []),
-            "has_results": rn in results,
+            "results": results.get(rn) or results.get(str(int(rn)), []),
+            "has_results": (rn in results) or (str(int(rn)) in results),
         }
         # Merge card horses with their results and predictions
-        pred_race = predictions.get(rn) or predictions.get(str(int(rn))) or {}
+        pred_race = predictions.get(rn) or predictions.get(rn.zfill(2)) or predictions.get(str(int(rn))) or {}
         pred_horses = {str(ph['no']): ph for ph in pred_race.get('horses', [])}
         for h in rc.get("horses", []):
             horse_entry = {
