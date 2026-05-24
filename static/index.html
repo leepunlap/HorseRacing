@@ -6,46 +6,58 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
-:root{--bs-body-font-family:"Microsoft JhengHei","Segoe UI",sans-serif;--bs-body-font-size:0.8rem}
+:root{--bs-body-font-family:"Microsoft JhengHei","Segoe UI",sans-serif;--bs-body-font-size:0.95rem}
 body{background:#f0f2f5}
 .login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1a3a5c,#2d6aa0);display:flex;align-items:center;justify-content:center;z-index:999}
-.login-box{background:#fff;border-radius:12px;padding:40px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center}
-.login-box h1{font-size:18pt;color:#1a3a5c;margin-bottom:8px}
-.login-box p{color:#888;margin-bottom:24px;font-size:10pt}
-.login-box input{width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14pt;text-align:center;letter-spacing:4px}
+.login-box{background:#fff;border-radius:12px;padding:44px;width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center}
+.login-box h1{font-size:22pt;color:#1a3a5c;margin-bottom:10px}
+.login-box p{color:#888;margin-bottom:28px;font-size:11pt}
+.login-box input{width:100%;padding:14px;border:2px solid #ddd;border-radius:6px;font-size:16pt;text-align:center;letter-spacing:6px}
 .login-box input:focus{outline:none;border-color:#1a3a5c}
-.login-box button{width:100%;padding:12px;margin-top:16px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:13pt;cursor:pointer}
-.login-box .error{color:#e74c3c;margin-top:12px;font-size:10pt;display:none}
+.login-box button{width:100%;padding:14px;margin-top:20px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14pt;cursor:pointer}
+.login-box .error{color:#e74c3c;margin-top:14px;font-size:11pt;display:none}
 .app{display:none}.app.auth{display:flex}
-.sidebar{position:fixed;top:0;left:0;height:100vh;background:#1a3a5c;color:#fff;padding:12px 0;z-index:50;transition:transform .25s;transform:translateX(0);width:200px;overflow-y:auto}
+.sidebar{position:fixed;top:0;left:0;height:100vh;background:#1a3a5c;color:#fff;padding:12px 0;z-index:50;transition:transform .25s;transform:translateX(0);width:210px;overflow-y:auto}
 .sidebar.closed{transform:translateX(-100%)}
 .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:49;display:none}.sidebar-backdrop.show{display:block}
-.hamburger{position:fixed;top:8px;left:8px;z-index:51;background:#1a3a5c;color:#fff;border:none;border-radius:6px;width:36px;height:36px;cursor:pointer;font-size:18px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.hamburger{position:fixed;top:8px;left:8px;z-index:51;background:#1a3a5c;color:#fff;border:none;border-radius:6px;width:40px;height:40px;cursor:pointer;font-size:20px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
 .sidebar.closed~.hamburger{display:flex}
-.sidebar-header{padding:8px 14px;font-size:14pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center}
-.sidebar-header .close-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:16px}
-.nav-item{display:flex;align-items:center;padding:10px 14px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:9pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
-.nav-item .icon{width:22px;margin-right:10px;font-size:13px;text-align:center}
-.main{flex:1;padding:16px;overflow-y:auto;margin-left:48px}
-.logout-btn{position:fixed;top:8px;right:12px;z-index:52;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:8pt;cursor:pointer}
+.sidebar-header{padding:10px 16px;font-size:16pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center}
+.sidebar-header .close-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:18px}
+.nav-item{display:flex;align-items:center;padding:12px 16px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:11pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
+.nav-item .icon{width:24px;margin-right:12px;font-size:15px;text-align:center}
+.main{flex:1;padding:20px;overflow-y:auto;margin-left:52px}
+.logout-btn{position:fixed;top:10px;right:16px;z-index:52;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:10pt;cursor:pointer}
 .page{display:none}.page.show{display:block}
-.stat-cards{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.stat-card{flex:1;min-width:100px;background:#fff;padding:10px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);text-align:center}
-.stat-card .val{font-size:16pt;font-weight:bold;color:#1a3a5c}.stat-card .lbl{font-size:7pt;color:#888}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
-.horse-card{background:#fff;border-radius:6px;padding:8px 10px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);font-size:8pt}
+.stat-cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat-card{flex:1;min-width:120px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);text-align:center}
+.stat-card .val{font-size:20pt;font-weight:bold;color:#1a3a5c}.stat-card .lbl{font-size:9pt;color:#888;margin-top:2px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.horse-card{background:#fff;border-radius:6px;padding:10px 12px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);font-size:10pt}
 .horse-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.1)}
-.horse-card .brand{font-weight:bold;color:#1a3a5c;font-size:9pt}
-.race-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
-.race-nav button{padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:8pt;text-align:center;min-width:55px}
+.horse-card .brand{font-weight:bold;color:#1a3a5c;font-size:11pt}
+.race-nav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.race-nav button{padding:6px 12px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:10pt;text-align:center;min-width:65px}
 .race-nav button.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
-.race-nav button small{display:block;font-size:7pt;color:#888}.race-nav button.active small{color:rgba(255,255,255,0.7)}
-table{width:100%;border-collapse:collapse;font-size:8pt}th{background:#1a3a5c;color:#fff;padding:5px 6px;text-align:center}td{padding:4px 6px;border:1px solid #eee;text-align:center}tr:nth-child(even){background:#f8f9fa}
-.search-bar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.search-bar input,.search-bar select{padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:8pt}
-.chart-box{width:100%;height:250px;margin:8px 0}
-.pagination{display:flex;justify-content:center;gap:3px;margin-top:10px}
-.pagination button{padding:4px 8px;font-size:8pt}
+.race-nav button small{display:block;font-size:8pt;color:#888}.race-nav button.active small{color:rgba(255,255,255,0.7)}
+table{width:100%;border-collapse:collapse;font-size:10pt}th{background:#1a3a5c;color:#fff;padding:6px 7px;text-align:center}td{padding:5px 7px;border:1px solid #ddd;text-align:center}tr:nth-child(even){background:#f8f9fa}
+.search-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search-bar input,.search-bar select{padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:10pt}
+.chart-box{width:100%;height:280px;margin:10px 0}
+.pagination{display:flex;justify-content:center;gap:4px;margin-top:12px}
+.pagination button{padding:5px 10px;font-size:10pt}
+/* Feature heatmap grid */
+.hmgrid{display:inline-grid;grid-template-columns:repeat(2,1fr);gap:0;vertical-align:middle;margin:0 auto}
+.hmcell{width:5px;height:5px;border:none;display:block}
+.hmc-red5{background:#8b0000}.hmc-red4{background:#c0392b}.hmc-red3{background:#e74c3c}
+.hmc-red2{background:#f1948a}.hmc-red1{background:#fadbd8}
+.hmc-zero{background:#f0f0f0}
+.hmc-green1{background:#d5f5e3}.hmc-green2{background:#82e0aa}.hmc-green3{background:#27ae60}
+.hmc-green4{background:#196f3d}.hmc-green5{background:#0b3d1f}
+/* Legend for color scale */
+.legend-wrap{display:flex;gap:6px;align-items:center;font-size:9pt;flex-wrap:wrap}
+.legend-bar{display:flex;height:14px;align-items:center}
+.legend-bar span{width:16px;height:14px;display:inline-block}
 </style>
 </head>
 <body>
@@ -53,7 +65,7 @@ table{width:100%;border-collapse:collapse;font-size:8pt}th{background:#1a3a5c;co
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box"><h1>🏇 Racing Data</h1><p>輸入密碼</p>
 <input type="password" id="pwInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-<div style="margin-top:8px;font-size:9pt;color:#888;text-align:left;padding-left:4px">
+<div style="margin-top:10px;font-size:10pt;color:#888;text-align:left;padding-left:4px">
 <label style="cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="rememberPw" onchange="savePwCookie()"> 記住密碼（365天）</label>
 </div>
 <button onclick="login()">登入</button><div class="error" id="loginError">密碼錯誤</div></div></div>
@@ -71,16 +83,15 @@ table{width:100%;border-collapse:collapse;font-size:8pt}th{background:#1a3a5c;co
   <button class="logout-btn" onclick="logout()">登出</button>
 
   <div class="main">
-    <h2 style="font-size:14pt;color:#1a3a5c;margin-bottom:12px;padding-left:4px" id="pageTitle">儀表板</h2>
+    <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px" id="pageTitle">儀表板</h2>
 
-    <!-- DASHBOARD -->
     <div class="page show" id="page-dashboard">
       <div class="stat-cards" id="dashStats"></div>
       <div class="race-nav" id="raceTabs"></div>
       <div id="raceTable"></div>
       <div class="row g-2 mt-2">
-        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">🏆 最近頭馬</div><div class="card-body p-1" id="dashWinners" style="font-size:8pt"></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">🏇 騎師龍虎榜</div><div class="card-body p-1" id="dashJockeys" style="font-size:8pt"></div></div></div>
+        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:11pt">🏆 最近頭馬</div><div class="card-body p-1" id="dashWinners" style="font-size:10pt"></div></div></div>
+        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:11pt">🏇 騎師龍虎榜</div><div class="card-body p-1" id="dashJockeys" style="font-size:10pt"></div></div></div>
       </div>
       <div class="row g-2 mt-2">
         <div class="col-md-6"><div class="chart-box" id="chartDraw"></div></div>
@@ -88,34 +99,31 @@ table{width:100%;border-collapse:collapse;font-size:8pt}th{background:#1a3a5c;co
       </div>
     </div>
 
-    <!-- HORSES -->
     <div class="page" id="page-horses">
       <div class="search-bar">
-        <input type="text" id="horseName" class="form-control form-control-sm" placeholder="馬名或烙號...">
-        <select id="horseSex" class="form-select form-select-sm"><option value="">性別</option></select>
-        <input type="number" id="horseAgeMin" class="form-control form-control-sm" placeholder="齡≥" style="width:60px">
-        <input type="number" id="horseAgeMax" class="form-control form-control-sm" placeholder="齡≤" style="width:60px">
-        <button class="btn btn-sm btn-primary" onclick="loadHorses(1)">篩選</button>
+        <input type="text" id="horseName" class="form-control" placeholder="馬名或烙號..." style="font-size:10pt">
+        <select id="horseSex" class="form-select" style="font-size:10pt"><option value="">性別</option></select>
+        <input type="number" id="horseAgeMin" class="form-control" placeholder="齡≥" style="width:70px;font-size:10pt">
+        <input type="number" id="horseAgeMax" class="form-control" placeholder="齡≤" style="width:70px;font-size:10pt">
+        <button class="btn btn-primary" onclick="loadHorses(1)" style="font-size:10pt">篩選</button>
       </div>
       <div class="card-grid" id="horseGrid"></div>
       <div class="pagination" id="horsePages"></div>
     </div>
 
-    <!-- JOCKEYS -->
     <div class="page" id="page-jockeys">
       <div class="search-bar">
-        <input type="text" id="jockeyName" class="form-control form-control-sm" placeholder="騎師名...">
-        <button class="btn btn-sm btn-primary" onclick="loadJockeys(1)">篩選</button>
+        <input type="text" id="jockeyName" class="form-control" placeholder="騎師名..." style="font-size:10pt">
+        <button class="btn btn-primary" onclick="loadJockeys(1)" style="font-size:10pt">篩選</button>
       </div>
       <div class="card-grid" id="jockeyGrid"></div>
       <div class="pagination" id="jockeyPages"></div>
     </div>
 
-    <!-- TRAINERS -->
     <div class="page" id="page-trainers">
       <div class="search-bar">
-        <input type="text" id="trainerName" class="form-control form-control-sm" placeholder="練馬師名...">
-        <button class="btn btn-sm btn-primary" onclick="loadTrainers(1)">篩選</button>
+        <input type="text" id="trainerName" class="form-control" placeholder="練馬師名..." style="font-size:10pt">
+        <button class="btn btn-primary" onclick="loadTrainers(1)" style="font-size:10pt">篩選</button>
       </div>
       <div class="card-grid" id="trainerGrid"></div>
       <div class="pagination" id="trainerPages"></div>
@@ -145,7 +153,6 @@ function showApp(){document.getElementById('loginOverlay').style.display='none';
 function logout(){clearAndShowLogin()}
 function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.status===401?(clearAndShowLogin(),null):r.json())}
 
-// Pre-fill saved password
 (function(){const s=getCookie('saved_pw');if(s){document.getElementById('pwInput').value=s;document.getElementById('rememberPw').checked=true}})();
 
 // ─── Navigation ────────────────────────────────────────────
@@ -165,7 +172,8 @@ function go(name){
 }
 
 // ─── Dashboard ────────────────────────────────────────────
-let raceCache=null;
+let raceCache=null, featMeta=null, featCols=[];
+
 async function loadDashboard(){
   const d=await api('/api/dashboard');if(!d)return;
   const s=d.stats;
@@ -177,17 +185,45 @@ async function loadDashboard(){
     <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_roi}</div><div class="lbl">V10 ROI</div></div>`;
   document.getElementById('dashWinners').innerHTML=d.recent_winners.slice(0,12).map(w=>`<div class="d-flex justify-content-between border-bottom py-1"><span><b>${w.horse_name}</b> R${w.race_no} ${w.distance}m</span><span class="text-muted">${w.jockey} ${w.odds}x</span></div>`).join('')||'<div class="text-muted p-2">暫無</div>';
   document.getElementById('dashJockeys').innerHTML=d.top_jockeys.map((j,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${j.jockey}</b></span><span>${j.wins}W <span style="color:#27ae60">${j.win_rate}%</span></span></div>`).join('');
-  if(d.draw_stats.length){const c=echarts.init(document.getElementById('chartDraw'));c.setOption({title:{text:'檔位勝率',left:'center',textStyle:{fontSize:11}},xAxis:{data:d.draw_stats.map(x=>x.draw)},yAxis:{name:'%'},series:[{type:'bar',data:d.draw_stats.map(x=>x.win_pct),itemStyle:{color:'#1a3a5c'}}]})}
-  if(d.odds_stats.length){const c=echarts.init(document.getElementById('chartOdds'));c.setOption({title:{text:'賠率區間',left:'center',textStyle:{fontSize:11}},xAxis:{data:d.odds_stats.map(x=>x.odds_range)},yAxis:{name:'次數'},series:[{name:'總數',type:'bar',data:d.odds_stats.map(x=>x.total),itemStyle:{color:'#1a3a5c'}},{name:'勝',type:'bar',data:d.odds_stats.map(x=>x.wins),itemStyle:{color:'#27ae60'}}]})}
+  if(d.draw_stats.length){const c=echarts.init(document.getElementById('chartDraw'));c.setOption({title:{text:'檔位勝率',left:'center',textStyle:{fontSize:13}},xAxis:{data:d.draw_stats.map(x=>x.draw)},yAxis:{name:'%'},series:[{type:'bar',data:d.draw_stats.map(x=>x.win_pct),itemStyle:{color:'#1a3a5c'}}]})}
+  if(d.odds_stats.length){const c=echarts.init(document.getElementById('chartOdds'));c.setOption({title:{text:'賠率區間',left:'center',textStyle:{fontSize:13}},xAxis:{data:d.odds_stats.map(x=>x.odds_range)},yAxis:{name:'次數'},series:[{name:'總數',type:'bar',data:d.odds_stats.map(x=>x.total),itemStyle:{color:'#1a3a5c'}},{name:'勝',type:'bar',data:d.odds_stats.map(x=>x.wins),itemStyle:{color:'#27ae60'}}]})}
 
-  // Load race data
   const today=new Date().toISOString().slice(0,10);
   const rc=await api('/api/races/'+today);
   if(!rc||!rc.races)return;
   raceCache=rc.races;
+  featMeta=rc._feature_cols||[];
+  featCols=featMeta;
   const tabs=document.getElementById('raceTabs');
   tabs.innerHTML=rc.races.map(r=>`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}<small>${r.distance}m ${r.class}</small></button>`).join('');
   if(rc.races.length)showRace(rc.races[0].race_no);
+}
+
+function featureColor(v){
+  // v normalized to [-1, 1]
+  if(v==null||isNaN(v))return'hmc-zero';
+  if(v>0.8)return'hmc-green5';if(v>0.5)return'hmc-green4';if(v>0.2)return'hmc-green3';
+  if(v>0.05)return'hmc-green2';if(v>0.005)return'hmc-green1';
+  if(v<-0.8)return'hmc-red5';if(v<-0.5)return'hmc-red4';if(v<-0.2)return'hmc-red3';
+  if(v<-0.05)return'hmc-red2';if(v<-0.005)return'hmc-red1';
+  return'hmc-zero';
+}
+
+function buildHeatmap(hh, featMin, featMax){
+  let cells='';
+  for(let i=0;i<44;i++){
+    const k=featCols[i];
+    if(!k){cells+='<div class="hmcell hmc-zero"></div>';continue;}
+    let v=hh.features?hh.features[k]:null;
+    if(v==null){cells+='<div class="hmcell hmc-zero"></div>';continue;}
+    const mn=featMin[k], mx=featMax[k];
+    if(mx===mn||mx==null){cells+='<div class="hmcell hmc-zero"></div>';continue;}
+    const norm=(v-mn)/(mx-mn)*2-1; // scale to [-1, 1]
+    cells+=`<div class="hmcell ${featureColor(norm)}" title="${k}: ${v.toFixed(3)}"></div>`;
+  }
+  // Pad to 50 cells (25x2=50) with 6 empty
+  for(let i=44;i<50;i++)cells+='<div class="hmcell" style="background:transparent"></div>';
+  return`<div class="hmgrid">${cells}</div>`;
 }
 
 function showRace(rn){
@@ -197,43 +233,45 @@ function showRace(rn){
   const race=raceCache.find(r=>r.race_no===rn);if(!race)return;
   const hasRes=race.has_results;
   const hasPreds=race.horses.some(h=>h.prob!=null);
-  const featCols=hasPreds?['jockey_wr','trainer_wr','horse_wr','dist_adapt','days_since','late_pace_avg','gear_change','rating_trend']:[];
-  const featLabel={jockey_wr:'騎勝%',trainer_wr:'練勝%',horse_wr:'馬勝%',dist_adapt:'路程',days_since:'休日',late_pace_avg:'末段',gear_change:'配備',rating_trend:'評趨'};
-  const featKeys=hasPreds&&race.horses.some(h=>h.features)?featCols:[];
+  const hasFeat=hasPreds&&race.horses.some(h=>h.features);
+
+  // Compute feature min/max across all today's horses for normalization
+  let featMin={}, featMax={};
+  if(hasFeat&&featCols.length){
+    featCols.forEach(k=>{featMin[k]=Infinity;featMax[k]=-Infinity});
+    raceCache.forEach(r=>r.horses.forEach(hh=>{
+      if(!hh.features)return;
+      featCols.forEach(k=>{
+        const v=hh.features[k];if(v==null)return;
+        if(v<featMin[k])featMin[k]=v;if(v>featMax[k])featMax[k]=v;
+      });
+    }));
+  }
+
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
-  if(hasPreds)h+=`<th style="font-size:7pt">信心</th><th style="font-size:7pt">邊際</th>`;
-  featKeys.forEach(k=>h+=`<th style="font-size:6pt;max-width:28px;writing-mode:vertical-lr;padding:2px 1px">${featLabel[k]}</th>`);
+  if(hasPreds)h+=`<th style="font-size:9pt">信心</th><th style="font-size:9pt">邊際</th>`;
+  if(hasFeat)h+=`<th style="font-size:8pt;width:24px">特徵</th>`;
   h+=`${hasRes?'<th>名次</th>':''}</tr></thead><tbody>`;
   race.horses.forEach(hh=>{
     const prob=hh.prob!=null?(hh.prob*100).toFixed(0)+'%':'';
     const edge=hh.edge!=null?hh.edge.toFixed(1):'';
-    const edgeCls=hh.edge!=null?(hh.edge>1.3?'style="color:#27ae60;font-weight:bold"':(hh.edge>0.9?'style="color:#f0a030"':'')):'';
+    const ec=hh.edge!=null?(hh.edge>1.3?'color:#27ae60;font-weight:bold':(hh.edge>0.9?'color:#f0a030':'')):'';
     h+=`<tr${hh.position==1?' style="background:#e8f5e9"':''}>`;
     h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td>${hh.win_odds||'?'}x</td>`;
-    if(hasPreds)h+=`<td style="font-size:7pt">${prob}</td><td style="font-size:7pt" ${edgeCls}>${edge}</td>`;
-    featKeys.forEach(k=>{
-      const v=hh.features?hh.features[k]:null;
-      const vt=v!=null?((v<1&&k!=='days_since'&&k!=='gear_change'&&k!=='rating_trend'?(v*100).toFixed(0)+'%':(k==='days_since'?Math.round(v):(k==='gear_change'||k==='rating_trend'?v.toFixed(1):v.toFixed(2)))):'-');
-      h+=`<td style="font-size:6pt;padding:1px 2px;text-align:center">${vt}</td>`;
-    });
+    if(hasPreds)h+=`<td style="font-size:9pt">${prob}</td><td style="font-size:9pt"${ec?` style="${ec}"`:''}>${edge}</td>`;
+    if(hasFeat)h+=`<td style="padding:2px 3px;vertical-align:middle">${buildHeatmap(hh,featMin,featMax)}</td>`;
     if(hasRes)h+=`<td>${hh.position||'-'}</td>`;
     h+='</tr>';
   });
   h+='</tbody></table>';
-  h+=`<div style="font-size:7pt;color:#888;margin-top:6px;padding:6px;background:#fff;border-radius:4px;line-height:1.8">
-    <b>V10.4 模型參數圖例：</b>
-    <span style="color:#27ae60">騎勝%</span> = 騎師勝率 &ensp;
-    <span style="color:#27ae60">練勝%</span> = 練馬師勝率 &ensp;
-    <span style="color:#27ae60">馬勝%</span> = 馬匹勝率 &ensp;
-    路程 = 路程適應性 &ensp;
-    休日 = 上次出賽後日數 &ensp;
-    末段 = 平均末段速度 &ensp;
-    配備 = 配備變更(1=是) &ensp;
-    評趨 = 評分趨勢 &ensp;|&ensp;
-    信心 = 模型預測概率 &ensp;
-    <span style="color:#27ae60">邊際 > 1.3 = 👍推薦</span>，<span style="color:#f0a030">> 0.9 = 👀關注</span>
+
+  if(hasFeat)h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;line-height:2">
+    <b>特徵熱力圖：</b>共44個V10.4模型特徵，每個顏色方塊代表一個特徵值<br>
+    <div class="legend-wrap"><span>負值</span><div class="legend-bar"><span style="background:#8b0000"></span><span style="background:#c0392b"></span><span style="background:#e74c3c"></span><span style="background:#f1948a"></span><span style="background:#fadbd8"></span></div><span style="background:#f0f0f0;width:16px;height:14px;display:inline-block"></span><div class="legend-bar"><span style="background:#d5f5e3"></span><span style="background:#82e0aa"></span><span style="background:#27ae60"></span><span style="background:#196f3d"></span><span style="background:#0b3d1f"></span></div><span>正值</span></div>
+    <div style="margin-top:4px">排序：25列×2行，頭6個特徵：<b style="color:#1a3a5c">age sex_gelding rating races_count horse_wr jockey_wr …</b> &ensp;|&ensp;
+    信心=模型概率 &ensp; <span style="color:#27ae60;font-weight:bold">邊際>1.3=👍推薦</span> <span style="color:#f0a030">>0.9=👀關注</span>
     </div>`;
-  if(hasRes)h+='<small class="text-success ms-2">✅ 已有賽果</small>';
+  if(hasRes)h+='<br><small class="text-success">✅ 已有賽果</small>';
   document.getElementById('raceTable').innerHTML=h;
 }
 
@@ -241,28 +279,25 @@ function showRace(rn){
 async function loadHorses(page){
   const p={page,limit:200,name:document.getElementById('horseName').value,sex:document.getElementById('horseSex').value,age_min:document.getElementById('horseAgeMin').value||0,age_max:document.getElementById('horseAgeMax').value||99,sort:'rating',order:'desc'};
   const d=await api('/api/horses?'+new URLSearchParams(p));if(!d)return;
-  document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{const wr=(h.win_rate*100).toFixed(1);return`<div class="horse-card" onclick="showHorseDetail('${h.brand}')"><div class="brand">#${h.brand}</div><div>${h.name||''}</div><div style="color:#888;font-size:7pt">${h.age||'?'}歲 ${h.sex_cn||''} 評${h.rating||0} ${h.races||0}場 ${h.wins||0}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{const wr=(h.win_rate*100).toFixed(1);return`<div class="horse-card" onclick="showHorseDetail('${h.brand}')"><div class="brand">#${h.brand}</div><div>${h.name||''}</div><div style="color:#888;font-size:8pt">${h.age||'?'}歲 ${h.sex_cn||''} 評${h.rating||0} ${h.races||0}場 ${h.wins||0}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
   let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadHorses(${i})">${i}</button>`;
   document.getElementById('horsePages').innerHTML=pg;
 }
 
-// ─── Jockeys ──────────────────────────────────────────────
 async function loadJockeys(page){
   const d=await api('/api/jockeys?'+new URLSearchParams({page,limit:200,sort:'wins',order:'desc'}));if(!d)return;
-  document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{const wr=parseFloat(j.win_rate)||0;return`<div class="horse-card"><b>${j.name}</b><div style="color:#888;font-size:7pt">${j.rides}場 ${j.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{const wr=parseFloat(j.win_rate)||0;return`<div class="horse-card"><b>${j.name}</b><div style="color:#888;font-size:8pt">${j.rides}場 ${j.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
   let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadJockeys(${i})">${i}</button>`;
   document.getElementById('jockeyPages').innerHTML=pg;
 }
 
-// ─── Trainers ─────────────────────────────────────────────
 async function loadTrainers(page){
   const d=await api('/api/trainers?'+new URLSearchParams({page,limit:200,sort:'wins',order:'desc'}));if(!d)return;
-  document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{const wr=parseFloat(t.win_rate)||0;return`<div class="horse-card"><b>${t.name}</b><div style="color:#888;font-size:7pt">${t.rides}場 ${t.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{const wr=parseFloat(t.win_rate)||0;return`<div class="horse-card"><b>${t.name}</b><div style="color:#888;font-size:8pt">${t.rides}場 ${t.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
   let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadTrainers(${i})">${i}</button>`;
   document.getElementById('trainerPages').innerHTML=pg;
 }
 
-// Load sex filter
 (async function(){
   if(!token)return;
   try{const f=await fetch('/api/filters',{headers:{'Authorization':'Bearer '+token}});if(!f.ok)return;const d=await f.json();d.sexes.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;document.getElementById('horseSex').appendChild(o)})}catch(e){}

@@ -286,7 +286,7 @@ async def get_races(date: str, auth = Depends(verify_token)):
         races_output.append(race)
 
     db.close()
-    return {"date": date, "races": races_output, "count": len(races_output)}
+    return {"date": date, "races": races_output, "count": len(races_output), "_feature_cols": predictions.get("_feature_cols", [])}
 
 @app.get("/api/models")
 async def list_models(auth = Depends(verify_token)):
