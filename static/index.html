@@ -78,9 +78,21 @@ a{color:#1a3a5c;text-decoration:none;cursor:pointer}a:hover{text-decoration:unde
     <div class="header"><h2 id="pageTitle">儀表板</h2></div>
 
     <div class="page active" id="page-dashboard">
-      <div class="stat-cards"><div class="stat-card"><div class="val">1,311</div><div class="lbl">馬匹</div></div><div class="stat-card"><div class="val">80</div><div class="lbl">騎師</div></div><div class="stat-card"><div class="val">2,364</div><div class="lbl">賽事</div></div><div class="stat-card"><div class="val">28,785</div><div class="lbl">賽果</div></div></div>
+      <div class="stat-cards" id="dashStats"></div>
       <div class="search-bar"><input type="text" id="globalSearch" class="form-control form-control-sm" placeholder="搜尋馬匹、騎師、練馬師..." onkeydown="if(event.key==='Enter')globalSearch()"><button class="btn btn-sm btn-primary" onclick="globalSearch()">搜尋</button></div>
-      <div id="searchResults" style="display:none;margin-top:8px"><div class="d-flex gap-3 flex-wrap"><div style="flex:1;min-width:200px"><b class="fs-6">🐴 馬匹</b><div id="searchHorses" class="mt-1"></div></div><div style="flex:1;min-width:200px"><b class="fs-6">🏇 騎師</b><div id="searchJockeys" class="mt-1"></div></div><div style="flex:1;min-width:200px"><b class="fs-6">👨‍🏫 練馬師</b><div id="searchTrainers" class="mt-1"></div></div></div></div>
+      <div id="searchResults" style="display:none;margin:8px 0"><div class="d-flex gap-3 flex-wrap"><div style="flex:1;min-width:200px"><b class="fs-6">🐴 馬匹</b><div id="searchHorses" class="mt-1"></div></div><div style="flex:1;min-width:200px"><b class="fs-6">🏇 騎師</b><div id="searchJockeys" class="mt-1"></div></div><div style="flex:1;min-width:200px"><b class="fs-6">👨‍🏫 練馬師</b><div id="searchTrainers" class="mt-1"></div></div></div></div>
+      <div class="row g-2 mt-2">
+        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">🏆 最近頭馬</div><div class="card-body p-1" id="dashWinners" style="font-size:8pt"></div></div></div>
+        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">🏇 騎師龍虎榜</div><div class="card-body p-1" id="dashJockeys" style="font-size:8pt"></div></div></div>
+      </div>
+      <div class="row g-2 mt-2">
+        <div class="col-md-6"><div class="chart-box" id="chartDraw"></div></div>
+        <div class="col-md-6"><div class="chart-box" id="chartOdds"></div></div>
+      </div>
+      <div class="row g-2 mt-2">
+        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">👨‍🏫 練馬師龍虎榜</div><div class="card-body p-1" id="dashTrainers" style="font-size:8pt"></div></div></div>
+        <div class="col-md-6"><div class="card"><div class="card-header py-1 px-2 fw-bold" style="font-size:9pt">📊 模型表現</div><div class="card-body p-1" id="dashModel" style="font-size:8pt"></div></div></div>
+      </div>
     </div>
 
     <div class="page" id="page-horses">
@@ -147,7 +159,47 @@ function nav(name){
   if(name==='horses')loadHorses(1);if(name==='jockeys')loadJockeys(1);if(name==='trainers')loadTrainers(1);
 }
 
-async function loadDashboard(){}
+async function loadDashboard(){
+  const d=await api('/api/dashboard');if(!d)return;
+  const s=d.stats;
+  document.getElementById('dashStats').innerHTML=`
+    <div class="stat-card"><div class="val">${s.horses.toLocaleString()}</div><div class="lbl">馬匹</div></div>
+    <div class="stat-card"><div class="val">${s.jockeys}</div><div class="lbl">騎師</div></div>
+    <div class="stat-card"><div class="val">${s.total_races.toLocaleString()}</div><div class="lbl">賽事</div></div>
+    <div class="stat-card"><div class="val">${s.total_results.toLocaleString()}</div><div class="lbl">賽果</div></div>
+    <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_top1}%</div><div class="lbl">V10命中率</div></div>
+    <div class="stat-card"><div class="val" style="color:#27ae60">${s.v10_roi}</div><div class="lbl">V10 ROI</div></div>`;
+
+  document.getElementById('dashWinners').innerHTML=d.recent_winners.length?d.recent_winners.slice(0,12).map(w=>`<div class="d-flex justify-content-between border-bottom py-1"><span><b>${w.horse_name}</b> R${w.race_no} ${w.distance}m ${w.class}</span><span class="text-muted">${w.jockey} ${w.odds}x</span></div>`).join(''):`<div class="text-muted p-2">${d.latest_race_date||'無'} 賽果</div>`;
+
+  document.getElementById('dashJockeys').innerHTML=d.top_jockeys.map((j,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${j.jockey}</b></span><span>${j.wins}W/${j.rides}R <span style="color:#27ae60">${j.win_rate}%</span></span></div>`).join('');
+
+  document.getElementById('dashTrainers').innerHTML=d.top_trainers.map((t,i)=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${i+1}. <b>${t.trainer}</b></span><span>${t.wins}W/${t.rides}R <span style="color:#27ae60">${t.win_rate}%</span></span></div>`).join('');
+
+  document.getElementById('dashModel').innerHTML=`<div class="p-2"><b>V10.4</b> 回測 +1,125% | 首選命中 37.0% | 交易315筆</div><div class="p-2 text-muted">最新賽日：${d.latest_race_date||'N/A'}</div>`;
+
+  if(d.draw_stats.length){chartDraw(d.draw_stats)}
+  if(d.odds_stats.length){chartOdds(d.odds_stats)}
+}
+
+function chartDraw(data){
+  const dom=document.getElementById('chartDraw');if(!dom)return;
+  const c=echarts.init(dom);
+  c.setOption({title:{text:'檔位勝率分佈',left:'center',textStyle:{fontSize:12}},tooltip:{trigger:'axis'},
+    xAxis:{data:data.map(d=>d.draw),name:'檔位'},yAxis:{name:'勝率 %'},
+    series:[{name:'勝率',type:'bar',data:data.map(d=>d.win_pct),itemStyle:{color:'#1a3a5c'}}]});
+  window.addEventListener('resize',()=>c.resize());
+}
+
+function chartOdds(data){
+  const dom=document.getElementById('chartOdds');if(!dom)return;
+  const c=echarts.init(dom);
+  c.setOption({title:{text:'賠率區間勝率',left:'center',textStyle:{fontSize:12}},tooltip:{trigger:'axis'},
+    xAxis:{data:data.map(d=>d.odds_range),name:'賠率'},yAxis:{name:'次數'},
+    series:[{name:'總數',type:'bar',data:data.map(d=>d.total),itemStyle:{color:'#1a3a5c'}},
+            {name:'勝',type:'bar',data:data.map(d=>d.wins),itemStyle:{color:'#27ae60'}}]});
+  window.addEventListener('resize',()=>c.resize());
+}
 
 async function globalSearch(){
   const q=document.getElementById('globalSearch').value.trim();if(!q)return;
