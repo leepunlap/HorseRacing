@@ -5,7 +5,7 @@ predict win probabilities, save to models/{model}/results/{date}/predictions.jso
 
 Usage:
     python3 backtest.py --all                               # active model, all CSV dates
-    python3 backtest.py --model v10_base --all             # named model, all CSV dates
+    python3 backtest.py --model 均衡基礎策略 --all          # named model, all CSV dates
     python3 backtest.py --from 2026-05-01 --to 2026-05-31 # date range (DB dates OK)
     python3 backtest.py 2026-05-03 2026-05-06              # specific dates
     python3 backtest.py --all --force                       # overwrite existing
@@ -89,6 +89,25 @@ def pace_style_match_score(horse_style: int, race_pace: str, pace_match: dict) -
     if horse_style == 1 and race_pace in ('slow', 'very_slow'):
         return pace_match.get('stalker_slow', 0.7)
     return pace_match.get('default', 0.3)
+
+
+def smoothed(wins: int, races: int, prior: float, alpha: float) -> float:
+    """Bayesian shrinkage: blend observed win rate toward a prior using α virtual races.
+
+    Formula:  (wins + α × prior) / (races + α)
+
+    Behaviour:
+      races = 0  →  returns prior exactly (unknown entity gets the prior).
+      races >> α →  observed rate dominates (large sample overrides prior).
+      races = α  →  50/50 blend of observed and prior.
+
+    Args:
+        wins:  observed wins for this entity/combination.
+        races: observed starts for this entity/combination.
+        prior: best-available proxy rate when evidence is thin.
+        alpha: strength of the prior in "virtual race" units.
+    """
+    return (wins + alpha * prior) / (races + alpha)
 
 
 def date_range(start: str, end: str):
@@ -282,7 +301,7 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
     cls  = float(rw.get('Class') or 4)
     part = float(rw.get('Participants') or 14)
     odds = float(rw.get('Odds') or 0)
-    gv   = going_map.get(str(rw.get('Going', 'Good')), 0)
+    gv   = going_map.get(str(rw.get('Going', 'Good') or 'Good'), 0)
     ds   = str(rw.get('Distance', ''))
     pi   = prof_dict.get(b, {})
     hs_v = hs_style.get(b, 2)
@@ -293,6 +312,7 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
     SS  = stats['SS'];   last_d = stats['last_d']
 
     fmw = grp['ActWt'].max() if 'ActWt' in grp.columns else 135
+    going_str = str(rw.get('Going', 'Good'))   # used in both Adaptability and going_num
 
     f = {}
 
@@ -302,19 +322,55 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
     f['rating']      = pi.get('Rating', 0) or (wt * 0.3 + (6 - cls) * 20)
     f['races_count'] = pi.get('RaceCount', HS[b]['r']) or HS[b]['r']
 
-    # ── Win Rates ────────────────────────────────────────────────────────
-    f['horse_wr']  = HS[b]['w']  / max(HS[b]['r'],  1)
-    f['jockey_wr'] = JS[j]['w']  / max(JS[j]['r'],  1)
-    f['trainer_wr']= TS[t]['w']  / max(TS[t]['r'],  1)
-    f['jt_pair']   = JTS[f'{j}|{t}']['w'] / max(JTS[f'{j}|{t}']['r'], 1)
-    f['jh_pair']   = JHS[f'{j}|{b}']['w'] / max(JHS[f'{j}|{b}']['r'], 1)
+    # ── Win Rates  (Bayesian shrinkage — see ADVISORY.md §1) ─────────────
+    #
+    # Raw counts are blended toward a prior using α "virtual races".
+    # This prevents cold-start entities from scoring 0.0 and being
+    # misread by the model as chronic losers instead of unknowns.
+    #
+    # Prior hierarchy:
+    #   trainer_wr  ← field average (all trainers earn ~1/field_size)
+    #   jockey_wr   ← field average
+    #   horse_wr    ← trainer_wr  (trainer knows the horse best before debut)
+    #   jt_pair     ← geometric_mean(j_wr_raw, t_wr_raw)
+    #   jh_pair     ← geometric_mean(j_wr_raw, h_wr_raw)
+    #   dist_adapt  ← horse_wr   (overall ability transfers to new distance)
+    #   going_adapt ← horse_wr   (overall ability transfers to new ground)
 
-    # ── Adaptability ─────────────────────────────────────────────────────
-    f['dist_adapt']  = HDS[b][ds]['w'] / max(HDS[b][ds]['r'], 1)
-    going_str        = str(rw.get('Going', 'Good'))
-    f['going_adapt'] = HGS[b][going_str]['w'] / max(HGS[b][going_str]['r'], 1)
+    SH       = cfg.get('shrinkage', {})
+    FIELD_WR = SH.get('field_avg_win_rate', 0.083)   # ≈ 1/12 runners
+
+    # Step 1 — raw rates (needed as priors before smoothing)
+    t_wr_raw = TS[t]['w'] / max(TS[t]['r'], 1)
+    j_wr_raw = JS[j]['w'] / max(JS[j]['r'], 1)
+    h_wr_raw = HS[b]['w'] / max(HS[b]['r'], 1)
+
+    # Step 2 — smoothed individual rates
+    f['trainer_wr'] = smoothed(TS[t]['w'], TS[t]['r'], FIELD_WR,   SH.get('trainer_alpha', 30))
+    f['jockey_wr']  = smoothed(JS[j]['w'], JS[j]['r'], FIELD_WR,   SH.get('jockey_alpha', 20))
+    f['horse_wr']   = smoothed(HS[b]['w'], HS[b]['r'], t_wr_raw,   SH.get('horse_alpha',  5))
+
+    # Step 3 — pair rates: prior = geometric mean of the two individual raw rates
+    #   (geometric mean < arithmetic mean — limits how much one strong party
+    #    inflates a new combination; zero is the identity, so we fall back to max)
+    jt_key   = f'{j}|{t}'
+    jh_key   = f'{j}|{b}'
+    jt_prior = (j_wr_raw * t_wr_raw) ** 0.5 if j_wr_raw * t_wr_raw > 0 \
+               else max(j_wr_raw, t_wr_raw, FIELD_WR)
+    jh_prior = (j_wr_raw * h_wr_raw) ** 0.5 if j_wr_raw * h_wr_raw > 0 \
+               else max(j_wr_raw, h_wr_raw, FIELD_WR)
+    f['jt_pair'] = smoothed(JTS[jt_key]['w'], JTS[jt_key]['r'], jt_prior, SH.get('jt_alpha', 10))
+    f['jh_pair'] = smoothed(JHS[jh_key]['w'], JHS[jh_key]['r'], jh_prior, SH.get('jh_alpha',  3))
+
+    # ── Adaptability (Bayesian shrinkage — prior = horse overall win rate) ──
+    f['dist_adapt']  = smoothed(HDS[b][ds]['w'],         HDS[b][ds]['r'],
+                                h_wr_raw, SH.get('dist_alpha',  5))
+    f['going_adapt'] = smoothed(HGS[b][going_str]['w'],  HGS[b][going_str]['r'],
+                                h_wr_raw, SH.get('going_alpha', 3))
 
     # ── Trainer Form ─────────────────────────────────────────────────────
+    # cold_stable_season uses raw rate (not smoothed) so the threshold comparison
+    # in cold_stable_x_wide reflects true recent activity, not inflated by priors.
     swr = SS[t]['w'] / max(SS[t]['r'], 1)
     f['trainer_hot']        = SS[t]['w']
     f['cold_stable_season'] = swr
@@ -494,6 +550,9 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
     # Build output JSON
     output = {}
     top1_correct = 0; top1_races = 0
+    bets_placed = 0; bets_won = 0; units_staked = 0.0; units_net = 0.0
+    bet_edge_threshold = cfg.get('bet_edge_threshold', 1.0)
+
     for race_no, grp in today_feats.groupby('race_no'):
         rn_key  = str(int(race_no))
         rinfo   = today_rows[today_rows['RaceNo'] == int(race_no)]
@@ -533,7 +592,7 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
                 'features': {c: round(float(tr.get(c, 0) or 0), 4) for c in feat_sorted},
             })
 
-        # Top-1 accuracy for summary
+        # Top-1 accuracy + bet P&L tracking
         if horses:
             top1_races += 1
             predicted_winner = max(horses, key=lambda h: h['win_prob'])
@@ -542,6 +601,20 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
             ]['won'].values[0]) == 1} if True else set()
             if predicted_winner['brand'] in actual_winners:
                 top1_correct += 1
+
+            # Bet on any horse with positive EV (edge > threshold)
+            for h in horses:
+                if h['edge'] > bet_edge_threshold:
+                    odds_val = float(h.get('win_odds') or 0)
+                    if odds_val <= 1.0:
+                        continue
+                    bets_placed  += 1
+                    units_staked += 1.0
+                    if h['brand'] in actual_winners:
+                        bets_won  += 1
+                        units_net += odds_val - 1.0   # profit = odds - stake
+                    else:
+                        units_net -= 1.0              # loss = stake
 
         output[rn_key.zfill(2)] = {'distance': dist, 'class': cls_str, 'horses': horses}
 
@@ -557,8 +630,12 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
     horses_n = sum(len(output[k]['horses']) for k in output if not k.startswith('_'))
     top1_acc = top1_correct / top1_races if top1_races else 0
     print(f"  {date_str} [{source}]: {races_n} races, {horses_n} horses, top1={top1_acc:.0%} → saved  ({elapsed:.0f}s)")
+    roi = round(units_net / units_staked, 4) if units_staked > 0 else None
     return {'date': date_str, 'races': races_n, 'horses': horses_n,
-            'top1_correct': top1_correct, 'top1_races': top1_races, 'elapsed': round(elapsed, 1)}
+            'top1_correct': top1_correct, 'top1_races': top1_races,
+            'bets_placed': bets_placed, 'bets_won': bets_won,
+            'units_staked': round(units_staked, 1), 'units_net': round(units_net, 2),
+            'roi': roi, 'elapsed': round(elapsed, 1)}
 
 
 def update_summary(model_name: str, results: list):
@@ -567,20 +644,37 @@ def update_summary(model_name: str, results: list):
     if not valid: return
     total_races   = sum(r['top1_races']   for r in valid)
     total_correct = sum(r['top1_correct'] for r in valid)
+    total_bets    = sum(r.get('bets_placed', 0)   for r in valid)
+    total_bet_won = sum(r.get('bets_won', 0)       for r in valid)
+    total_staked  = sum(r.get('units_staked', 0.0) for r in valid)
+    total_net     = sum(r.get('units_net', 0.0)    for r in valid)
+
+    top1_acc = round(total_correct / total_races, 4) if total_races else 0
+    roi      = round(total_net / total_staked, 4)    if total_staked > 0 else None
+
     summary = {
-        'model':       model_name,
-        'dates_run':   len(valid),
-        'total_races': total_races,
-        'top1_accuracy': round(total_correct / total_races, 4) if total_races else 0,
-        'updated':     datetime.now().isoformat(),
-        'per_date':    [{k: v for k, v in r.items() if k != 'features'} for r in valid],
+        'model':         model_name,
+        'dates_run':     len(valid),
+        'total_races':   total_races,
+        'top1_accuracy': top1_acc,
+        'top1_pct':      round(top1_acc * 100, 1),
+        'bets_placed':   total_bets,
+        'bets_won':      total_bet_won,
+        'units_staked':  round(total_staked, 1),
+        'units_net':     round(total_net, 2),
+        'roi':           roi,
+        'roi_units':     round(total_net, 2),
+        'updated':       datetime.now().isoformat(),
+        'per_date':      [r for r in valid],
     }
     summary_path = results_dir(model_name) / 'summary.json'
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     with open(summary_path, 'w') as f:
         json.dump(summary, f, indent=2)
-    print(f"\nSummary: {total_correct}/{total_races} top-1 correct "
-          f"({summary['top1_accuracy']:.1%}) → {summary_path}")
+    roi_str = f'{total_net:+.2f}u ({roi:+.1%})' if roi is not None else '—'
+    print(f"\nSummary: {total_correct}/{total_races} top-1 ({top1_acc:.1%}) "
+          f"| 下注 {total_bets} 場 {total_bet_won}勝 ROI {roi_str} "
+          f"→ {summary_path}")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

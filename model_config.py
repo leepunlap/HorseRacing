@@ -7,7 +7,7 @@ load_config() to read any named model's tunable parameters.
 
 Usage:
     from model_config import load_config, FEATURES, FEATURE_COLS, FEATURE_CATEGORIES
-    cfg = load_config('v10_base')   # or load_config() for the active model
+    cfg = load_config('均衡基礎策略')   # or load_config() for the active model
 """
 
 import json
@@ -213,7 +213,7 @@ def get_active_model() -> str:
         if cfg.get('active'):
             return cfg['name']
     configs = list_models()
-    return configs[0]['name'] if configs else 'v10_base'
+    return configs[0]['name'] if configs else '均衡基礎策略'
 
 
 def load_config(name: str = None) -> dict:
@@ -255,19 +255,21 @@ def _active_cfg():
 def _get(key, default):
     return _active_cfg().get(key, default)
 
-XGB_PARAMS         = _get('xgb', {})
-NUM_BOOST_ROUNDS   = _get('num_boost_rounds', 100)
-GOING_MAP          = _get('going_map', {})
-PACE_DRAW          = _get('pace_draw', {})
-PACE_BUCKET        = _get('pace_bucket', {})
+XGB_PARAMS            = _get('xgb', {})
+NUM_BOOST_ROUNDS      = _get('num_boost_rounds', 100)
+GOING_MAP             = _get('going_map', {})
+PACE_DRAW             = _get('pace_draw', {})
+PACE_BUCKET           = _get('pace_bucket', {})
 EARLY_PACE_THRESHOLDS = [(v[0], v[1]) for v in _get('early_pace_thresholds', [])]
-DRAW_INNER_MAX     = _get('draw_inner_max', 5)
-DRAW_OUTER_MIN     = _get('draw_outer_min', 10)
-LAYOFF             = _get('layoff', {})
-WEIGHT_ALLOW_DIVISOR = _get('weight_allow_divisor', 20)
+DRAW_INNER_MAX        = _get('draw_inner_max', 5)
+DRAW_OUTER_MIN        = _get('draw_outer_min', 10)
+LAYOFF                = _get('layoff', {})
+WEIGHT_ALLOW_DIVISOR  = _get('weight_allow_divisor', 20)
 COLD_STABLE_THRESHOLD = _get('cold_stable_threshold', 0.05)
-CHRI               = _get('chri', {})
-PACE_MATCH         = _get('pace_match', {})
-TRAINER_FORM_DAYS  = _get('trainer_form_days', 365)
-RATING_TREND_WINDOW = _get('rating_trend_window', 3)
-STANDARD_GEAR      = set(_get('standard_gear', ['', 'B', 'TT']))
+CHRI                  = _get('chri', {})
+PACE_MATCH            = _get('pace_match', {})
+TRAINER_FORM_DAYS     = _get('trainer_form_days', 365)
+RATING_TREND_WINDOW   = _get('rating_trend_window', 3)
+STANDARD_GEAR         = set(_get('standard_gear', ['', 'B', 'TT']))
+SHRINKAGE             = _get('shrinkage', {})
+BET_EDGE_THRESHOLD    = _get('bet_edge_threshold', 1.0)

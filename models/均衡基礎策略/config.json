@@ -1,6 +1,6 @@
 {
-  "name": "v10_base",
-  "description": "Baseline V10 model — 44 features, XGBoost depth-5, walk-forward",
+  "name": "均衡基礎策略",
+  "description": "均衡基礎策略：44特徵走前推算，XGBoost深度5，貝葉斯平滑修正冷啟動偏差",
   "created": "2026-05-24",
   "active": true,
 
@@ -21,6 +21,19 @@
   "num_boost_rounds": 100,
 
   "features_disabled": [],
+
+  "bet_edge_threshold": 1.0,
+
+  "shrinkage": {
+    "field_avg_win_rate": 0.083,
+    "horse_alpha":        5,
+    "jockey_alpha":       20,
+    "trainer_alpha":      30,
+    "jt_alpha":           10,
+    "jh_alpha":           3,
+    "dist_alpha":         5,
+    "going_alpha":        3
+  },
 
   "going_map": {
     "Good":             0,

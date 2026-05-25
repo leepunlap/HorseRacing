@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
 
-app = FastAPI(title="Horse Racing V10", lifespan=lifespan)
+app = FastAPI(title="馬場分析", lifespan=lifespan)
 
 # ─── Auth Routes ───────────────────────────────────────────
 @app.post("/api/auth/login")
@@ -189,8 +189,6 @@ async def dashboard(auth = Depends(verify_token)):
             "horses": horse_count,
             "jockeys": jockey_count,
             "trainers": trainer_count,
-            "v10_top1": 37.0,
-            "v10_roi": "+1,125%",
         },
         "top_jockeys": top_jockeys,
         "top_trainers": top_trainers,
@@ -683,8 +681,8 @@ async def spa_index():
         return spa_path.read_text(encoding="utf-8")
     # Inline fallback
     return """
-    <!DOCTYPE html><html><head><title>Horse Racing V10</title></head>
-    <body><h1>Horse Racing V10</h1><p>SPA loading...</p></body></html>
+    <!DOCTYPE html><html><head><title>馬場分析</title></head>
+    <body><h1>馬場分析</h1><p>載入中...</p></body></html>
     """
 
 @app.get("/api/health")
