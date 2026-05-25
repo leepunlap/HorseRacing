@@ -1,5 +1,10 @@
 # Advisory: Cold-Start Problem & Exotic Bet Mathematics
 
+> Part of the documentation set. **README.md** is the entry point;
+> **USAGE.md** is the operator's manual; **ARCHITECTURE.md** defines
+> the strategy-vs-tuning distinction; **STRATEGIES.md** is the strategy
+> recipe book. This document covers the deeper mathematics.
+
 ## Part 1 — Cold-Start Problem
 
 ### The Current Situation

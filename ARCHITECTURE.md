@@ -1,5 +1,11 @@
 # Racing Framework Architecture
 
+> Part of the documentation set. **README.md** is the entry point;
+> **USAGE.md** is the operator's manual; **ADVISORY.md** covers the
+> deeper mathematics; **STRATEGIES.md** is the strategy recipe book.
+> This document defines what counts as a new strategy versus parameter
+> tuning, and where each piece of logic lives.
+
 ## The Core Distinction: Strategy vs Parameters vs Run
 
 This is the single most important concept. Three things that look similar are fundamentally different:
