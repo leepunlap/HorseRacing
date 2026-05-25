@@ -306,6 +306,8 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
              "model": model or "", "date": date}
         )
 
+    await _prog(30, "開始載入賽事數據...")
+
     db = get_db()
 
     # Racecard always comes from predictions/ (raw scraped data)
@@ -316,7 +318,7 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         if rc_path.exists():
             with open(rc_path) as f:
                 racecard = json.load(f)
-    await _prog(45, "已讀取賽事列表")
+    await _prog(36, "已讀取賽事列表")
 
     # Predictions come from model results dir if model is specified
     if model:
@@ -327,9 +329,10 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
     # Load model predictions (prob/edge per horse)
     predictions = {}
     if pred_json_path.exists():
+        await _prog(40, "讀取預測資料...")
         with open(pred_json_path, encoding='utf-8') as f:
             predictions = json.load(f)
-    await _prog(62, "已載入預測數據")
+    await _prog(52, "已載入預測數據")
 
     # Results from DB, keyed by normalised race_no then by brand
     results_by_race = {}
@@ -345,12 +348,13 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         row = dict(r)
         results_by_race[rn].append(row)
         results_by_brand[(rn, r['brand'])] = row
+    await _prog(60, "已查詢賽事結果")
 
     # Race metadata from DB
     db_races = {}
     for r in db.execute("SELECT * FROM races WHERE date = ? ORDER BY raceno", (date,)).fetchall():
         db_races[str(int(r['raceno']))] = dict(r)
-    await _prog(78, "已查詢賽事結果")
+    await _prog(68, "已讀取賽事資料")
 
     BET_EDGE_THRESHOLD = 1.0  # bet when edge (win_prob * odds) > 1.0 (positive EV)
 
@@ -361,7 +365,9 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         except: pass
 
     races_output = []
-    for rn in sorted(all_keys, key=int):
+    sorted_keys = sorted(all_keys, key=int)
+    n_keys = len(sorted_keys)
+    for idx, rn in enumerate(sorted_keys):
         rc         = racecard.get(rn) or racecard.get(rn.zfill(2), {})
         race_info  = db_races.get(rn, {})
         race_results = results_by_race.get(rn, [])
@@ -468,6 +474,11 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         }
         races_output.append(race)
 
+        # Broadcast merge progress every 2nd race (or every race if ≤5 total)
+        if n_keys <= 5 or idx % 2 == 1 or idx == n_keys - 1:
+            pct = 70 + int((idx + 1) / n_keys * 14)
+            await _prog(min(pct, 84), "組裝賽事數據...")
+
     db.close()
 
     # Scrape metadata: latest mtime among files under predictions/{date}/
@@ -478,7 +489,7 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
     # Whether this strategy has predictions for this date (drives the UI banner).
     # If predictions is an empty dict, the strategy hasn't run yet for this date.
     has_strategy_predictions = bool([k for k in predictions if not k.startswith('_')])
-    await _prog(88, "組裝回應數據")
+    await _prog(86, "組裝回應數據")
 
     return {
         "date":          date,
@@ -1425,37 +1436,57 @@ async def health():
 
 @app.get("/api/dates")
 async def available_dates(auth = Depends(verify_token), model: str = Query(None)):
-    """List dates that have results in DB, with prediction status per model."""
+    """List dates that have results in DB, with prediction status per model.
+
+    Optimised: single aggregate GROUP BY query instead of one connection + 2
+    queries per date (N+1 connections → 1 connection, 2N+1 queries → 1 query).
+    """
+    async def _prog(pct: int, step: str):
+        await progress_broadcast.broadcast(
+            {"type": "load_progress", "pct": pct, "step": step,
+             "model": model or "", "date": ""}
+        )
+
+    await _prog(12, "查詢日期列表...")
+
     db = get_db()
-    db_dates = [r[0] for r in db.execute(
-        "SELECT DISTINCT date FROM results ORDER BY date DESC"
-    ).fetchall()]
+    rows = db.execute("""
+        SELECT date, COUNT(DISTINCT race_no) as race_count, COUNT(*) as horse_count
+        FROM results
+        GROUP BY date
+        ORDER BY date DESC
+    """).fetchall()
     db.close()
 
-    # Determine prediction source directory
+    await _prog(15, "檢查預測狀態...")
+
     if model:
         pred_dir = MODELS_DIR / model / "results"
     else:
         pred_dir = BASE_DIR / "predictions"
 
     dates = []
-    for d in db_dates:
+    total = len(rows)
+    for i, r in enumerate(rows):
+        d = r['date']
         if len(d) != 10 or d[4] != '-':
             continue
         dp = pred_dir / d
         has_predictions = (dp / "predictions.json").exists() if dp.exists() else False
 
-        db = get_db()
-        res_count   = db.execute("SELECT COUNT(DISTINCT race_no) FROM results WHERE date=?", (d,)).fetchone()[0]
-        horse_count = db.execute("SELECT COUNT(*) FROM results WHERE date=?", (d,)).fetchone()[0]
-        db.close()
-
         dates.append({
             "date":            d,
             "has_predictions": has_predictions,
-            "race_count":      res_count,
-            "horse_count":     horse_count,
+            "race_count":      r['race_count'],
+            "horse_count":     r['horse_count'],
         })
+
+        # Broadcast every ~12th date for large lists (keeps progress bar moving steadily)
+        if total > 40 and i % max(total // 8, 1) == 0:
+            pct = 15 + int((i + 1) / total * 8)
+            await _prog(min(pct, 23), "檢查預測狀態...")
+
+    await _prog(24, "日期列表已就緒")
     return {"dates": dates}
 
 # ─── Main ──────────────────────────────────────────────────

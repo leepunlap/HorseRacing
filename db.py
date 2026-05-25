@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS models (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_results_date ON results(date);
 CREATE INDEX IF NOT EXISTS idx_results_race ON results(race_id);
 CREATE INDEX IF NOT EXISTS idx_results_horse ON results(horse_id);
 CREATE INDEX IF NOT EXISTS idx_results_brand ON results(brand);

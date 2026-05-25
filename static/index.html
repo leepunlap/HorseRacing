@@ -17,17 +17,27 @@ body{background:#f0f2f5}
 .login-box button{width:100%;padding:14px;margin-top:20px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14pt;cursor:pointer}
 .login-box .error{color:#e74c3c;margin-top:14px;font-size:11pt;display:none}
 .app{display:none}.app.auth{display:flex}
-.sidebar{position:fixed;top:0;left:0;height:100vh;background:#1a3a5c;color:#fff;padding:12px 0;z-index:50;transition:transform .25s;transform:translateX(0);width:210px;overflow-y:auto}
-.sidebar.closed{transform:translateX(-100%)}
-.sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:49;display:none}.sidebar-backdrop.show{display:block}
-.hamburger{position:fixed;top:8px;left:8px;z-index:51;background:#1a3a5c;color:#fff;border:none;border-radius:6px;width:40px;height:40px;cursor:pointer;font-size:20px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.sidebar.closed~.hamburger{display:flex}
-.sidebar-header{padding:10px 16px;font-size:16pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center}
-.sidebar-header .close-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:18px}
-.nav-item{display:flex;align-items:center;padding:12px 16px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:11pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
-.nav-item .icon{width:24px;margin-right:12px;font-size:15px;text-align:center}
-.main{flex:1;padding:20px;overflow-y:auto;margin-left:52px}
+.sidebar{position:fixed;top:0;left:0;height:100vh;background:#1a3a5c;color:#fff;padding:12px 0;z-index:50;overflow-y:auto;overflow-x:hidden;white-space:nowrap;width:210px;transition:width .2s ease}
+.sidebar.collapsed{width:52px}
+.sidebar-header{padding:10px 14px;font-size:16pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center}
+.sidebar-toggle{background:none;border:none;color:#fff;cursor:pointer;font-size:18px;padding:0;line-height:1}
+.sidebar-header .logo-text{transition:opacity .15s}
+.sidebar.collapsed .sidebar-header .logo-text{opacity:0}
+.sidebar:not(.collapsed) .sidebar-header .logo-text{opacity:1}
+.nav-item{display:flex;align-items:center;padding:12px 14px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:11pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
+.nav-item .icon{width:24px;margin-right:12px;font-size:15px;text-align:center;flex-shrink:0}
+.nav-item span:not(.icon){transition:opacity .15s}
+.sidebar.collapsed .nav-item span:not(.icon){opacity:0}
+.sidebar:not(.collapsed) .nav-item span:not(.icon){opacity:1}
+.main{flex:1;padding:20px;overflow-y:auto;margin-left:218px;transition:margin-left .2s ease}
+.sidebar.collapsed~.main{margin-left:60px}
 .logout-btn{position:fixed;top:10px;right:16px;z-index:52;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:10pt;cursor:pointer}
+
+/* Mobile: sidebar overlays content when expanded */
+@media(max-width:767px){
+  .sidebar:not(.collapsed){width:210px;box-shadow:4px 0 20px rgba(0,0,0,0.3)}
+  .main{margin-left:60px!important}
+}
 .page{display:none}.page.show{display:block}
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
 .horse-card{background:#fff;border-radius:6px;padding:10px 12px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);font-size:10pt}
@@ -142,8 +152,8 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 <button onclick="login()">登入</button><div class="error" id="loginError">密碼錯誤</div></div></div>
 
 <div class="app" id="app">
-  <div class="sidebar closed" id="sidebar">
-    <div class="sidebar-header"><span>🏇 馬場分析</span><button class="close-btn" onclick="closeSidebar()">✕</button></div>
+  <div class="sidebar collapsed" id="sidebar">
+    <div class="sidebar-header"><span class="logo-icon">🏇</span><span class="logo-text">馬場分析</span><button class="sidebar-toggle" onclick="toggleSidebar()">☰</button></div>
     <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">📊</span><span>儀表板</span></div>
     <div class="nav-item" data-page="races" onclick="go('races')"><span class="icon">🏁</span><span>賽事</span></div>
     <div class="nav-item" data-page="model" onclick="go('model')"><span class="icon">🤖</span><span>模型</span></div>
@@ -152,8 +162,6 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
     <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">🏇</span><span>騎師</span></div>
     <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">👨‍🏫</span><span>練馬師</span></div>
   </div>
-  <div class="sidebar-backdrop" id="backdrop" onclick="closeSidebar()"></div>
-  <button class="hamburger" id="hamBtn" onclick="openSidebar()">☰</button>
   <button class="logout-btn" onclick="logout()">登出</button>
 
   <div class="main">
@@ -326,8 +334,7 @@ function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then
 (function(){const s=getCookie('saved_pw');if(s){document.getElementById('pwInput').value=s;document.getElementById('rememberPw').checked=true}})();
 
 // ─── Navigation ────────────────────────────────────────────
-function openSidebar(){document.getElementById('sidebar').classList.remove('closed');document.getElementById('backdrop').classList.add('show')}
-function closeSidebar(){document.getElementById('sidebar').classList.add('closed');document.getElementById('backdrop').classList.remove('show')}
+function toggleSidebar(){const sb=document.getElementById('sidebar');sb.classList.toggle('collapsed');document.querySelector('.sidebar-toggle').textContent=sb.classList.contains('collapsed')?'☰':'✕'}
 function go(name){
   setCookie('last_page',name,365);
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
@@ -336,7 +343,6 @@ function go(name){
   const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('show');
   const titles={dashboard:'儀表板',races:'賽事',model:'模型',eric:'Eric 定律',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'};
   document.getElementById('pageTitle').textContent=titles[name]||'';
-  closeSidebar();
   if(name==='dashboard')loadDashboard();
   if(name==='races')loadRaces();
   if(name==='model')loadModelPage();
@@ -466,6 +472,7 @@ async function initModelNav(){
 async function selectModel(name){
   racesModel=name;
   activeModel=name;
+  await _ensureModels();
   renderModelNav('modelNav',racesModel,'selectModel');
   document.getElementById('dateSelect').innerHTML='';
   await loadRaces();
@@ -477,7 +484,7 @@ async function loadRaces(dateStr){
   // ── Stage 0: immediate loading overlay ──────────────────────
   const earlyModel=getSelectedModel();
   const earlyDate=dateStr||document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
-  setRaceLoading(5,'初始化策略導覽...',earlyModel,earlyDate);
+  setRaceLoading(10,'初始化策略導覽...',earlyModel,earlyDate);
 
   await initModelNav();
   if(seq!==_loadSeq)return;
@@ -492,7 +499,7 @@ async function loadRaces(dateStr){
 
   // ── Stage 1: fetch available dates ──────────────────────────
   if(!document.getElementById('dateSelect').options.length){
-    _setRaceLoadingPct(20,'載入日期列表...');
+    _setRaceLoadingPct(14,'載入日期列表...');
     const dd=await api('/api/dates?model='+(model||''));
     if(seq!==_loadSeq)return;
     if(dd&&dd.dates){
@@ -500,15 +507,15 @@ async function loadRaces(dateStr){
       sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.race_count?'R'+d.race_count+'場':''} ${d.horse_count?d.horse_count+'匹':''}</option>`).join('');
       if(!dd.dates.find(d=>d.date===dateStr)&&dd.dates.length)dateStr=dd.dates[0].date;
     }
-    _setRaceLoadingPct(35,'日期已載入');
+    _setRaceLoadingPct(25,'日期已載入');
   }
   document.getElementById('dateSelect').value=dateStr;
   _loadingDate=dateStr;
 
   // ── Stage 2: fetch race + prediction data ────────────────────
-  // Server broadcasts load_progress WS events (40-85%) while processing.
-  // We start at 40% here; WS events will advance it in real time.
-  _setRaceLoadingPct(40,'讀取賽事數據...');
+  // Server broadcasts load_progress WS events (30-86%) while processing.
+  // We start at 28% here; WS events will advance it in real time.
+  _setRaceLoadingPct(28,'讀取賽事數據...');
   const rc=await api('/api/races/'+dateStr+'?model='+(model||''));
   if(seq!==_loadSeq)return;
 
@@ -685,7 +692,8 @@ function connectProgressWS(){
     let msg; try{ msg = JSON.parse(ev.data); } catch(e){ return; }
     if(msg.type === 'load_progress'){
       // Real-time server progress for /api/races fetch — update bar if still loading same request
-      if(msg.model===_loadingModel && msg.date===_loadingDate){
+      // Accept events where: model matches, AND (date matches OR we don't have a date yet)
+      if(msg.model===_loadingModel && (msg.date===_loadingDate || !_loadingDate)){
         _setRaceLoadingPct(msg.pct, msg.step);
       }
     } else if(msg.type === 'start'){
@@ -1937,6 +1945,7 @@ async function initDashNav(){
 
 async function selectDashModel(name){
   dashModel=name;
+  await _ensureModels();
   renderModelNav('dashModelNav',dashModel,'selectDashModel');
   await _fetchAndRenderDash();
 }
