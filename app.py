@@ -376,11 +376,15 @@ async def list_models_endpoint(auth = Depends(verify_token)):
     for cfg in configs:
         summary = cfg.pop('_summary', {})
         out.append({
-            "name":        cfg.get("name"),
-            "description": cfg.get("description", ""),
-            "active":      cfg.get("active", False),
-            "created":     cfg.get("created", ""),
-            "summary":     summary,
+            "name":          cfg.get("name"),
+            "description":   cfg.get("description", ""),
+            "strategy_type": cfg.get("strategy_type", "xgb_walkforward"),
+            "version":       cfg.get("version", ""),
+            "parent":        cfg.get("parent"),
+            "notes":         cfg.get("notes", ""),
+            "active":        cfg.get("active", False),
+            "created":       cfg.get("created", ""),
+            "summary":       summary,
         })
     return {"models": out}
 

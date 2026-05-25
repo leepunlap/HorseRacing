@@ -618,8 +618,12 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
 
         output[rn_key.zfill(2)] = {'distance': dist, 'class': cls_str, 'horses': horses}
 
-    output['_feature_cols']    = feat_sorted
-    output['_feature_weights'] = {k: round(v, 1) for k, v in feat_weights.items()}
+    output['_model']          = cfg.get('name', '')
+    output['_version']        = cfg.get('version', '')
+    output['_strategy_type']  = cfg.get('strategy_type', 'xgb_walkforward')
+    output['_generated_at']   = datetime.now().isoformat(timespec='seconds')
+    output['_feature_cols']   = feat_sorted
+    output['_feature_weights']= {k: round(v, 1) for k, v in feat_weights.items()}
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as fh:
@@ -652,8 +656,17 @@ def update_summary(model_name: str, results: list):
     top1_acc = round(total_correct / total_races, 4) if total_races else 0
     roi      = round(total_net / total_staked, 4)    if total_staked > 0 else None
 
+    cfg_for_summary = {}
+    try:
+        from model_config import load_config as _lc
+        cfg_for_summary = _lc(model_name)
+    except Exception:
+        pass
+
     summary = {
         'model':         model_name,
+        'version':       cfg_for_summary.get('version', ''),
+        'strategy_type': cfg_for_summary.get('strategy_type', 'xgb_walkforward'),
         'dates_run':     len(valid),
         'total_races':   total_races,
         'top1_accuracy': top1_acc,
@@ -715,7 +728,15 @@ def main():
     model_name = cfg['name']
     out_dir    = results_dir(model_name)
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Model: {model_name}  →  {out_dir}")
+
+    print(f"{'─'*60}")
+    print(f"策略：{model_name}")
+    print(f"版本：{cfg.get('version','—')}  類型：{cfg.get('strategy_type','—')}")
+    print(f"說明：{cfg.get('description','')}")
+    if cfg.get('notes'):
+        print(f"備注：{cfg.get('notes','')}")
+    print(f"輸出：{out_dir}")
+    print(f"{'─'*60}")
 
     print(f"\nRunning {len(targets)} date(s)...")
     all_results = []

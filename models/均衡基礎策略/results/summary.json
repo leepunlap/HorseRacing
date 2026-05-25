@@ -1,5 +1,7 @@
 {
   "model": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "version": "1.1",
+  "strategy_type": "xgb_walkforward",
   "dates_run": 1,
   "total_races": 11,
   "top1_accuracy": 0.0,
@@ -10,7 +12,7 @@
   "units_net": -59.0,
   "roi": -1.0,
   "roi_units": -59.0,
-  "updated": "2026-05-25T08:04:43.231432",
+  "updated": "2026-05-25T08:08:23.000201",
   "per_date": [
     {
       "date": "2026-05-03",

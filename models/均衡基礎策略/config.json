@@ -1,8 +1,12 @@
 {
-  "name": "均衡基礎策略",
-  "description": "均衡基礎策略：44特徵走前推算，XGBoost深度5，貝葉斯平滑修正冷啟動偏差",
-  "created": "2026-05-24",
-  "active": true,
+  "name":          "均衡基礎策略",
+  "description":   "均衡基礎策略：44特徵走前推算，XGBoost深度5，貝葉斯平滑修正冷啟動偏差",
+  "strategy_type": "xgb_walkforward",
+  "version":       "1.1",
+  "parent":        null,
+  "notes":         "v1.1：加入貝葉斯平滑（Bayesian shrinkage），修正新馬/新騎師/新組合的冷啟動偏差",
+  "created":       "2026-05-24",
+  "active":        true,
 
   "xgb": {
     "objective":        "binary:logistic",
