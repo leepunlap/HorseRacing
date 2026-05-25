@@ -12,7 +12,7 @@
   "units_net": -59.0,
   "roi": -1.0,
   "roi_units": -59.0,
-  "updated": "2026-05-25T08:08:23.000201",
+  "updated": "2026-05-25T09:21:35.575820",
   "per_date": [
     {
       "date": "2026-05-03",
@@ -25,7 +25,7 @@
       "units_staked": 59.0,
       "units_net": -59.0,
       "roi": -1.0,
-      "elapsed": 54.4
+      "elapsed": 53.9
     }
   ]
 }

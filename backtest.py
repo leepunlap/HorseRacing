@@ -1,15 +1,68 @@
 #!/usr/bin/env python3
 """
-Walk-forward backtest: train XGBoost on all data before each target date,
-predict win probabilities, save to models/{model}/results/{date}/predictions.json.
+backtest.py — Walk-forward XGBoost prediction engine
+=====================================================
 
-Usage:
-    python3 backtest.py --all                               # active model, all CSV dates
-    python3 backtest.py --model 均衡基礎策略 --all          # named model, all CSV dates
-    python3 backtest.py --from 2026-05-01 --to 2026-05-31 # date range (DB dates OK)
-    python3 backtest.py 2026-05-03 2026-05-06              # specific dates
-    python3 backtest.py --all --force                       # overwrite existing
-    python3 backtest.py --all --publish                     # copy results → predictions/
+ARCHITECTURE OVERVIEW
+---------------------
+This module is the core prediction engine. It does ONE thing: given a target
+date and a model config, train an XGBoost model on all races before that date,
+then predict win probabilities for every horse running that day.
+
+Pipeline (run once per target date):
+
+    ┌────────────────────────────────────────────────────────────────────┐
+    │  1. LOAD       _load_today_rows()    CSV first, DB fallback         │
+    │  2. ENGINEER   _engineer_features()  44 features × all horses       │
+    │                  ├─ compute_win_rates()      Bayesian shrunk rates  │
+    │                  ├─ compute_pace_styles()    Sectionals → style     │
+    │                  ├─ compute_horse_history()  Gear/rating/class hist │
+    │                  └─ build_horse_features()   Per-horse 44-vector    │
+    │  3. TRAIN      _train_xgboost()      Walk-forward; only prior dates │
+    │  4. PREDICT    .predict()            Raw probability per horse       │
+    │  5. NORMALISE  _normalise_per_race() Probs sum to 1 within race     │
+    │  6. TALLY      _tally_race()         Top-1 accuracy + bet P&L       │
+    │  7. PERSIST    JSON dump             predictions.json + summary.json│
+    └────────────────────────────────────────────────────────────────────┘
+
+KEY DESIGN PRINCIPLES
+---------------------
+• Walk-forward ONLY — predictions for date D use ONLY data from dates < D.
+  The runner re-trains the model for every target date. No look-ahead.
+
+• Config drives behaviour — every tunable parameter lives in
+  models/{name}/config.json. backtest.py is strategy-agnostic; it executes
+  whatever the config specifies. To create a new variant, copy a config.
+
+• Bayesian shrinkage — see smoothed() and ADVISORY.md §1. New horses,
+  jockeys, and combinations are blended toward priors instead of scoring 0.0.
+
+• Self-describing output — predictions.json embeds model name, version,
+  strategy_type, generation timestamp, and full feature importance ranking.
+  A downstream consumer can reconstruct what produced the file with no
+  external context.
+
+USAGE
+-----
+    python3 backtest.py --all                              # active model, all dates
+    python3 backtest.py --model 均衡基礎策略 2026-05-03    # specific model + date
+    python3 backtest.py --from 2026-05-01 --to 2026-05-31  # date range
+    python3 backtest.py --all --force                      # overwrite existing
+    python3 backtest.py --all --publish                    # copy → predictions/
+
+EXTENSION POINTS (for programmers)
+-----------------------------------
+To add a new strategy_type (e.g. LightGBM, neural net):
+  1. Write a sibling backtest_{type}.py module exposing run_date().
+  2. Dispatch by cfg['strategy_type'] in main() (one-line switch).
+  3. Configs use "strategy_type": "{type}" to opt in.
+
+To add a new feature:
+  1. Add it to FEATURES in model_config.py (with description, category).
+  2. Compute it in build_horse_features() under the matching category.
+  3. The model picks it up automatically — it reads FEATURE_COLS dynamically.
+
+See ARCHITECTURE.md for the strategy-vs-tuning distinction and folder layout.
 """
 
 import sys, os, json, argparse, sqlite3, time, re, shutil
@@ -23,10 +76,29 @@ import warnings; warnings.filterwarnings('ignore')
 import model_config as _mc
 from model_config import FEATURE_COLS, load_config, results_dir
 
+# ── Paths ─────────────────────────────────────────────────────────────────────
 BASE    = Path(__file__).parent
 DATA    = BASE / 'data'
-PRED    = BASE / 'predictions'   # production output (published from active model)
+PRED    = BASE / 'predictions'                  # production output dir
 DB_PATH = DATA / 'racing.db'
+
+# ── Default fallbacks (used when config is silent on a key) ───────────────────
+# These exist so a partially-specified config still runs. Real configs should
+# always override the relevant ones. See models/均衡基礎策略/config.json for
+# the canonical, fully-specified example.
+DEFAULT_AGE                  = 5
+DEFAULT_WEIGHT_LBS           = 120
+DEFAULT_DISTANCE_M           = 1400
+DEFAULT_CLASS                = 4
+DEFAULT_PARTICIPANTS         = 14
+DEFAULT_DRAW                 = 7              # middle of typical field
+DEFAULT_MAX_WT_IN_FIELD      = 135            # for weight_allow if no group data
+DEFAULT_LATE_PACE            = 0.85           # neutral late-pace ratio
+DEFAULT_LAYOFF_DAYS          = 30             # for horses with no prior runs
+DEFAULT_HORSE_STYLE_MIDFIELD = 2              # if sectionals data missing
+MIN_TRAINING_ROWS            = 100            # below this, skip the date
+MIN_ACTIVE_FEATURES          = 10             # below this, skip the date
+NORMALISE_MIN_PROB_SUM       = 0.0            # >this triggers per-race rescale
 
 
 def _cfg_values(cfg: dict):
@@ -292,33 +364,35 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
      inner_max, outer_min, layoff, wt_div, cold_thresh, chri,
      pace_match, form_days, rt_window, std_gear, feats_off) = _cfg_values(cfg)
 
-    b   = rw.get('BrandNo', 'X') or 'X'
-    j   = rw.get('JockeyCN', 'X') or 'X'
-    t   = rw.get('TrainerCN', 'X') or 'X'
-    dv  = int(rw['Draw']) if pd.notna(rw.get('Draw')) else 7
-    wt  = float(rw.get('ActWt') or 120)
-    dist = float(rw.get('Distance') or 1400)
-    cls  = float(rw.get('Class') or 4)
-    part = float(rw.get('Participants') or 14)
+    # Identity & raw inputs (with safe defaults when source data is sparse)
+    b    = rw.get('BrandNo', 'X')  or 'X'
+    j    = rw.get('JockeyCN', 'X') or 'X'
+    t    = rw.get('TrainerCN','X') or 'X'
+    dv   = int(rw['Draw'])         if pd.notna(rw.get('Draw'))    else DEFAULT_DRAW
+    wt   = float(rw.get('ActWt')   or DEFAULT_WEIGHT_LBS)
+    dist = float(rw.get('Distance')or DEFAULT_DISTANCE_M)
+    cls  = float(rw.get('Class')   or DEFAULT_CLASS)
+    part = float(rw.get('Participants') or DEFAULT_PARTICIPANTS)
     odds = float(rw.get('Odds') or 0)
     gv   = going_map.get(str(rw.get('Going', 'Good') or 'Good'), 0)
     ds   = str(rw.get('Distance', ''))
     pi   = prof_dict.get(b, {})
-    hs_v = hs_style.get(b, 2)
+    hs_v = hs_style.get(b, DEFAULT_HORSE_STYLE_MIDFIELD)
 
     HS  = stats['HS'];   JS  = stats['JS'];   TS  = stats['TS']
     JTS = stats['JTS'];  JHS = stats['JHS']
     HDS = stats['HDS'];  HGS = stats['HGS']
     SS  = stats['SS'];   last_d = stats['last_d']
 
-    fmw = grp['ActWt'].max() if 'ActWt' in grp.columns else 135
+    fmw = grp['ActWt'].max() if 'ActWt' in grp.columns else DEFAULT_MAX_WT_IN_FIELD
     going_str = str(rw.get('Going', 'Good'))   # used in both Adaptability and going_num
 
     f = {}
 
     # ── Horse Profile ────────────────────────────────────────────────────
-    f['age']         = pi.get('Age', 5) or 5
+    f['age']         = pi.get('Age', DEFAULT_AGE) or DEFAULT_AGE
     f['sex_gelding'] = 1 if 'gelding' in str(pi.get('Sex', '')).lower() else 0
+    # Synthesise rating from weight+class if HKJC didn't report one
     f['rating']      = pi.get('Rating', 0) or (wt * 0.3 + (6 - cls) * 20)
     f['races_count'] = pi.get('RaceCount', HS[b]['r']) or HS[b]['r']
 
@@ -395,7 +469,7 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
     # ── Form / Fitness ───────────────────────────────────────────────────
     date = rw['Date'] if hasattr(rw['Date'], 'year') else cutoff_date
     ld   = last_d.get(b, datetime(2020, 1, 1))
-    f['days_since'] = min((date - ld).days, layoff.get('max_days', 365)) if date > ld else 30
+    f['days_since'] = min((date - ld).days, layoff.get('max_days', 365)) if date > ld else DEFAULT_LAYOFF_DAYS
     if f['days_since'] > layoff.get('long_days', 28):
         f['layoff_penalty'] = layoff.get('long_penalty', -12)
     elif f['days_since'] > layoff.get('medium_days', 14):
@@ -420,7 +494,7 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
     f['pace_style_match'] = pace_style_match_score(hs_v, race_pace_str, pace_match)
     f['pace_draw_bonus']  = pace_draw.get(race_pace_str, {}).get(draw_group(dv, inner_max, outer_min), 0)
     lps = hlp.get(b, [])
-    f['late_pace_avg']    = np.mean(lps) if lps else 0.85
+    f['late_pace_avg']    = np.mean(lps) if lps else DEFAULT_LATE_PACE
 
     # ── Composite / Interactions ─────────────────────────────────────────
     f['cold_stable_x_wide']  = 1 if swr < cold_thresh and dv >= outer_min else 0
@@ -471,57 +545,71 @@ def build_features(rows: pd.DataFrame, cutoff_date, res_hist, sec_hist,
     return pd.DataFrame(feat_rows)
 
 
-# ── Per-date prediction ───────────────────────────────────────────────────────
+# ── Per-date prediction (pipeline) ────────────────────────────────────────────
+#
+# run_date() orchestrates the 7-step pipeline below. Each helper handles one
+# phase. The split exists so each phase can be tested or replaced in isolation
+# without rewriting the orchestrator.
+# ──────────────────────────────────────────────────────────────────────────────
 
-def run_date(date_str: str, res_csv, sec, prof_dict, rh,
-             cfg: dict, out_dir: Path, force=False) -> dict:
-    """Run prediction for one date. Returns result dict for summary, or None if skipped."""
-    out_path = out_dir / date_str / 'predictions.json'
-    if out_path.exists() and not force:
-        print(f"  {date_str}: already exists — skip (use --force to overwrite)")
-        return None
 
+def _load_today_rows(date_str: str, res_csv: pd.DataFrame):
+    """PHASE 1 — LOAD.
+
+    Resolve today's race rows. CSV is the primary source (historical data);
+    if today's date isn't in the CSV, fall back to the DB (recently-scraped).
+    Returns (rows, source_label) or (None, None) if no data exists.
+    """
     target_date = datetime.strptime(date_str, '%Y-%m-%d')
-
-    # Source rows — CSV first, then DB
     csv_rows = res_csv[res_csv['Date'] == target_date]
     if len(csv_rows) > 0:
-        today_rows = csv_rows
-        source = 'CSV'
-    else:
-        today_rows = load_db_rows(date_str)
-        source = 'DB'
+        return csv_rows, 'CSV'
+    db_rows = load_db_rows(date_str)
+    if len(db_rows) > 0:
+        return db_rows, 'DB'
+    return None, None
 
-    if len(today_rows) == 0:
-        print(f"  {date_str}: no data found — skip")
-        return None
 
-    train_rows = res_csv[res_csv['Date'] < target_date]
-    if len(train_rows) < 100:
-        print(f"  {date_str}: insufficient training data ({len(train_rows)} rows) — skip")
-        return None
+def _engineer_features(today_rows, target_date, res_csv, sec, prof_dict, rh, cfg):
+    """PHASE 2 — ENGINEER feature matrices for today + all prior dates.
 
-    t0 = time.time()
+    Both matrices use the SAME stat accumulators (computed from history before
+    target_date) so feature distributions are consistent across train and test.
+    Returns (today_feats, train_feats, feat_cols) or (None, None, None) if
+    insufficient data.
+    """
     res_hist = res_csv[res_csv['Date'] < target_date]
-    sec_hist = sec[sec['Date'] < target_date]
-    rh_hist  = rh[rh['Date'] < target_date]
+    sec_hist = sec   [sec  ['Date'] < target_date]
+    rh_hist  = rh    [rh   ['Date'] < target_date]
+
+    if len(res_hist) < MIN_TRAINING_ROWS:
+        print(f"  insufficient training data ({len(res_hist)} rows)")
+        return None, None, None
 
     today_feats = build_features(today_rows, target_date, res_hist, sec_hist, prof_dict, rh_hist, cfg)
-    train_feats = build_features(train_rows, target_date, res_hist, sec_hist, prof_dict, rh_hist, cfg)
+    train_feats = build_features(res_hist,   target_date, res_hist, sec_hist, prof_dict, rh_hist, cfg)
 
     if len(today_feats) == 0 or len(train_feats) == 0:
-        print(f"  {date_str}: empty feature matrix — skip")
-        return None
+        print(f"  empty feature matrix")
+        return None, None, None
 
-    disabled = set(cfg.get('features_disabled', []))
+    disabled  = set(cfg.get('features_disabled', []))
     feat_cols = [c for c in FEATURE_COLS if c not in disabled
                  and c in today_feats.columns and c in train_feats.columns]
-    if len(feat_cols) < 10:
-        print(f"  {date_str}: too few features ({len(feat_cols)}) — skip")
-        return None
+    if len(feat_cols) < MIN_ACTIVE_FEATURES:
+        print(f"  too few features ({len(feat_cols)})")
+        return None, None, None
 
-    xgb_params   = cfg.get('xgb', {})
-    n_rounds     = cfg.get('num_boost_rounds', 100)
+    return today_feats, train_feats, feat_cols
+
+
+def _train_and_predict(train_feats, today_feats, feat_cols, cfg):
+    """PHASES 3 + 4 — TRAIN XGBoost and PREDICT today's probabilities.
+
+    Returns (raw_probs, feat_weights, feat_sorted_by_importance).
+    """
+    xgb_params = cfg.get('xgb', {})
+    n_rounds   = cfg.get('num_boost_rounds', 100)
 
     X_train = train_feats[feat_cols].fillna(0)
     y_train = train_feats['won'].values
@@ -535,8 +623,16 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
     importance   = model.get_score(importance_type='gain')
     feat_weights = {fn: float(importance.get(fn, 0.0)) for fn in feat_cols}
     feat_sorted  = sorted(feat_cols, key=lambda f: feat_weights[f], reverse=True)
+    return raw_probs, feat_weights, feat_sorted
 
-    # Normalise probabilities per race
+
+def _normalise_per_race(today_feats, raw_probs):
+    """PHASE 5 — NORMALISE raw probabilities so each race sums to 1.0.
+
+    XGBoost outputs unnormalised P(win) per horse, computed independently.
+    We rescale so that within each race the probabilities form a valid
+    distribution (necessary for Harville-derived exotic prices later).
+    """
     today_feats = today_feats.copy()
     today_feats['prob']     = raw_probs
     today_feats['win_prob'] = raw_probs
@@ -544,80 +640,176 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
         mask  = today_feats['race_no'] == rn
         raw   = today_feats.loc[mask, 'win_prob'].values
         total = raw.sum()
-        if total > 0:
+        if total > NORMALISE_MIN_PROB_SUM:
             today_feats.loc[mask, 'win_prob'] = raw / total
+    return today_feats
 
-    # Build output JSON
-    output = {}
-    top1_correct = 0; top1_races = 0
-    bets_placed = 0; bets_won = 0; units_staked = 0.0; units_net = 0.0
+
+def _resolve_horse_name(brand: str, today_rows: pd.DataFrame) -> str:
+    """Extract a clean horse name from today_rows by brand number.
+
+    Handles both CSV-source rows (HorseCN with embedded '(brand)') and DB-source
+    rows (horse_name already clean). Returns '' if no match.
+    """
+    if 'HorseCN' in today_rows.columns:
+        hrow = today_rows[today_rows['BrandNo'] == brand]
+        if len(hrow):
+            return re.sub(r'\s*\([A-Z]\d+\)', '', str(hrow['HorseCN'].iloc[0])).strip()
+    if 'horse_name' in today_rows.columns:
+        hrow = today_rows[today_rows['BrandNo'] == brand]
+        if len(hrow):
+            return str(hrow['horse_name'].iloc[0])
+    return ''
+
+
+def _build_horse_record(tr, today_rows, feat_sorted) -> dict:
+    """Build one horse's output record from its feature row + source row.
+
+    The record is the JSON shape consumed by app.py and the UI: identity
+    fields (no, name, brand, jockey, trainer), today's setup (draw, weight,
+    rating, win_odds), the three probability fields (prob, win_prob, edge),
+    and a sorted feature snapshot for explanation.
+    """
+    brand = tr['node']
+    if 'BrandNo' in today_rows.columns:
+        orig = today_rows[today_rows['BrandNo'] == brand]
+    else:
+        orig = pd.DataFrame()
+    jockey  = orig['JockeyCN'].iloc[0]  if len(orig) and 'JockeyCN'  in orig.columns else ''
+    trainer = orig['TrainerCN'].iloc[0] if len(orig) and 'TrainerCN' in orig.columns else ''
+
+    return {
+        'no':       '',           # filled by caller after enumeration
+        'name':     _resolve_horse_name(brand, today_rows),
+        'brand':    brand,
+        'jockey':   str(jockey),
+        'trainer':  str(trainer),
+        'draw':     str(int(tr.get('draw', 0))),
+        'weight':   str(int(tr.get('weight', 0))),
+        'rating':   str(int(tr.get('rating', 0))),
+        'win_odds': str(tr.get('odds_raw', '')),
+        'prob':     round(float(tr['prob']),     4),
+        'win_prob': round(float(tr['win_prob']), 4),
+        'edge':     round(float(tr['win_prob']) * float(tr.get('odds_raw') or 0), 2),
+        'features': {c: round(float(tr.get(c, 0) or 0), 4) for c in feat_sorted},
+    }
+
+
+def _tally_race(horses, today_feats, race_no_int, cfg, accum):
+    """PHASE 6 — TALLY top-1 accuracy + bet P&L for one race.
+
+    Mutates `accum` (a dict carrying running totals across all races):
+        accum['top1_races']    += 1
+        accum['top1_correct']  += 1 if model's top pick wins
+        accum['bets_placed']   += N where N = horses meeting bet criteria
+        accum['bets_won']      += M where M wagered horses actually won
+        accum['units_staked']  += N      (one unit per bet)
+        accum['units_net']     += (odds - 1) per win, -1 per loss
+    """
+    if not horses:
+        return
+
     bet_edge_threshold = cfg.get('bet_edge_threshold', 1.0)
+    bet_min_odds      = cfg.get('bet_min_odds', 0.0)
+    bet_max_odds      = cfg.get('bet_max_odds', 999.0)
+
+    # Top-1 accuracy
+    accum['top1_races'] += 1
+    predicted_winner = max(horses, key=lambda h: h['win_prob'])
+    actual_winners = {
+        h['brand'] for h in horses
+        if int(today_feats[
+            (today_feats['node']    == h['brand']) &
+            (today_feats['race_no'] == race_no_int)
+        ]['won'].values[0]) == 1
+    }
+    if predicted_winner['brand'] in actual_winners:
+        accum['top1_correct'] += 1
+
+    # Bet on every horse with positive EV (edge > threshold) within odds band.
+    # Multiple bets per race are allowed — one model, multiple opinions.
+    for h in horses:
+        if h['edge'] <= bet_edge_threshold:
+            continue
+        odds_val = float(h.get('win_odds') or 0)
+        if odds_val <= 1.0 or odds_val < bet_min_odds or odds_val > bet_max_odds:
+            continue
+        accum['bets_placed']  += 1
+        accum['units_staked'] += 1.0
+        if h['brand'] in actual_winners:
+            accum['bets_won']  += 1
+            accum['units_net'] += odds_val - 1.0   # profit = odds − stake
+        else:
+            accum['units_net'] -= 1.0              # loss   = stake
+
+
+def _format_race_meta(today_rows, race_no_int) -> tuple:
+    """Extract (distance, class_str) for the race header in output JSON."""
+    rinfo = today_rows[today_rows['RaceNo'] == race_no_int]
+    dist  = (str(int(rinfo['Distance'].iloc[0]))
+             if len(rinfo) and pd.notna(rinfo['Distance'].iloc[0]) else '')
+    cls_raw = rinfo['Class'].iloc[0] if len(rinfo) else ''
+    cls_str = (str(int(cls_raw)) + '班'
+               if pd.notna(cls_raw) and str(cls_raw) not in ('', 'nan') else '')
+    return dist, cls_str
+
+
+def run_date(date_str: str, res_csv, sec, prof_dict, rh,
+             cfg: dict, out_dir: Path, force=False) -> dict:
+    """Generate predictions for ONE target date.
+
+    This is the orchestrator. The actual work happens in the _phase helpers.
+    Returns a result dict for the summary aggregator, or None if skipped.
+    """
+    out_path = out_dir / date_str / 'predictions.json'
+    if out_path.exists() and not force:
+        print(f"  {date_str}: already exists — skip (use --force to overwrite)")
+        return None
+
+    # 1. LOAD
+    today_rows, source = _load_today_rows(date_str, res_csv)
+    if today_rows is None:
+        print(f"  {date_str}: no data found — skip")
+        return None
+
+    target_date = datetime.strptime(date_str, '%Y-%m-%d')
+    t0 = time.time()
+
+    # 2. ENGINEER
+    today_feats, train_feats, feat_cols = _engineer_features(
+        today_rows, target_date, res_csv, sec, prof_dict, rh, cfg)
+    if today_feats is None:
+        return None
+
+    # 3. + 4. TRAIN + PREDICT
+    raw_probs, feat_weights, feat_sorted = _train_and_predict(
+        train_feats, today_feats, feat_cols, cfg)
+
+    # 5. NORMALISE per race
+    today_feats = _normalise_per_race(today_feats, raw_probs)
+
+    # 6. TALLY (top-1 + bet P&L) WHILE building the output JSON
+    output = {}
+    accum  = {'top1_correct': 0, 'top1_races': 0,
+              'bets_placed':  0, 'bets_won':   0,
+              'units_staked': 0.0, 'units_net':  0.0}
 
     for race_no, grp in today_feats.groupby('race_no'):
-        rn_key  = str(int(race_no))
-        rinfo   = today_rows[today_rows['RaceNo'] == int(race_no)]
-        dist    = str(int(rinfo['Distance'].iloc[0])) if len(rinfo) and pd.notna(rinfo['Distance'].iloc[0]) else ''
-        cls_raw = rinfo['Class'].iloc[0] if len(rinfo) else ''
-        cls_str = str(int(cls_raw)) + '班' if pd.notna(cls_raw) and str(cls_raw) not in ('', 'nan') else ''
+        race_no_int = int(race_no)
+        dist, cls_str = _format_race_meta(today_rows, race_no_int)
 
         horses = []
         for _, tr in grp.iterrows():
-            brand = tr['node']
-            orig  = today_rows[today_rows['BrandNo'] == brand] if 'BrandNo' in today_rows.columns else pd.DataFrame()
-            jockey  = orig['JockeyCN'].iloc[0]  if len(orig) and 'JockeyCN'  in orig.columns else ''
-            trainer = orig['TrainerCN'].iloc[0] if len(orig) and 'TrainerCN' in orig.columns else ''
-            horse_name = ''
-            if 'HorseCN' in today_rows.columns:
-                hrow = today_rows[today_rows['BrandNo'] == brand]
-                if len(hrow):
-                    horse_name = re.sub(r'\s*\([A-Z]\d+\)', '', str(hrow['HorseCN'].iloc[0])).strip()
-            elif 'horse_name' in today_rows.columns:
-                hrow = today_rows[today_rows['BrandNo'] == brand]
-                if len(hrow):
-                    horse_name = str(hrow['horse_name'].iloc[0])
+            rec = _build_horse_record(tr, today_rows, feat_sorted)
+            rec['no'] = str(len(horses) + 1)
+            horses.append(rec)
 
-            horses.append({
-                'no':       str(len(horses) + 1),
-                'name':     horse_name,
-                'brand':    brand,
-                'jockey':   str(jockey),
-                'trainer':  str(trainer),
-                'draw':     str(int(tr.get('draw', 0))),
-                'weight':   str(int(tr.get('weight', 0))),
-                'rating':   str(int(tr.get('rating', 0))),
-                'win_odds': str(tr.get('odds_raw', '')),
-                'prob':     round(float(tr['prob']),     4),
-                'win_prob': round(float(tr['win_prob']), 4),
-                'edge':     round(float(tr['win_prob']) * float(tr.get('odds_raw') or 0), 2),
-                'features': {c: round(float(tr.get(c, 0) or 0), 4) for c in feat_sorted},
-            })
+        _tally_race(horses, today_feats, race_no_int, cfg, accum)
 
-        # Top-1 accuracy + bet P&L tracking
-        if horses:
-            top1_races += 1
-            predicted_winner = max(horses, key=lambda h: h['win_prob'])
-            actual_winners = {h['brand'] for h in horses if int(today_feats[
-                (today_feats['node'] == h['brand']) & (today_feats['race_no'] == int(race_no))
-            ]['won'].values[0]) == 1} if True else set()
-            if predicted_winner['brand'] in actual_winners:
-                top1_correct += 1
+        rn_key = str(race_no_int).zfill(2)
+        output[rn_key] = {'distance': dist, 'class': cls_str, 'horses': horses}
 
-            # Bet on any horse with positive EV (edge > threshold)
-            for h in horses:
-                if h['edge'] > bet_edge_threshold:
-                    odds_val = float(h.get('win_odds') or 0)
-                    if odds_val <= 1.0:
-                        continue
-                    bets_placed  += 1
-                    units_staked += 1.0
-                    if h['brand'] in actual_winners:
-                        bets_won  += 1
-                        units_net += odds_val - 1.0   # profit = odds - stake
-                    else:
-                        units_net -= 1.0              # loss = stake
-
-        output[rn_key.zfill(2)] = {'distance': dist, 'class': cls_str, 'horses': horses}
-
+    # 7. PERSIST — embed model metadata then write the file
     output['_model']          = cfg.get('name', '')
     output['_version']        = cfg.get('version', '')
     output['_strategy_type']  = cfg.get('strategy_type', 'xgb_walkforward')
@@ -629,17 +821,29 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
     with open(out_path, 'w', encoding='utf-8') as fh:
         json.dump(output, fh, ensure_ascii=False, indent=2, default=str)
 
+    # Reporting line
     elapsed  = time.time() - t0
-    races_n  = len([k for k in output if not k.startswith('_')])
+    races_n  = sum(1 for k in output if not k.startswith('_'))
     horses_n = sum(len(output[k]['horses']) for k in output if not k.startswith('_'))
-    top1_acc = top1_correct / top1_races if top1_races else 0
-    print(f"  {date_str} [{source}]: {races_n} races, {horses_n} horses, top1={top1_acc:.0%} → saved  ({elapsed:.0f}s)")
-    roi = round(units_net / units_staked, 4) if units_staked > 0 else None
-    return {'date': date_str, 'races': races_n, 'horses': horses_n,
-            'top1_correct': top1_correct, 'top1_races': top1_races,
-            'bets_placed': bets_placed, 'bets_won': bets_won,
-            'units_staked': round(units_staked, 1), 'units_net': round(units_net, 2),
-            'roi': roi, 'elapsed': round(elapsed, 1)}
+    top1_acc = accum['top1_correct'] / accum['top1_races'] if accum['top1_races'] else 0
+    print(f"  {date_str} [{source}]: {races_n} races, {horses_n} horses, "
+          f"top1={top1_acc:.0%} → saved  ({elapsed:.0f}s)")
+
+    roi = (round(accum['units_net'] / accum['units_staked'], 4)
+           if accum['units_staked'] > 0 else None)
+    return {
+        'date':         date_str,
+        'races':        races_n,
+        'horses':       horses_n,
+        'top1_correct': accum['top1_correct'],
+        'top1_races':   accum['top1_races'],
+        'bets_placed':  accum['bets_placed'],
+        'bets_won':     accum['bets_won'],
+        'units_staked': round(accum['units_staked'], 1),
+        'units_net':    round(accum['units_net'], 2),
+        'roi':          roi,
+        'elapsed':      round(elapsed, 1),
+    }
 
 
 def update_summary(model_name: str, results: list):
