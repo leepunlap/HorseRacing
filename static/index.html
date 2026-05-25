@@ -51,6 +51,27 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 .feat-cat-pos{position:absolute;bottom:50%;left:25%;right:25%;background:#27ae60;border-radius:2px 2px 0 0;min-height:2px}
 .feat-cat-neg{position:absolute;top:50%;left:25%;right:25%;background:#e74c3c;border-radius:0 0 2px 2px;min-height:2px}
 .edge-bar{height:3px;border-radius:1px;margin-top:1px}
+
+/* ── Run-prediction banner + log overlay ───────────────────── */
+.run-banner{background:#fffbe6;border:1px solid #f0c14b;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:10pt}
+.run-banner .icon{font-size:14pt}
+.run-banner .msg{flex:1;color:#7a5e10}
+.run-banner button{background:#1a3a5c;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:10pt;font-weight:bold}
+.run-banner button:hover{background:#2d6aa0}
+.run-banner button:disabled{background:#bbb;cursor:not-allowed}
+
+.run-log{background:#1a1a1a;color:#0f0;font-family:'Consolas','Monaco',monospace;font-size:9pt;padding:10px;border-radius:4px;max-height:180px;overflow-y:auto;margin-top:10px;display:none}
+.run-log.active{display:block}
+.run-log .line{white-space:pre-wrap;line-height:1.4}
+.run-log .line.err{color:#f55}
+.run-log .line.done{color:#9cf;font-weight:bold}
+
+/* Greyed prediction columns when no predictions exist for the strategy */
+.col-pred-missing td{color:#bbb !important;background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f0f0f0 6px,#f0f0f0 12px) !important}
+
+/* Scrape-time pill */
+.scrape-pill{display:inline-block;background:#eef;border:1px solid #cce;border-radius:12px;padding:2px 10px;font-size:9pt;color:#456}
+.scrape-pill.stale{background:#fee;border-color:#fcc;color:#a33}
 </style>
 </head>
 <body>
@@ -83,8 +104,11 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
         <select id="modelSelect" onchange="onModelChange()" style="padding:4px 8px;font-size:9pt;border:1px solid #ddd;border-radius:4px;background:#fff;min-width:130px"></select>
         <select id="dateSelect" onchange="selectDate()" style="padding:4px 8px;font-size:9pt;border:1px solid #ddd;border-radius:4px"></select>
+        <span id="scrapePill"></span>
         <span id="betSummary" style="font-size:9pt;color:#666"></span>
       </div>
+      <div id="runBanner"></div>
+      <div id="runLog" class="run-log"></div>
       <div class="race-nav" id="raceTabs"></div>
       <div id="raceTable"></div>
     </div>
@@ -194,7 +218,13 @@ async function login(){
 }
 async function checkAuth(){try{return(await fetch('/api/auth/check',{headers:{'Authorization':'Bearer '+token}})).ok}catch{return false}}
 function clearAndShowLogin(){token=null;delCookie('racing_token');document.getElementById('loginOverlay').style.display='flex';document.getElementById('app').classList.remove('auth')}
-function showApp(){document.getElementById('loginOverlay').style.display='none';document.getElementById('app').classList.add('auth');initModelSelect().then(()=>loadDashboard())}
+function showApp(){
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('app').classList.add('auth');
+  initModelSelect().then(()=>loadDashboard());
+  // Subscribe to live progress events (auto-reconnects on disconnect)
+  connectProgressWS();
+}
 function logout(){clearAndShowLogin()}
 function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.status===401?(clearAndShowLogin(),null):r.json())}
 
@@ -219,7 +249,7 @@ function go(name){
 }
 
 // ─── Dashboard ────────────────────────────────────────────
-let raceCache=null, featWeights={}, featSorted=[], activeModel=null;
+let raceCache=null, raceCacheMeta=null, featWeights={}, featSorted=[], activeModel=null;
 
 function getSelectedModel(){return document.getElementById('modelSelect').value||null}
 
@@ -261,11 +291,16 @@ async function loadDashboard(dateStr){
   document.getElementById('dateSelect').value=dateStr;
 
   const rc=await api('/api/races/'+dateStr+'?model='+(model||''));
-  if(!rc||!rc.races){document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">暫無賽事數據</div>';return;}
+  if(!rc||!rc.races){document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">暫無賽事數據</div>';renderRunBanner(null);return;}
   document.getElementById('dashInfo').textContent=`${dateStr} · ${rc.races.length}場賽事 · ${rc.races.reduce((s,r)=>s+(r.horses?.length||0),0)}匹參賽馬`;
   raceCache=rc.races;
+  raceCacheMeta=rc;       // keep top-level fields (has_predictions, scrape_info, is_future) for showRace
   featWeights=rc._feature_weights||{};
   featSorted=rc._feature_cols||[];
+
+  // Banner + pill (run-prediction prompt and scrape timestamp)
+  renderRunBanner(rc);
+  renderScrapePill(rc);
 
   // Show overall bet summary for the day
   const bets=rc.races.filter(r=>r.bet&&r.bet.placed&&r.has_results);
@@ -293,6 +328,142 @@ async function loadDashboard(dateStr){
 function selectDate(){
   document.getElementById('dateSelect');
   loadDashboard(document.getElementById('dateSelect').value);
+}
+
+/* ─── "X 小時前" relative-time formatter ─────────────────────────────────
+ * Shows minutes if <60, hours if <24, then days. Used for scrape timestamp.
+ * ─────────────────────────────────────────────────────────────────────── */
+function timeAgo(iso){
+  if(!iso) return '';
+  const then=new Date(iso).getTime(), now=Date.now();
+  const diffMs=now-then;
+  if(diffMs < 0) return '剛剛';
+  const mins=Math.floor(diffMs/60000);
+  if(mins < 1)   return '剛剛';
+  if(mins < 60)  return `${mins} 分鐘前`;
+  const hrs=Math.floor(mins/60);
+  if(hrs < 24)   return `${hrs} 小時 ${mins%60} 分鐘前`;
+  const days=Math.floor(hrs/24);
+  return `${days} 天 ${hrs%24} 小時前`;
+}
+
+/* ─── Run banner: shows when current strategy hasn't run for the date ───
+ * Behaviour:
+ *   - is_future (date >= today)  → button reads "執行預測"
+ *   - past date                   → button reads "執行回測"
+ *   - Click → POST /api/run → spawns backtest; progress streams on /ws/progress
+ *   - When done, raceCache is reloaded so the table re-renders with predictions
+ * ─────────────────────────────────────────────────────────────────────── */
+function renderRunBanner(rc){
+  const el = document.getElementById('runBanner');
+  if(!rc || rc.has_predictions){ el.innerHTML=''; return; }
+  const model = rc.model || getSelectedModel() || '';
+  const date  = rc.date;
+  const isFut = rc.is_future;
+  const label = isFut ? '此日期尚未跑「預測」' : '此日期尚未跑「回測」';
+  const btn   = isFut ? '🔮 執行預測'         : '⏪ 執行回測';
+  const hint  = isFut
+    ? '比賽尚未發生 — 跑預測會用截至今天的歷史訓練模型，預測該日表現。'
+    : '比賽已完成 — 跑回測會以截至該日前的資料訓練模型，模擬當日預測並計算盈虧。';
+  el.innerHTML = `<div class="run-banner">
+    <span class="icon">${isFut?'🔮':'⏪'}</span>
+    <div class="msg"><b>${model} — ${label}</b><br><small>${hint}</small></div>
+    <button onclick="triggerRun('${model}','${date}',${isFut})" id="runBtn">${btn}</button>
+  </div>`;
+}
+
+/* ─── Scrape-time pill (top of dashboard) ──────────────────────────────
+ * Renders "賠率最後更新：2 小時前" for future dates where odds matter.
+ * For past dates, shows the results scrape time instead.
+ * Pill turns red when stale (>3 hours for future races).
+ * ─────────────────────────────────────────────────────────────────────── */
+function renderScrapePill(rc){
+  const el = document.getElementById('scrapePill');
+  el.innerHTML = '';
+  if(!rc || !rc.scrape_info) return;
+  const ts = rc.scrape_info.racecard_iso || rc.scrape_info.predictions_iso;
+  if(!ts) return;
+  const ageMin = (Date.now() - new Date(ts).getTime()) / 60000;
+  const stale  = rc.is_future && ageMin > 180;  // 3 hours
+  const label  = rc.is_future ? '賠率最後更新' : '資料最後更新';
+  el.innerHTML = `<span class="scrape-pill${stale?' stale':''}" title="${ts}">${label}：${timeAgo(ts)}</span>`;
+}
+
+/* ─── /api/run trigger ─────────────────────────────────────────────── */
+async function triggerRun(model, date, isFuture){
+  const btn = document.getElementById('runBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '啟動中…'; }
+  document.getElementById('runLog').classList.add('active');
+  document.getElementById('runLog').innerHTML = '';
+  try{
+    const r = await fetch('/api/run', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({model, date}),
+    });
+    if(r.status === 409){
+      appendRunLog('⚠ 另一個任務正在執行中，請稍候…', 'err');
+      const j = await r.json();
+      console.warn('Run conflict:', j);
+    } else if(!r.ok){
+      const j = await r.json().catch(()=>({}));
+      appendRunLog('啟動失敗: ' + (j.detail || r.statusText), 'err');
+    } else {
+      appendRunLog('✓ 任務已啟動: ' + model + ' @ ' + date);
+    }
+  } catch(e){
+    appendRunLog('網絡錯誤: ' + e.message, 'err');
+  }
+}
+
+function appendRunLog(text, cls){
+  const log = document.getElementById('runLog');
+  const div = document.createElement('div');
+  div.className = 'line' + (cls ? ' ' + cls : '');
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+/* ─── WebSocket: live progress stream ──────────────────────────────────
+ * Connects on app init. Reconnects on disconnect with backoff.
+ * Events:
+ *   start  — server began a backtest run
+ *   log    — one stdout line from backtest.py
+ *   done   — subprocess exited
+ *   error  — exception in the subprocess wrapper
+ * On `done`, reloads the dashboard so new predictions show up.
+ * ─────────────────────────────────────────────────────────────────────── */
+let progressWS = null;
+function connectProgressWS(){
+  if(!token) return;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url   = `${proto}://${location.host}/ws/progress?token=${encodeURIComponent(token)}`;
+  try{
+    progressWS = new WebSocket(url);
+  } catch(e){ console.warn('WS connect failed:', e); return; }
+
+  progressWS.onmessage = (ev)=>{
+    let msg; try{ msg = JSON.parse(ev.data); } catch(e){ return; }
+    if(msg.type === 'start'){
+      document.getElementById('runLog').classList.add('active');
+      appendRunLog(`▶ 開始: ${msg.model} @ ${msg.date}` + (msg._resumed ? ' (續監聽)' : ''));
+    } else if(msg.type === 'log'){
+      appendRunLog(msg.text);
+    } else if(msg.type === 'done'){
+      const ok = msg.code === 0;
+      appendRunLog(`■ 完成 (退出碼 ${msg.code})`, ok ? 'done' : 'err');
+      // Reload dashboard so the new predictions appear
+      setTimeout(()=>loadDashboard(document.getElementById('dateSelect').value), 800);
+    } else if(msg.type === 'error'){
+      appendRunLog('✗ 錯誤: ' + msg.text, 'err');
+    }
+  };
+  progressWS.onclose = ()=>{
+    // Reconnect with backoff so single network blips don't kill the stream
+    setTimeout(connectProgressWS, 3000);
+  };
+  progressWS.onerror = ()=>{ /* onclose handles reconnect */ };
 }
 
 // Feature descriptions for hover
@@ -378,6 +549,10 @@ function showRace(rn){
   const hasRes  =race.has_results;
   const hasPreds=race.horses.some(h=>h.prob!=null);
   const hasFeat =hasPreds&&race.horses.some(h=>h.features);
+  // When the selected strategy hasn't run for this date, render the prediction
+  // columns as placeholders (greyed) so the user sees what data would appear.
+  // The banner + run button (rendered by renderRunBanner) explains how to fix it.
+  const missingPreds = raceCacheMeta && !raceCacheMeta.has_predictions;
 
   // PHASE 2 — Feature min/max across the day for chart normalisation
   // (so chart heights are comparable across horses in the same day)
@@ -404,9 +579,14 @@ function showRace(rn){
   }
 
   // PHASE 4 — Build table header
+  // When missingPreds is true, prediction columns still appear (so the user
+  // can see what's missing) but are styled grey via the col-pred-missing class
+  // applied to each <tr>.
+  const showPredCols = hasPreds || missingPreds;
+  const showFeatCols = hasFeat  || missingPreds;
   let h=`<table><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
-  if(hasFeat)h+=`<th style="font-size:8pt;width:390px">特徵類別</th>`;
-  if(hasPreds)h+=`<th style="font-size:9pt">勝率</th><th style="font-size:9pt">值博率</th>`;
+  if(showFeatCols)h+=`<th style="font-size:8pt;width:390px">特徵類別</th>`;
+  if(showPredCols)h+=`<th style="font-size:9pt">勝率</th><th style="font-size:9pt">值博率</th>`;
   h+=`<th style="font-size:9pt">預測</th>`;
   h+=`<th style="font-size:9pt">名次</th><th style="font-size:8pt">頭馬距離</th><th style="font-size:8pt">沿途走位</th><th style="font-size:8pt">注碼</th><th style="font-size:8pt">盈虧</th></tr></thead><tbody>`;
 
@@ -444,11 +624,24 @@ function showRace(rn){
       profitStyle = won ? 'color:#27ae60;font-weight:bold' : 'color:#e74c3c';
     }
 
-    // Render row — winner highlighted with green background
-    h+=`<tr${won?' style="background:#e8f5e9"':''}>`;
+    // Render row — winner gets green bg; missing-pred state adds grey-stripe class
+    const rowCls = missingPreds ? 'col-pred-missing' : '';
+    const rowStyle = won ? ' style="background:#e8f5e9"' : '';
+    h+=`<tr class="${rowCls}"${rowStyle}>`;
     h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td style="${oddsStyle}">${hh.win_odds||'?'}x${hh.place_odds&&!isLong?`<br><small style="font-size:7pt;color:#888">P ${hh.place_odds}</small>`:''}</td>`;
-    if(hasFeat)h+=`<td style="padding:2px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`;
-    if(hasPreds)h+=`<td style="font-size:9pt;padding:1px 3px"><div style="font-size:8pt">${prob}</div><div style="height:3px;background:#27ae60;width:${Math.min(hh.win_prob*250,100)}%;border-radius:1px;margin-top:1px"></div></td><td style="font-size:9pt;padding:1px 3px;${isLong?'color:#bbb':''}"><div style="font-size:8pt;${ec?ec:''}">${edge}</div>${isLong?'':`<div class="edge-bar" style="width:${Math.min((hh.edge||0)*25,90)}%;background:${(hh.edge||0)>1.3?'#27ae60':(hh.edge||0)>0.9?'#f0a030':'#ccc'}"></div>`}</td>`;
+    if(showFeatCols){
+      h += hasFeat
+        ? `<td style="padding:2px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`
+        : `<td style="text-align:center;font-size:8pt">—</td>`;
+    }
+    if(showPredCols){
+      if(hasPreds){
+        h+=`<td style="font-size:9pt;padding:1px 3px"><div style="font-size:8pt">${prob}</div><div style="height:3px;background:#27ae60;width:${Math.min(hh.win_prob*250,100)}%;border-radius:1px;margin-top:1px"></div></td>`;
+        h+=`<td style="font-size:9pt;padding:1px 3px;${isLong?'color:#bbb':''}"><div style="font-size:8pt;${ec?ec:''}">${edge}</div>${isLong?'':`<div class="edge-bar" style="width:${Math.min((hh.edge||0)*25,90)}%;background:${(hh.edge||0)>1.3?'#27ae60':(hh.edge||0)>0.9?'#f0a030':'#ccc'}"></div>`}</td>`;
+      } else {
+        h+=`<td style="text-align:center;font-size:8pt">—</td><td style="text-align:center;font-size:8pt">—</td>`;
+      }
+    }
     h+=`<td style="font-size:9pt;font-weight:bold;color:#1a3a5c">${predRank[hh.no]||'-'}</td>`;
     h+=`<td style="font-size:9pt;font-weight:bold">${hh.position||'-'}</td>`;
     h+=`<td style="font-size:8pt;color:#888">${hh.lbw||'-'}</td>`;
@@ -545,16 +738,21 @@ async function loadModelPage(){
   // Model list + activate buttons
   document.getElementById('modelList').innerHTML=d.models.map(m=>{
     const s=m.summary||{};
+    const dates_run = s.dates_run||0;
+    const hasRun    = dates_run > 0;
     const acc=s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—';
     const roi=s.roi_units!=null?(s.roi_units>=0?'+':'')+s.roi_units.toFixed(2)+'u':'—';
     const bg=m.active?'#1a3a5c':'#fff', fg=m.active?'#fff':'#333', sub=m.active?'rgba(255,255,255,0.65)':'#888';
+    const statusBadge = hasRun
+      ? `<span style="font-size:7pt;background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;margin-left:4px">已執行 ${dates_run}日</span>`
+      : `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">未執行</span>`;
     return `<div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid #ddd;border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
-      <div style="font-weight:bold;font-size:11pt">${m.name}${m.active?' ✓':''}</div>
+      <div style="font-weight:bold;font-size:11pt">${m.name}${m.active?' ✓':''}${statusBadge}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.strategy_type||''} v${m.version||'?'}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.description||''}</div>
       ${m.notes?`<div style="font-size:8pt;color:${sub};font-style:italic;margin:2px 0">📝 ${m.notes}</div>`:''}
       ${m.parent?`<div style="font-size:8pt;color:${sub};margin:2px 0">⬆ 派生自: ${m.parent}</div>`:''}
-      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${s.roi_units>=0?'#27ae60':'#e74c3c'}">${roi}</b> &ensp; 下注: ${s.bets_placed||'—'}場</div>
+      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${(s.roi_units||0)>=0?'#27ae60':'#e74c3c'}">${roi}</b> &ensp; 下注: ${s.bets_placed||'—'}場</div>
       ${!m.active?`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">設為使用中</button>`:''}
     </div>`;
   }).join('');

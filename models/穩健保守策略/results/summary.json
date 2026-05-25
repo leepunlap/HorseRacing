@@ -1,0 +1,31 @@
+{
+  "model": "\u7a69\u5065\u4fdd\u5b88\u7b56\u7565",
+  "version": "1.0",
+  "strategy_type": "xgb_walkforward",
+  "dates_run": 1,
+  "total_races": 11,
+  "top1_accuracy": 0.0909,
+  "top1_pct": 9.1,
+  "bets_placed": 67,
+  "bets_won": 0,
+  "units_staked": 67.0,
+  "units_net": -67.0,
+  "roi": -1.0,
+  "roi_units": -67.0,
+  "updated": "2026-05-25T10:41:20.784547",
+  "per_date": [
+    {
+      "date": "2026-05-03",
+      "races": 11,
+      "horses": 139,
+      "top1_correct": 1,
+      "top1_races": 11,
+      "bets_placed": 67,
+      "bets_won": 0,
+      "units_staked": 67.0,
+      "units_net": -67.0,
+      "roi": -1.0,
+      "elapsed": 54.0
+    }
+  ]
+}

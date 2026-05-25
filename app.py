@@ -62,7 +62,12 @@ class Broadcaster:
         for ws in dead:
             self.clients.remove(ws)
 
-broadcaster = Broadcaster()
+broadcaster        = Broadcaster()   # legacy odds broadcaster
+progress_broadcast = Broadcaster()   # backtest/scrape progress streaming
+
+# Tracks the one in-flight job (single-job server). Subsequent /api/run
+# calls receive 409 until the current job ends.
+current_run: dict = {"active": False, "model": None, "date": None, "started_at": None}
 
 # ─── Scheduler ─────────────────────────────────────────────
 latest_odds = {}
@@ -360,13 +365,59 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         races_output.append(race)
 
     db.close()
+
+    # Scrape metadata: latest mtime among files under predictions/{date}/
+    # plus the predictions.json mtime if it exists for this model. The UI
+    # uses this to render "odds last scraped X ago" for upcoming races.
+    scrape_info = _build_scrape_info(date, model)
+
+    # Whether this strategy has predictions for this date (drives the UI banner).
+    # If predictions is an empty dict, the strategy hasn't run yet for this date.
+    has_strategy_predictions = bool([k for k in predictions if not k.startswith('_')])
+
     return {
         "date":          date,
         "races":         races_output,
         "count":         len(races_output),
         "_feature_cols": predictions.get("_feature_cols", []),
         "model":         model,
+        "model_version": predictions.get("_version"),
+        "generated_at":  predictions.get("_generated_at"),
+        "has_predictions": has_strategy_predictions,
+        "scrape_info":   scrape_info,
+        "is_future":     date >= datetime.now().strftime("%Y-%m-%d"),
     }
+
+
+def _build_scrape_info(date: str, model: str = None) -> dict:
+    """Inspect predictions/{date}/ and models/{m}/results/{date}/ to report
+    timestamps the UI cares about (odds last scraped, predictions last generated).
+    """
+    info = {"racecard_mtime": None, "racecard_iso": None,
+            "predictions_mtime": None, "predictions_iso": None}
+
+    pred_dir = BASE_DIR / "predictions" / date
+    if pred_dir.exists():
+        # Pick the latest mtime among scrape artifacts (HTML, racecard JSON)
+        mtimes = []
+        for f in pred_dir.iterdir():
+            if f.name == "predictions.json":
+                continue  # that's the model output, tracked separately
+            try:
+                mtimes.append(f.stat().st_mtime)
+            except OSError:
+                pass
+        if mtimes:
+            info["racecard_mtime"] = max(mtimes)
+            info["racecard_iso"]   = datetime.fromtimestamp(info["racecard_mtime"]).isoformat()
+
+    if model:
+        ppath = MODELS_DIR / model / "results" / date / "predictions.json"
+        if ppath.exists():
+            info["predictions_mtime"] = ppath.stat().st_mtime
+            info["predictions_iso"]   = datetime.fromtimestamp(info["predictions_mtime"]).isoformat()
+
+    return info
 
 @app.get("/api/models")
 async def list_models_endpoint(auth = Depends(verify_token)):
@@ -412,6 +463,111 @@ async def activate_model(name: str, auth = Depends(verify_token)):
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
     set_active_model(name)
     return {"success": True, "active": name}
+
+
+# ─── Run prediction/backtest with live progress ───────────────────────────────
+#
+# POST /api/run {model, date}
+#   - Spawns `python3 backtest.py --model {model} {date} --force` as a subprocess
+#   - Streams each output line to all clients on /ws/progress as a JSON event
+#   - Refuses (409) if another job is already running
+# WebSocket /ws/progress
+#   - Subscribes the client to live progress events from any /api/run job
+#   - Auth: ?token= query param (WS headers are awkward)
+
+async def _stream_subprocess_to_progress(model: str, date: str):
+    """Run backtest.py as a subprocess and stream each stdout line to clients."""
+    current_run.update({"active": True, "model": model, "date": date,
+                        "started_at": datetime.now().isoformat()})
+    await progress_broadcast.broadcast({
+        "type": "start", "model": model, "date": date,
+        "started_at": current_run["started_at"],
+    })
+    try:
+        # -u → unbuffered stdout so each print() flushes immediately,
+        # otherwise pandas/xgboost block-buffer when stdout is a pipe and the
+        # UI sees nothing until the subprocess exits.
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-u", str(BASE_DIR / "backtest.py"),
+            "--model", model, "--force", date,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=str(BASE_DIR),
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        )
+        async for raw_line in proc.stdout:
+            line = raw_line.decode("utf-8", errors="replace").rstrip()
+            if line:
+                await progress_broadcast.broadcast({"type": "log", "text": line})
+        await proc.wait()
+        await progress_broadcast.broadcast({
+            "type":  "done",
+            "code":  proc.returncode,
+            "model": model, "date": date,
+        })
+    except Exception as e:
+        await progress_broadcast.broadcast({"type": "error", "text": str(e)})
+    finally:
+        current_run.update({"active": False, "model": None, "date": None,
+                            "started_at": None})
+
+
+@app.post("/api/run")
+async def run_strategy(request: Request, auth = Depends(verify_token)):
+    """Launch backtest/prediction for one (model, date) pair in the background.
+
+    Body: { "model": "<name>", "date": "YYYY-MM-DD" }
+    Returns immediately; progress streams over /ws/progress.
+    Rejects with 409 if another job is already running.
+    """
+    if current_run["active"]:
+        raise HTTPException(status_code=409, detail={
+            "message": "Another run is in progress",
+            "current": current_run,
+        })
+
+    body  = await request.json()
+    model = body.get("model")
+    date  = body.get("date")
+    if not model or not date:
+        raise HTTPException(status_code=400, detail="model and date are required")
+
+    cfg_path = MODELS_DIR / model / "config.json"
+    if not cfg_path.exists():
+        raise HTTPException(status_code=404, detail=f"Model '{model}' not found")
+
+    # Fire and forget — the streamer pushes updates over WebSocket
+    asyncio.create_task(_stream_subprocess_to_progress(model, date))
+    return {"started": True, "model": model, "date": date}
+
+
+@app.get("/api/run/status")
+async def run_status(auth = Depends(verify_token)):
+    """Return current_run state. Used by UI on page load to resume monitoring."""
+    return current_run
+
+
+@app.websocket("/ws/progress")
+async def ws_progress(websocket: WebSocket, token: str = Query(None)):
+    """Stream backtest/scrape progress events. Auth via ?token=<bearer>."""
+    if not token or token not in TOKENS:
+        await websocket.close(code=1008)   # policy violation
+        return
+    await progress_broadcast.connect(websocket)
+    try:
+        # If a job is in progress, replay its header so the new client knows
+        if current_run["active"]:
+            await websocket.send_json({
+                "type": "start",
+                "model": current_run["model"],
+                "date":  current_run["date"],
+                "started_at": current_run["started_at"],
+                "_resumed": True,
+            })
+        while True:
+            await websocket.receive_text()   # keepalive only
+    except WebSocketDisconnect:
+        progress_broadcast.disconnect(websocket)
 
 # ─── Data Exploration APIs ──────────────────────────────────
 
