@@ -8,8 +8,10 @@ Usage:
     python3 scrape_results.py --from 2026-05-01 --to 2026-05-21
 """
 
-import asyncio, os, re, sys, io, sqlite3, argparse, json
+import asyncio, os, re, sys, io, sqlite3, argparse, json, signal
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 from datetime import datetime, timedelta
 from pathlib import Path
 from playwright.async_api import async_playwright

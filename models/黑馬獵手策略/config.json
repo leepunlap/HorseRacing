@@ -1,10 +1,10 @@
 {
-  "name": "黑馬獵手策略",
-  "description": "黑馬獵手策略：只下注 6-15 倍區間，要求高 edge",
+  "name": "\u9ed1\u99ac\u7375\u624b\u7b56\u7565",
+  "description": "\u9ed1\u99ac\u7375\u624b\u7b56\u7565\uff1a\u53ea\u4e0b\u6ce8 6-15 \u500d\u5340\u9593\uff0c\u8981\u6c42\u9ad8 edge",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
-  "parent": "均衡基礎策略",
-  "notes": "edge≥1.4 才下注；只押注賠率 6-15 倍區間；放寬 shrinkage 給少見組合更多空間",
+  "parent": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "notes": "\u503c\u535a\u7387\u9580\u6abb\u63d0\u9ad8\u81f31.4\uff0c\u50c5\u4e0b\u6ce8\u8ce0\u73876\u81f315\u500d\u5340\u9593\uff0c\u5c0b\u627e\u5e02\u5834\u56b4\u91cd\u4f4e\u4f30\u7684\u9577\u8ce0\u99ac\uff0c\u5e73\u6ed1\u5f37\u5ea6\u7dad\u6301\u57fa\u790e\u6c34\u6e96",
   "created": "2026-05-25",
   "active": false,
   "xgb": {

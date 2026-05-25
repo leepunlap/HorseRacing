@@ -8408,7 +8408,7 @@
   "_model": "穩健保守策略",
   "_version": "1.0",
   "_strategy_type": "xgb_walkforward",
-  "_generated_at": "2026-05-25T10:41:20",
+  "_generated_at": "2026-05-25T12:45:40",
   "_feature_cols": [
     "jh_pair",
     "dist_adapt",

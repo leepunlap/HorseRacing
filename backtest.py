@@ -645,6 +645,16 @@ def _normalise_per_race(today_feats, raw_probs):
     return today_feats
 
 
+def _safe_int(v, default: int = 0) -> int:
+    """Convert v to int, returning default for None, NaN, or un-parseable values."""
+    try:
+        if v is None or v != v:   # v != v is True only for NaN
+            return default
+        return int(v or default)
+    except (TypeError, ValueError):
+        return default
+
+
 def _resolve_horse_name(brand: str, today_rows: pd.DataFrame) -> str:
     """Extract a clean horse name from today_rows by brand number.
 
@@ -684,9 +694,9 @@ def _build_horse_record(tr, today_rows, feat_sorted) -> dict:
         'brand':    brand,
         'jockey':   str(jockey),
         'trainer':  str(trainer),
-        'draw':     str(int(tr.get('draw', 0))),
-        'weight':   str(int(tr.get('weight', 0))),
-        'rating':   str(int(tr.get('rating', 0))),
+        'draw':     str(_safe_int(tr.get('draw',   0))),
+        'weight':   str(_safe_int(tr.get('weight', 0))),
+        'rating':   str(_safe_int(tr.get('rating', 0))),
         'win_odds': str(tr.get('odds_raw', '')),
         'prob':     round(float(tr['prob']),     4),
         'win_prob': round(float(tr['win_prob']), 4),
@@ -847,8 +857,27 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
 
 
 def update_summary(model_name: str, results: list):
-    """Write/update models/{name}/results/summary.json with aggregate stats."""
-    valid = [r for r in results if r]
+    """Write/update models/{name}/results/summary.json with aggregate stats.
+
+    Merges the newly-run dates with any existing per-date rows in summary.json
+    so that running one date at a time (e.g. from the batch job) accumulates
+    correctly instead of overwriting the whole summary with just one row.
+    """
+    new_by_date = {r['date']: r for r in results if r}
+
+    # Load existing per_date rows and merge (new rows win on conflict)
+    summary_path = results_dir(model_name) / 'summary.json'
+    merged: dict[str, dict] = {}
+    if summary_path.exists():
+        try:
+            existing = json.load(open(summary_path))
+            for row in existing.get('per_date', []):
+                merged[row['date']] = row
+        except Exception:
+            pass
+    merged.update(new_by_date)
+
+    valid = list(merged.values())
     if not valid: return
     total_races   = sum(r['top1_races']   for r in valid)
     total_correct = sum(r['top1_correct'] for r in valid)
@@ -862,10 +891,12 @@ def update_summary(model_name: str, results: list):
 
     cfg_for_summary = {}
     try:
-        from model_config import load_config as _lc
+        from model_config import load_config as _lc, bet_params_hash, model_params_hash
         cfg_for_summary = _lc(model_name)
+        _bet_hash   = bet_params_hash(cfg_for_summary)
+        _model_hash = model_params_hash(cfg_for_summary)
     except Exception:
-        pass
+        _bet_hash = _model_hash = ''
 
     summary = {
         'model':         model_name,
@@ -881,6 +912,8 @@ def update_summary(model_name: str, results: list):
         'units_net':     round(total_net, 2),
         'roi':           roi,
         'roi_units':     round(total_net, 2),
+        'bet_hash':      _bet_hash,
+        'model_hash':    _model_hash,
         'updated':       datetime.now().isoformat(),
         'per_date':      [r for r in valid],
     }
@@ -892,6 +925,158 @@ def update_summary(model_name: str, results: list):
     print(f"\nSummary: {total_correct}/{total_races} top-1 ({top1_acc:.1%}) "
           f"| 下注 {total_bets} 場 {total_bet_won}勝 ROI {roi_str} "
           f"→ {summary_path}")
+
+
+def retally(model_name: str, verbose: bool = False) -> dict:
+    """Re-apply current bet-filter params to existing per-date predictions.json
+    and regenerate summary.json without re-training the model.
+
+    Uses the SQLite DB (same DB_PATH as the full backtest) to look up actual
+    winners for each backtested date.
+
+    Returns the new summary dict.
+    """
+    from model_config import load_config as _lc, bet_params_hash, model_params_hash
+
+    cfg      = _lc(model_name)
+    out_dir  = results_dir(model_name)
+    bet_edge = float(cfg.get('bet_edge_threshold') or 1.0)
+    bet_min  = float(cfg.get('bet_min_odds')  or 0.0)
+    bet_max  = float(cfg.get('bet_max_odds')  or 999.0)
+
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+
+    accum = {
+        'dates_run': 0, 'total_races': 0,
+        'top1_correct': 0, 'top1_races': 0,
+        'bets_placed': 0,  'bets_won': 0,
+        'units_staked': 0.0, 'units_net': 0.0,
+        'per_date': [],
+    }
+
+    date_dirs = sorted(
+        d for d in out_dir.iterdir()
+        if d.is_dir() and re.match(r'\d{4}-\d{2}-\d{2}$', d.name)
+    )
+
+    for date_dir in date_dirs:
+        date_str  = date_dir.name
+        pred_file = date_dir / 'predictions.json'
+        if not pred_file.exists():
+            continue
+        try:
+            preds = json.loads(pred_file.read_text(encoding='utf-8'))
+        except Exception as e:
+            if verbose:
+                print(f"  {date_str}: skip — {e}")
+            continue
+
+        # Actual winners from DB: race_no -> set of winning brands
+        winners: dict[str, set] = {}
+        for row in conn.execute(
+            "SELECT race_no, brand FROM results WHERE date=? AND position='1'",
+            (date_str,)
+        ).fetchall():
+            rn = str(int(row['race_no']))
+            winners.setdefault(rn, set()).add(row['brand'])
+
+        day = {'date': date_str, 'races': 0, 'horses': 0,
+               'top1_correct': 0, 'top1_races': 0,
+               'bets_placed': 0,  'bets_won': 0,
+               'units_staked': 0.0, 'units_net': 0.0, 'roi': 0.0}
+
+        for rk, race in preds.items():
+            if rk.startswith('_'):
+                continue
+            horses = race.get('horses', []) if isinstance(race, dict) else []
+            if not horses:
+                continue
+            rn      = str(int(rk))
+            win_set = winners.get(rn, set())
+            day['races']  += 1
+            day['horses'] += len(horses)
+
+            # Top-1: highest win_prob
+            best = max(horses, key=lambda h: float(h.get('win_prob') or 0))
+            day['top1_races'] += 1
+            if best.get('brand') in win_set:
+                day['top1_correct'] += 1
+
+            # Bet filter
+            for h in horses:
+                edge = float(h.get('edge') or 0)
+                if edge <= bet_edge:
+                    continue
+                odds = float(h.get('win_odds') or 0)
+                if odds <= 1.0 or odds < bet_min or odds > bet_max:
+                    continue
+                day['bets_placed']  += 1
+                day['units_staked'] += 1.0
+                if h.get('brand') in win_set:
+                    day['bets_won']  += 1
+                    day['units_net'] += odds - 1.0
+                else:
+                    day['units_net'] -= 1.0
+
+        day['units_staked'] = round(day['units_staked'], 1)
+        day['units_net']    = round(day['units_net'], 2)
+        day['roi'] = (round(day['units_net'] / day['units_staked'], 4)
+                      if day['units_staked'] else 0.0)
+
+        accum['dates_run']    += 1
+        accum['total_races']  += day['races']
+        accum['top1_correct'] += day['top1_correct']
+        accum['top1_races']   += day['top1_races']
+        accum['bets_placed']  += day['bets_placed']
+        accum['bets_won']     += day['bets_won']
+        accum['units_staked'] += day['units_staked']
+        accum['units_net']    += day['units_net']
+        accum['per_date'].append(day)
+
+        if verbose:
+            print(f"  {date_str}: {day['races']}場 "
+                  f"bets={day['bets_placed']} won={day['bets_won']} "
+                  f"net={day['units_net']:+.2f}")
+
+    conn.close()
+
+    roi      = (round(accum['units_net'] / accum['units_staked'], 4)
+                if accum['units_staked'] else None)
+    top1_acc = (round(accum['top1_correct'] / accum['top1_races'], 4)
+                if accum['top1_races'] else 0.0)
+
+    summary = {
+        'model':         model_name,
+        'version':       cfg.get('version', ''),
+        'strategy_type': cfg.get('strategy_type', 'xgb_walkforward'),
+        'dates_run':     accum['dates_run'],
+        'total_races':   accum['total_races'],
+        'top1_accuracy': top1_acc,
+        'top1_pct':      round(top1_acc * 100, 1),
+        'bets_placed':   accum['bets_placed'],
+        'bets_won':      accum['bets_won'],
+        'units_staked':  round(accum['units_staked'], 1),
+        'units_net':     round(accum['units_net'], 2),
+        'roi':           roi,
+        'roi_units':     round(accum['units_net'], 2),
+        'bet_hash':      bet_params_hash(cfg),
+        'model_hash':    model_params_hash(cfg),
+        'updated':       datetime.now().isoformat(),
+        'retallied_at':  datetime.now().isoformat(),
+        'per_date':      accum['per_date'],
+    }
+
+    summary_path = out_dir / 'summary.json'
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(summary_path, 'w', encoding='utf-8') as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
+
+    if verbose:
+        roi_str = f'{accum["units_net"]:+.2f}u ({roi:+.1%})' if roi else '—'
+        print(f"\n  Re-tally 完成: {accum['dates_run']} 日期  "
+              f"{accum['bets_placed']} 注  {accum['bets_won']} 中  ROI {roi_str}")
+    return summary
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -912,7 +1097,19 @@ def main():
                         help='Overwrite existing predictions.json files')
     parser.add_argument('--publish', action='store_true',
                         help='After running, copy results to predictions/ (production)')
+    parser.add_argument('--retally', action='store_true',
+                        help='Re-apply current bet params to existing predictions (no re-training)')
     args = parser.parse_args()
+
+    # ── Re-tally shortcut — no CSV load needed ──────────────────────
+    if args.retally:
+        cfg        = load_config(args.model)
+        model_name = cfg['name']
+        print(f"Re-tallying {model_name} with current bet params "
+              f"(max_odds={cfg.get('bet_max_odds','∞')}, "
+              f"edge_threshold={cfg.get('bet_edge_threshold',1.0)})...")
+        retally(model_name, verbose=True)
+        sys.exit(0)
 
     res_csv, sec, prof_dict, rh = load_csv_data()
     csv_dates = [d.strftime('%Y-%m-%d') for d in sorted(res_csv['Date'].unique())]

@@ -1,10 +1,10 @@
 {
-  "name": "強平滑策略",
-  "description": "強平滑策略：加強貝葉斯平滑，更傾向先驗值",
+  "name": "\u5f37\u5e73\u6ed1\u7b56\u7565",
+  "description": "\u5f37\u5e73\u6ed1\u7b56\u7565\uff1a\u52a0\u5f37\u8c9d\u8449\u65af\u5e73\u6ed1\uff0c\u66f4\u50be\u5411\u5148\u9a57\u503c",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
-  "parent": "均衡基礎策略",
-  "notes": "shrinkage alphas 加倍 — 抗短期波動，更穩定預測",
+  "parent": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "notes": "\u5e73\u6ed1\u5f37\u5ea6\u5168\u9762\u52a0\u500d\uff0c\u6a21\u578b\u5c0d\u55ae\u4e00\u99ac\u5339\u6216\u9a0e\u5e2b\u7684\u77ed\u671f\u6ce2\u52d5\u4e0d\u654f\u611f\uff0c\u9810\u6e2c\u66f4\u7a69\u5b9a\u4fdd\u5b88",
   "created": "2026-05-25",
   "active": false,
   "xgb": {
@@ -122,5 +122,7 @@
     "",
     "B",
     "TT"
-  ]
+  ],
+  "bet_max_odds": 6.5,
+  "bet_min_odds": 1.0
 }
