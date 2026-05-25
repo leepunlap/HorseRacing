@@ -5,12 +5,13 @@ Login: hardcoded password, no username.
 Serves dashboard + API + WebSocket for live odds.
 """
 
-import os, sys, io, json, hashlib, secrets, asyncio, sqlite3, re
+import os, sys, io, json, hashlib, secrets, asyncio, sqlite3, re, httpx
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Depends, Query
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from pydantic import BaseModel
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from contextlib import asynccontextmanager
 import uvicorn
@@ -30,6 +31,11 @@ MODELS_DIR = BASE_DIR / "models"
 DB_PATH    = DATA_DIR / "racing.db"
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
+
+# ─── DeepSeek Chat API ──────────────────────────────────────
+DEEPSEEK_KEY  = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_URL  = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_MODEL = "deepseek-chat"
 
 
 def _parse_eric_hypotheses() -> dict:
@@ -75,10 +81,12 @@ def _parse_eric_sections() -> list:
     sections: list = []
     current_section: dict | None = None
     current_group: dict | None = None
+    _buf = ''  # accumulate sub-bullet validation comments
 
     for line in path.read_text(encoding='utf-8').splitlines():
         hdr2 = re.match(r'^## (.+)', line)
         if hdr2:
+            _flush_buf(current_group, _buf); _buf = ''
             raw = hdr2.group(1).strip()
             m = re.match(r'^(.+?)\s*[\(（](.+?)[\)）]\s*$', raw)
             version  = m.group(1).strip() if m else raw
@@ -90,22 +98,40 @@ def _parse_eric_sections() -> list:
 
         hdr3 = re.match(r'^### (.+)', line)
         if hdr3 and current_section is not None:
+            _flush_buf(current_group, _buf); _buf = ''
             current_group = {'label': hdr3.group(1).strip().rstrip(':'), 'hypotheses': []}
             current_section['groups'].append(current_group)
             continue
 
         hm = re.match(r'^\s*-\s*\*\*(H\d+)\*\*:\s*(.+)', line)
         if hm and current_group is not None:
+            _flush_buf(current_group, _buf); _buf = ''
             hid, htext = hm.group(1), hm.group(2).strip()
             current_group['hypotheses'].append({
                 'id': hid,
                 'text': htext,
                 'features': _HYP_FEATURE_MAP.get(hid, []),
             })
+            continue
+
+        sub = re.match(r'^\s{2}-\s+(.+)', line)
+        if sub and current_group is not None and current_group['hypotheses']:
+            _buf += (_buf and '\n' or '') + sub.group(1).strip()
+            continue
+
+        _flush_buf(current_group, _buf); _buf = ''
+
+    _flush_buf(current_group, _buf)
 
     for sec in sections:
         sec['groups'] = [g for g in sec['groups'] if g['hypotheses']]
     return [s for s in sections if s['groups']]
+
+
+def _flush_buf(group, buf):
+    """Attach accumulated sub-bullet text as validation to the last hypothesis in group."""
+    if group and group['hypotheses'] and buf.strip():
+        group['hypotheses'][-1]['validation'] = buf.strip()
 
 
 def get_db():
@@ -143,6 +169,10 @@ class Broadcaster:
 
 broadcaster        = Broadcaster()   # legacy odds broadcaster
 progress_broadcast = Broadcaster()   # backtest/scrape progress streaming
+chat_broadcaster   = Broadcaster()   # global chat WebSocket broadcasting
+global_chat_history: list[dict] = []  # shared chat message history
+chat_processing_lock = asyncio.Lock()
+MAX_CHAT_HISTORY = 50
 
 # Tracks the one in-flight job (single-job server). Subsequent /api/run
 # calls receive 409 until the current job ends.
@@ -356,7 +386,17 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         db_races[str(int(r['raceno']))] = dict(r)
     await _prog(68, "已讀取賽事資料")
 
-    BET_EDGE_THRESHOLD = 1.0  # bet when edge (win_prob * odds) > 1.0 (positive EV)
+    BET_EDGE_THRESHOLD = 1.0
+    BET_MIN_ODDS = 0.0
+    BET_MAX_ODDS = 999.0
+    if model:
+        try:
+            cfg = load_config(model)
+            BET_EDGE_THRESHOLD = float(cfg.get('bet_edge_threshold', 1.0))
+            BET_MIN_ODDS       = float(cfg.get('bet_min_odds', 0.0))
+            BET_MAX_ODDS       = float(cfg.get('bet_max_odds', 999.0))
+        except Exception:
+            pass
 
     # Collect all race numbers from all sources
     all_keys = set()
@@ -434,7 +474,16 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
 
         # Per-race betting analysis
         # Find top predicted horse (highest prob among horses with edge > threshold)
-        bettable = [h for h in horses_out if h["prob"] is not None and (h["edge"] or 0) > BET_EDGE_THRESHOLD]
+        bettable = []
+        for h in horses_out:
+            if h["prob"] is None:
+                continue
+            if (h["edge"] or 0) <= BET_EDGE_THRESHOLD:
+                continue
+            odds_val = float(h.get("win_odds") or 0)
+            if odds_val <= 1.0 or odds_val < BET_MIN_ODDS or odds_val > BET_MAX_ODDS:
+                continue
+            bettable.append(h)
         top_pred  = max(horses_out, key=lambda h: h["prob"] or 0, default=None) if horses_out else None
         bet_horse = max(bettable, key=lambda h: h["prob"], default=None)
         actual_winner = next((h for h in horses_out if h["position"] == 1), None)
@@ -579,6 +628,7 @@ async def get_model_config(name: str, auth = Depends(verify_token)):
         "categories":    FEATURE_CATEGORIES,
         "category_zh":   FEATURE_CATEGORY_ZH,
         "hyp_catalogue": hyp_catalogue,
+        "stale":         _staleness(name),
     }
 
 
@@ -745,6 +795,61 @@ async def get_model_inventory(name: str, auth = Depends(verify_token)):
         "total_available":  len(available),
         "total_backtested": len(backtested),
     }
+
+
+# ─── Validation Notes ────────────────────────────────────────
+
+VALIDATION_PATH = DATA_DIR / "validation_notes.json"
+
+def _load_validation_notes() -> dict:
+    if VALIDATION_PATH.exists():
+        try:
+            return json.loads(VALIDATION_PATH.read_text(encoding='utf-8'))
+        except Exception:
+            pass
+    return {}
+
+def _save_validation_notes(data: dict):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    VALIDATION_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+
+
+@app.get("/api/validation-notes")
+async def get_validation_notes(auth = Depends(verify_token)):
+    return _load_validation_notes()
+
+
+class ValidationNoteRequest(BaseModel):
+    status: str      # "validated" | "needs_tuning" | "not_working" | ""
+    notes: str
+    strategy: str = ""
+
+@app.post("/api/validation-notes/hypothesis/{hyp_id}")
+async def save_hypothesis_note(hyp_id: str, req: ValidationNoteRequest, auth = Depends(verify_token)):
+    data = _load_validation_notes()
+    data.setdefault("hypotheses", {})
+    data["hypotheses"][hyp_id] = {
+        "status": req.status,
+        "notes": req.notes.strip(),
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "strategy": req.strategy.strip(),
+    }
+    _save_validation_notes(data)
+    return {"saved": True, "id": hyp_id}
+
+
+@app.post("/api/validation-notes/feature/{name:path}")
+async def save_feature_note(name: str, req: ValidationNoteRequest, auth = Depends(verify_token)):
+    data = _load_validation_notes()
+    data.setdefault("features", {})
+    data["features"][name] = {
+        "status": req.status,
+        "notes": req.notes.strip(),
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "strategy": req.strategy.strip(),
+    }
+    _save_validation_notes(data)
+    return {"saved": True, "name": name}
 
 
 @app.get("/api/eric-hypotheses")
@@ -1488,6 +1593,482 @@ async def available_dates(auth = Depends(verify_token), model: str = Query(None)
 
     await _prog(24, "日期列表已就緒")
     return {"dates": dates}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Eric Chat — DeepSeek-powered chatbot
+# ═══════════════════════════════════════════════════════════════
+
+def _build_chat_context() -> str:
+    """Build the system prompt with ERIC_HYPOTHESIS.md + model summaries."""
+    parts = []
+
+    # ERIC_HYPOTHESIS.md (full text)
+    hyps_path = BASE_DIR / "ERIC_HYPOTHESIS.md"
+    if hyps_path.exists():
+        parts.append(hyps_path.read_text(encoding="utf-8"))
+        parts.append("")
+
+    # Model summaries
+    models = _list_model_configs()
+    parts.append("# 現有策略摘要")
+    parts.append("")
+    for m in models:
+        s = m.get("_summary", {})
+        parts.append(f"## {m.get('name','')}")
+        parts.append(f"- 策略類型: {m.get('strategy_type','')}")
+        parts.append(f"- 版本: {m.get('version','')}")
+        parts.append(f"- 說明: {m.get('description','')}")
+        parts.append(f"- 下注門檻: edge>{m.get('bet_edge_threshold',1.0)}, 賠率 {m.get('bet_min_odds','')}-{m.get('bet_max_odds','')}x")
+        if s:
+            parts.append(f"- 回測: {s.get('dates_run',0)}日, ROI={s.get('roi_units','?')}u, 命中率={s.get('top1_pct','?')}%")
+        parts.append("")
+
+    context = "\n".join(parts)
+
+    system_prompt = f"""你是 Eric，一個賽馬分析 AI 助手。你的角色是幫助用戶理解賽馬預測模型、分析策略表現、討論 Eric 定律，並提出策略改進建議。
+
+# 可用工具（必須使用以下確切名稱調用，不可自創函數）
+
+1. **query_model_summary** — 查詢策略模型的回測摘要（ROI、命中率、回測日數）
+   參數: model_name (可選，留空=全部策略)
+
+2. **query_race_results** — 查詢賽事結果（不指定 race_no 即可一次獲取全天所有場次）
+   參數: date_from (必填), date_to, race_no (可選), limit
+
+3. **query_model_predictions** — 查詢指定策略在指定日期的預測 TOP3
+   參數: model_name (必填), date (必填)
+
+4. **query_horse_search** — 按馬名或烙號搜尋馬匹
+   參數: query (必填), limit
+
+# 現有知識
+以下是 ERIC_HYPOTHESIS.md 和現有策略摘要。當用戶問到相關內容時，請引用具體的假設編號 (H1, H2, ...)。
+
+{context}
+
+# 行為準則
+1. 使用繁體中文回答
+2. 回答要簡潔但完整
+3. 引用 Eric 定律假設時使用 (H編號) 格式
+4. 分析策略表現時，必須先調用 query_model_summary 獲取最新數據
+5. 查詢賽事結果時，若需多場數據，請用一次 query_race_results（不指定 race_no）而非逐場查詢
+6. 不要虛構數據 — 必須通過工具查詢數據庫獲取真實數據
+7. 當用戶提出新的假設或改進建議時，提醒可以添加到 ERIC_HYPOTHESIS.md
+"""
+
+    return system_prompt
+
+
+# ─── DB query tools (callable from LLM function calling) ─────
+
+def _tool_query_race_results(args: dict) -> str:
+    """Query race results for a specific date or date range."""
+    date_from = args.get("date_from", "")
+    date_to = args.get("date_to", date_from)
+    race_no = args.get("race_no")
+    limit = min(args.get("limit", 50), 100)
+
+    db = get_db()
+    sql = """SELECT date, race_no, brand, horse_name, jockey, trainer, position, odds, draw, lbw
+             FROM results WHERE 1=1"""
+    params = []
+    if date_from:
+        sql += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        sql += " AND date <= ?"
+        params.append(date_to)
+    if race_no is not None:
+        sql += " AND race_no = ?"
+        params.append(race_no)
+    sql += " ORDER BY date DESC, race_no, CAST(position AS INTEGER) LIMIT ?"
+    params.append(limit)
+
+    rows = db.execute(sql, params).fetchall()
+    db.close()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str)
+
+
+def _tool_query_model_summary(args: dict) -> str:
+    """Get summary stats for a specific model or all models."""
+    model_name = args.get("model_name", "")
+    models = _list_model_configs()
+    results = []
+    for m in models:
+        if model_name and m.get("name") != model_name:
+            continue
+        s = m.get("_summary", {})
+        results.append({
+            "name": m.get("name"),
+            "type": m.get("strategy_type"),
+            "version": m.get("version"),
+            "active": m.get("active"),
+            "backtest_dates": s.get("dates_run", 0),
+            "roi_units": s.get("roi_units"),
+            "top1_pct": s.get("top1_pct"),
+            "bets_placed": s.get("bets_placed"),
+            "bets_won": s.get("bets_won"),
+            "per_date": s.get("per_date", [])[-10:] if s.get("per_date") else [],
+        })
+    return json.dumps(results, ensure_ascii=False, default=str)
+
+
+def _tool_query_horse_search(args: dict) -> str:
+    """Search horses by name or brand."""
+    q = args.get("query", "")
+    limit = min(args.get("limit", 20), 50)
+
+    db = get_db()
+    rows = db.execute("""
+        SELECT brand, name, age, sex, rating, race_count, trainer
+        FROM horses WHERE name LIKE ? OR brand LIKE ?
+        ORDER BY rating DESC LIMIT ?
+    """, (f"%{q}%", f"%{q}%", limit)).fetchall()
+    db.close()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str)
+
+
+def _tool_query_model_predictions(args: dict) -> str:
+    """Get predictions for a specific model on a specific date."""
+    model_name = args.get("model_name", "")
+    date_str = args.get("date", "")
+
+    if not model_name or not date_str:
+        return json.dumps({"error": "需要 model_name 和 date 參數"})
+
+    path = MODELS_DIR / model_name / "results" / date_str / "predictions.json"
+    if not path.exists():
+        return json.dumps({"error": f"日期 {date_str} 沒有策略 {model_name} 的預測數據"})
+
+    with open(path, encoding="utf-8") as f:
+        preds = json.load(f)
+
+    summary = []
+    for rk, v in preds.items():
+        if rk.startswith("_"):
+            continue
+        horses = v.get("horses", [])
+        top = sorted(horses, key=lambda h: float(h.get("win_prob") or 0), reverse=True)[:3]
+        summary.append({
+            "race_no": rk,
+            "class": v.get("class", ""),
+            "horses": len(horses),
+            "top3": [{"name": h.get("name"), "brand": h.get("brand"),
+                      "win_prob": h.get("win_prob"), "edge": h.get("edge")}
+                     for h in top],
+        })
+    return json.dumps(summary, ensure_ascii=False, default=str)
+
+
+TOOL_MAP = {
+    "query_race_results":    _tool_query_race_results,
+    "query_model_summary":   _tool_query_model_summary,
+    "query_horse_search":    _tool_query_horse_search,
+    "query_model_predictions": _tool_query_model_predictions,
+}
+
+TOOLS_DEF = [
+    {"type": "function", "function": {
+        "name": "query_race_results",
+        "description": "查詢賽事結果。不指定 race_no 即可一次獲取該日期所有場次的結果（推薦做法，減少調用次數）。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "date_from": {"type": "string", "description": "開始日期 YYYY-MM-DD"},
+                "date_to": {"type": "string", "description": "結束日期 YYYY-MM-DD (等於 date_from 則查單日)"},
+                "race_no": {"type": "integer", "description": "指定場次（可選，不填=所有場次）"},
+                "limit": {"type": "integer", "description": "最多返回筆數", "default": 50},
+            },
+            "required": ["date_from"],
+        },
+    }},
+    {"type": "function", "function": {
+        "name": "query_model_summary",
+        "description": "查詢策略模型的回測摘要，包括 ROI、命中率、回測日數等",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "model_name": {"type": "string", "description": "策略名稱（留空則返回全部）"},
+            },
+        },
+    }},
+    {"type": "function", "function": {
+        "name": "query_horse_search",
+        "description": "按馬名或烙號搜尋馬匹資料",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "馬名或烙號關鍵字"},
+                "limit": {"type": "integer", "description": "最多返回筆數", "default": 20},
+            },
+            "required": ["query"],
+        },
+    }},
+    {"type": "function", "function": {
+        "name": "query_model_predictions",
+        "description": "查詢指定策略在指定日期的預測數據，包括每場比賽的 TOP3 預測馬匹",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "model_name": {"type": "string", "description": "策略名稱"},
+                "date": {"type": "string", "description": "日期 YYYY-MM-DD"},
+            },
+            "required": ["model_name", "date"],
+        },
+    }},
+]
+
+
+# ── Global Chat – WebSocket broadcast + auto-persist ─────────
+
+class SaveNoteRequest(BaseModel):
+    content: str
+
+def _save_chat_exchange(user_content: str, assistant_content: str):
+    """Append a Q&A exchange to a dated chat log file."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    ts = datetime.now().strftime("%H:%M:%S")
+    notes_dir = BASE_DIR / "chat_notes"
+    notes_dir.mkdir(parents=True, exist_ok=True)
+    filepath = notes_dir / f"chat_{today}.md"
+
+    if not filepath.exists():
+        filepath.write_text(f"# Eric AI Chat Log - {today}\n\n", encoding="utf-8")
+
+    entry = (
+        f"## [{ts}] User\n\n{user_content.strip()}\n\n"
+        f"## [{ts}] Eric AI\n\n{assistant_content.strip()}\n\n---\n\n"
+    )
+    with open(filepath, "a", encoding="utf-8") as f:
+        f.write(entry)
+
+
+async def _stream_chat_response(messages: list):
+    """Core DeepSeek streaming logic. Yields dicts for broadcasting."""
+    if not DEEPSEEK_KEY:
+        yield {"error": "DeepSeek API key not configured"}
+        return
+
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": messages,
+            "tools": TOOLS_DEF,
+            "stream": True,
+        }
+
+        tool_calls: dict[int, dict] = {}
+        accumulated = ""
+
+        async with client.stream("POST", DEEPSEEK_URL, headers=headers, json=payload) as resp:
+            if resp.status_code != 200:
+                body = await resp.aread()
+                yield {"error": f"API error {resp.status_code}: {body.decode()[:200]}"}
+                return
+
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+
+                choice = (chunk.get("choices") or [{}])[0]
+                delta = choice.get("delta", {})
+
+                for tc in delta.get("tool_calls", []):
+                    idx = tc.get("index", 0)
+                    if idx not in tool_calls:
+                        tool_calls[idx] = {"id": tc.get("id", ""), "name": "", "arguments": ""}
+                    if tc.get("id"):
+                        tool_calls[idx]["id"] = tc["id"]
+                    if tc.get("function", {}).get("name"):
+                        tool_calls[idx]["name"] += tc["function"]["name"]
+                    if tc.get("function", {}).get("arguments"):
+                        tool_calls[idx]["arguments"] += tc["function"]["arguments"]
+
+                content = delta.get("content", "")
+                if content:
+                    accumulated += content
+                    yield {"content": content}
+
+        if tool_calls:
+            yield {"thinking": "正在查詢數據..."}
+
+            tool_results = []
+            for tc in tool_calls.values():
+                fn = TOOL_MAP.get(tc["name"])
+                if fn:
+                    yield {"thinking": f"執行 {tc['name']}..."}
+                    try:
+                        args = json.loads(tc["arguments"])
+                        result = fn(args)
+                    except Exception as e:
+                        result = json.dumps({"error": str(e)})
+                else:
+                    available = ', '.join(TOOL_MAP.keys())
+                    result = json.dumps({
+                        "error": f"工具 '{tc['name']}' 不存在。可用工具: {available}",
+                        "hint": f"請使用以下工具之一: {available}"
+                    })
+
+                tool_results.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": result[:4000],
+                })
+
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]}
+                } for tc in tool_calls.values()]
+            })
+            messages.extend(tool_results)
+
+            payload2 = {
+                "model": DEEPSEEK_MODEL,
+                "messages": messages,
+                "stream": True,
+            }
+
+            async with client.stream("POST", DEEPSEEK_URL, headers=headers, json=payload2) as resp2:
+                if resp2.status_code != 200:
+                    body = await resp2.aread()
+                    yield {"error": f"API error {resp2.status_code}"}
+                    return
+
+                async for line in resp2.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        content = ((chunk.get("choices") or [{}])[0].get("delta") or {}).get("content", "")
+                        if content:
+                            accumulated += content
+                            yield {"content": content}
+                    except json.JSONDecodeError:
+                        continue
+
+        yield {"done": True, "full_content": accumulated}
+
+
+async def _process_and_broadcast(user_content: str):
+    """Process a user message and broadcast to all connected clients."""
+    global global_chat_history
+
+    now = datetime.now().isoformat()
+
+    global_chat_history.append({"role": "user", "content": user_content, "timestamp": now})
+    if len(global_chat_history) > MAX_CHAT_HISTORY * 2:
+        global_chat_history = global_chat_history[-(MAX_CHAT_HISTORY * 2):]
+
+    await chat_broadcaster.broadcast({"type": "user_message", "content": user_content, "timestamp": now})
+    await chat_broadcaster.broadcast({"type": "start"})
+
+    system_prompt = _build_chat_context()
+    messages = [{"role": "system", "content": system_prompt}]
+    for m in global_chat_history:
+        messages.append({"role": m["role"], "content": m["content"]})
+
+    full_response = ""
+    async for event in _stream_chat_response(messages):
+        if "error" in event:
+            await chat_broadcaster.broadcast({"type": "error", "content": event["error"]})
+            return
+        if "thinking" in event:
+            await chat_broadcaster.broadcast({"type": "thinking", "content": event["thinking"]})
+            continue
+        if "content" in event:
+            full_response += event["content"]
+            await chat_broadcaster.broadcast({"type": "assistant_chunk", "content": event["content"]})
+            continue
+        if "done" in event:
+            full_response = event.get("full_content", full_response)
+            break
+
+    global_chat_history.append({"role": "assistant", "content": full_response, "timestamp": datetime.now().isoformat()})
+    if len(global_chat_history) > MAX_CHAT_HISTORY * 2:
+        global_chat_history = global_chat_history[-(MAX_CHAT_HISTORY * 2):]
+
+    await chat_broadcaster.broadcast({"type": "done", "full_content": full_response})
+    _save_chat_exchange(user_content, full_response)
+
+
+@app.websocket("/ws/chat")
+async def ws_chat(websocket: WebSocket, token: str = Query(None)):
+    """Global chat WebSocket – all connected clients see the same conversation."""
+    if not token or token not in TOKENS:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
+    await websocket.accept()
+    chat_broadcaster.clients.append(websocket)
+    await chat_broadcaster.broadcast({"type": "clients", "count": len(chat_broadcaster.clients)})
+
+    recent = global_chat_history[-30:] if global_chat_history else []
+    await websocket.send_json({"type": "history", "messages": recent})
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+
+            if msg.get("type") == "message" and msg.get("content", "").strip():
+                async with chat_processing_lock:
+                    await _process_and_broadcast(msg["content"].strip())
+
+    except WebSocketDisconnect:
+        chat_broadcaster.disconnect(websocket)
+        await chat_broadcaster.broadcast({"type": "clients", "count": len(chat_broadcaster.clients)})
+
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_page():
+    path = STATIC_DIR / "chat.html"
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return "<h2>Chat page not found</h2>"
+
+
+@app.post("/api/chat/save")
+async def chat_save_note(req: SaveNoteRequest, auth=Depends(verify_token)):
+    if not req.content.strip():
+        raise HTTPException(400, "Content is empty")
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    notes_dir = BASE_DIR / "chat_notes"
+    notes_dir.mkdir(parents=True, exist_ok=True)
+
+    filepath = notes_dir / f"chat_summary_{today}.md"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry = f"\n---\n## {timestamp}\n\n{req.content.strip()}\n"
+
+    with open(filepath, "a", encoding="utf-8") as f:
+        f.write(entry)
+
+    return {"saved": str(filepath), "date": today}
+
+
 
 # ─── Main ──────────────────────────────────────────────────
 if __name__ == "__main__":

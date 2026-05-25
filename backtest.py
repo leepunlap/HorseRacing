@@ -13,11 +13,11 @@ Pipeline (run once per target date):
 
     ┌────────────────────────────────────────────────────────────────────┐
     │  1. LOAD       _load_today_rows()    CSV first, DB fallback         │
-    │  2. ENGINEER   _engineer_features()  44 features × all horses       │
+    │  2. ENGINEER   _engineer_features()  46 features × all horses       │
     │                  ├─ compute_win_rates()      Bayesian shrunk rates  │
     │                  ├─ compute_pace_styles()    Sectionals → style     │
     │                  ├─ compute_horse_history()  Gear/rating/class hist │
-    │                  └─ build_horse_features()   Per-horse 44-vector    │
+    │                  └─ build_horse_features()   Per-horse 46-vector    │
     │  3. TRAIN      _train_xgboost()      Walk-forward; only prior dates │
     │  4. PREDICT    .predict()            Raw probability per horse       │
     │  5. NORMALISE  _normalise_per_race() Probs sum to 1 within race     │
@@ -71,12 +71,131 @@ from collections import defaultdict
 from pathlib import Path
 import numpy as np, pandas as pd
 import xgboost as xgb
+from sklearn.isotonic import IsotonicRegression
 import warnings; warnings.filterwarnings('ignore')
 
 import model_config as _mc
 from model_config import FEATURE_COLS, load_config, results_dir
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
+
+# ── Harville formula (H160) ────────────────────────────────────────────────────
+# Converts calibrated per-race win probabilities into place (top-3), quinella,
+# and quinella-place probabilities. Based on the assumption that conditional
+# probabilities are proportional to win likelihood: P(j|i wins) = pj/(1-pi).
+# All functions accept horse indices, NOT probability values, to avoid
+# floating-point matching issues.
+
+def harville_exacta_prob(idx_i: int, idx_j: int, prob_array: np.ndarray) -> float:
+    """Probability horse at idx_i wins AND horse at idx_j finishes 2nd (exacta order)."""
+    pi = prob_array[idx_i]
+    pj = prob_array[idx_j]
+    if 1.0 - pi < 1e-12:
+        return 0.0
+    return pi * pj / (1.0 - pi)
+
+def harville_q_prob(idx_i: int, idx_j: int, prob_array: np.ndarray) -> float:
+    """Probability horses at idx_i, idx_j are top-2 in any order (quinella)."""
+    return harville_exacta_prob(idx_i, idx_j, prob_array) + \
+           harville_exacta_prob(idx_j, idx_i, prob_array)
+
+def harville_place_prob(idx: int, prob_array: np.ndarray) -> float:
+    """Probability horse at idx finishes in top-3 (win, 2nd, or 3rd).
+
+    P(i places) = P(i wins) + P(i 2nd) + P(i 3rd)
+    P(i 2nd) = Σ_{j≠i} pj * pi/(1-pj)
+    P(i 3rd) = Σ_{j≠i≠k} pj * pk/(1-pj) * pi/(1-pj-pk)
+    """
+    n = len(prob_array)
+    pi = prob_array[idx]
+
+    if n < 3:
+        return pi + sum(harville_exacta_prob(j, idx, prob_array)
+                        for j in range(n) if j != idx)
+
+    place = pi
+
+    for j in range(n):
+        if j == idx:
+            continue
+        pj = prob_array[j]
+        if 1.0 - pj < 1e-12:
+            continue
+        place += pj * pi / (1.0 - pj)
+
+    for j in range(n):
+        if j == idx:
+            continue
+        pj = prob_array[j]
+        if 1.0 - pj < 1e-12:
+            continue
+        for k in range(n):
+            if k == idx or k == j:
+                continue
+            pk = prob_array[k]
+            denom = 1.0 - pj - pk
+            if denom < 1e-12:
+                continue
+            place += pj * pk / (1.0 - pj) * pi / denom
+
+    return place
+
+def harville_qp_prob(idx_i: int, idx_j: int, prob_array: np.ndarray) -> float:
+    """Probability both horses at idx_i, idx_j finish in top-3 (quinella-place).
+
+    Sums all 6 orderings where i,j occupy two of the three top-3 slots,
+    times the 3rd horse k, for each k ≠ i,j.
+    """
+    n = len(prob_array)
+    pi = prob_array[idx_i]
+    pj = prob_array[idx_j]
+    qp = 0.0
+
+    for k in range(n):
+        if k == idx_i or k == idx_j:
+            continue
+        pk = prob_array[k]
+
+        # i,j,k
+        if 1.0 - pi > 1e-12 and 1.0 - pi - pj > 1e-12:
+            qp += pi * pj/(1.0-pi) * pk/(1.0-pi-pj)
+        # i,k,j
+        if 1.0 - pi > 1e-12 and 1.0 - pi - pk > 1e-12:
+            qp += pi * pk/(1.0-pi) * pj/(1.0-pi-pk)
+        # j,i,k
+        if 1.0 - pj > 1e-12 and 1.0 - pj - pi > 1e-12:
+            qp += pj * pi/(1.0-pj) * pk/(1.0-pj-pi)
+        # j,k,i
+        if 1.0 - pj > 1e-12 and 1.0 - pj - pk > 1e-12:
+            qp += pj * pk/(1.0-pj) * pi/(1.0-pj-pk)
+        # k,i,j
+        if 1.0 - pk > 1e-12 and 1.0 - pk - pi > 1e-12:
+            qp += pk * pi/(1.0-pk) * pj/(1.0-pk-pi)
+        # k,j,i
+        if 1.0 - pk > 1e-12 and 1.0 - pk - pj > 1e-12:
+            qp += pk * pj/(1.0-pk) * pi/(1.0-pk-pj)
+
+    return qp
+
+def compute_race_harville_probs(win_probs: np.ndarray) -> dict:
+    """For a single race, compute all Harville derivative probabilities.
+
+    Returns dict with keys:
+      'place_probs': array of place (top-3) probabilities per horse
+      'q_matrix':    NxN matrix of Q probabilities (upper triangular meaningful)
+      'qp_matrix':   NxN matrix of QP probabilities (upper triangular meaningful)
+    """
+    n = len(win_probs)
+    place_probs = np.array([harville_place_prob(i, win_probs) for i in range(n)])
+    q_mat  = np.zeros((n, n))
+    qp_mat = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            qp_val = harville_q_prob(i, j, win_probs)
+            q_mat[i][j] = q_mat[j][i] = qp_val
+            qpp_val = harville_qp_prob(i, j, win_probs)
+            qp_mat[i][j] = qp_mat[j][i] = qpp_val
+    return {'place_probs': place_probs, 'q_matrix': q_mat, 'qp_matrix': qp_mat}
 BASE    = Path(__file__).parent
 DATA    = BASE / 'data'
 PRED    = BASE / 'predictions'                  # production output dir
@@ -94,6 +213,8 @@ DEFAULT_PARTICIPANTS         = 14
 DEFAULT_DRAW                 = 7              # middle of typical field
 DEFAULT_MAX_WT_IN_FIELD      = 135            # for weight_allow if no group data
 DEFAULT_LATE_PACE            = 0.85           # neutral late-pace ratio
+DEFAULT_EARLY_PACE           = 1.0            # neutral early-pace ratio
+DEFAULT_OVERTAKE_DIST        = 0.0            # no position gain by default
 DEFAULT_LAYOFF_DAYS          = 30             # for horses with no prior runs
 DEFAULT_HORSE_STYLE_MIDFIELD = 2              # if sectionals data missing
 MIN_TRAINING_ROWS            = 100            # below this, skip the date
@@ -315,9 +436,10 @@ def compute_win_rates(hist: pd.DataFrame, cutoff_date, trainer_form_days: int = 
 
 def compute_pace_styles(hist_sec: pd.DataFrame, hist: pd.DataFrame,
                         ep_thresholds: list) -> tuple:
-    """Return (horse_style_dict, horse_late_pace_dict) from sectionals history."""
+    """Return (horse_style_dict, horse_late_pace_dict, horse_early_pace_dict)."""
     hs_style = {}
     hlp = defaultdict(list)
+    hep = defaultdict(list)
 
     for _, sr in hist_sec.iterrows():
         dt = sr['Date']; rn = sr['RaceNo']; course = sr['Course']
@@ -328,38 +450,51 @@ def compute_pace_styles(hist_sec: pd.DataFrame, hist: pd.DataFrame,
             b = mr.get('BrandNo', 'X') or 'X'
             if pd.notna(ep):
                 hs_style[b] = classify_early_pace(ep, ep_thresholds)
+                hep[b].append(float(ep))
             if pd.notna(lp):
                 hlp[b].append(float(lp))
 
-    return hs_style, hlp
+    return hs_style, hlp, hep
 
 
 def compute_horse_history(hist_rh: pd.DataFrame) -> tuple:
-    """Return (gear_history, rating_history, class_history) dicts from race history."""
+    """Return (gear_history, rating_history, class_history, overtake_dist_history) dicts."""
     gh  = defaultdict(list)
     hra = defaultdict(list)
     hcl = defaultdict(list)
+    hod = defaultdict(list)   # avg positions gained from early running pos to finish
 
     for _, rr in hist_rh.iterrows():
         b = rr.get('BrandNo', '') or ''
         if not b: continue
+        running_str = str(rr.get('Running', '') or '')
         if pd.notna(rr.get('Running')):
-            gh[b].append(str(rr.get('Running', ''))[:2])
+            gh[b].append(running_str[:2])
         if pd.notna(rr.get('Rating')):
             try: hra[b].append(float(rr['Rating']))
             except: pass
         if pd.notna(rr.get('Class')):
             try: hcl[b].append(float(rr['Class']))
             except: pass
+        # Position gain: first running position minus final position (positive = overtook runners)
+        try:
+            parts = running_str.split()
+            if parts:
+                early_pos = int(parts[0])
+                final_pos = int(rr.get('Pla', 0) or 0)
+                if early_pos > 0 and final_pos > 0:
+                    hod[b].append(float(early_pos - final_pos))
+        except (ValueError, TypeError):
+            pass
 
-    return gh, hra, hcl
+    return gh, hra, hcl, hod
 
 
 # ── Per-horse feature vector ──────────────────────────────────────────────────
 
-def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, hcl,
+def build_horse_features(rw, grp, race_pace_str, rpi_field_score, stats, hs_style, hlp, hep, gh, hra, hcl, hod,
                           prof_dict, cutoff_date, cfg: dict) -> dict:
-    """Compute all 44 features for a single horse in a race."""
+    """Compute all 46 features for a single horse in a race."""
     (xgb_p, n_rounds, going_map, pace_draw, pace_bucket, ep_thresh,
      inner_max, outer_min, layoff, wt_div, cold_thresh, chri,
      pace_match, form_days, rt_window, std_gear, feats_off) = _cfg_values(cfg)
@@ -495,6 +630,25 @@ def build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp, gh, hra, 
     f['pace_draw_bonus']  = pace_draw.get(race_pace_str, {}).get(draw_group(dv, inner_max, outer_min), 0)
     lps = hlp.get(b, [])
     f['late_pace_avg']    = np.mean(lps) if lps else DEFAULT_LATE_PACE
+    eps = hep.get(b, [])
+    f['early_pace_avg']   = np.mean(eps) if eps else DEFAULT_EARLY_PACE
+    ods = hod.get(b, [])
+    f['avg_overtake_dist'] = np.mean(ods) if ods else DEFAULT_OVERTAKE_DIST
+
+    # ── RPI (Race Pace Index, H86–H88) ───────────────────────────────────
+    f['rpi_field_score']   = float(rpi_field_score)
+    eps_list = hep.get(b, [])
+    lps_list = hlp.get(b, [])
+    if len(eps_list) >= 2:
+        f['rpi_pace_deviation'] = float(np.std(eps_list))
+    else:
+        f['rpi_pace_deviation'] = 0.0
+    if eps_list and lps_list:
+        ep_avg = np.mean(eps_list)
+        lp_avg = np.mean(lps_list)
+        f['rpi_pace_ratio'] = float(ep_avg / max(lp_avg, 1e-6))
+    else:
+        f['rpi_pace_ratio'] = 1.0
 
     # ── Composite / Interactions ─────────────────────────────────────────
     f['cold_stable_x_wide']  = 1 if swr < cold_thresh and dv >= outer_min else 0
@@ -530,16 +684,21 @@ def build_features(rows: pd.DataFrame, cutoff_date, res_hist, sec_hist,
      _, _, _) = _cfg_values(cfg)
 
     stats          = compute_win_rates(res_hist, cutoff_date, form_days)
-    hs_style, hlp  = compute_pace_styles(sec_hist, res_hist, ep_thresh)
-    gh, hra, hcl   = compute_horse_history(rh_hist)
+    hs_style, hlp, hep = compute_pace_styles(sec_hist, res_hist, ep_thresh)
+    gh, hra, hcl, hod  = compute_horse_history(rh_hist)
 
     feat_rows = []
     for (date, course, race_no), grp in rows.groupby(['Date', 'Course', 'RaceNo']):
         styles        = [hs_style.get(rw.get('BrandNo', 'X') or 'X', 2) for _, rw in grp.iterrows()]
         race_pace_str = classify_race_pace(styles, pace_bucket)
+        # RPI: continuous field pace score (-1 slow → +1 fast)
+        n_styles      = max(len(styles), 1)
+        leaders_pct   = sum(1 for s in styles if s == 0) / n_styles
+        closers_pct   = sum(1 for s in styles if s == 3) / n_styles
+        rpi_field     = closers_pct - leaders_pct   # positive = fast pace expected
         for _, rw in grp.iterrows():
-            f = build_horse_features(rw, grp, race_pace_str, stats, hs_style, hlp,
-                                     gh, hra, hcl, prof_dict, cutoff_date, cfg)
+            f = build_horse_features(rw, grp, race_pace_str, rpi_field, stats, hs_style, hlp, hep,
+                                     gh, hra, hcl, hod, prof_dict, cutoff_date, cfg)
             feat_rows.append(f)
 
     return pd.DataFrame(feat_rows)
@@ -604,12 +763,18 @@ def _engineer_features(today_rows, target_date, res_csv, sec, prof_dict, rh, cfg
 
 
 def _train_and_predict(train_feats, today_feats, feat_cols, cfg):
-    """PHASES 3 + 4 — TRAIN XGBoost and PREDICT today's probabilities.
+    """PHASES 3 + 4 — TRAIN XGBoost + optional isotonic calibration, then PREDICT.
 
-    Returns (raw_probs, feat_weights, feat_sorted_by_importance).
+    Isotonic calibration (H99): if use_isotonic_calibration=true in config, holds
+    out the last 20% of training rows (time-ordered) to fit IsotonicRegression on
+    out-of-sample XGBoost scores, then maps today's raw scores through it. This
+    corrects systematic over/under-estimation without leaking future data.
+
+    Returns (probs, feat_weights, feat_sorted_by_importance).
     """
-    xgb_params = cfg.get('xgb', {})
-    n_rounds   = cfg.get('num_boost_rounds', 100)
+    xgb_params   = cfg.get('xgb', {})
+    n_rounds     = cfg.get('num_boost_rounds', 100)
+    use_isotonic = cfg.get('use_isotonic_calibration', False)
 
     X_train = train_feats[feat_cols].fillna(0)
     y_train = train_feats['won'].values
@@ -618,8 +783,23 @@ def _train_and_predict(train_feats, today_feats, feat_cols, cfg):
     dtrain = xgb.DMatrix(X_train, label=y_train)
     dtest  = xgb.DMatrix(X_test)
     model  = xgb.train(xgb_params, dtrain, num_boost_round=n_rounds)
+    raw_probs = model.predict(dtest)
 
-    raw_probs    = model.predict(dtest)
+    if use_isotonic and len(X_train) > 300:
+        # Hold out last 20% of training (time-ordered) as calibration set.
+        # Train a parallel model on the 80% portion to get OOS predictions.
+        n_cal = max(int(len(X_train) * 0.2), 50)
+        X_fit = X_train.iloc[:-n_cal];  y_fit = y_train[:-n_cal]
+        X_cal = X_train.iloc[-n_cal:];  y_cal = y_train[-n_cal:]
+        if len(X_fit) >= MIN_TRAINING_ROWS:
+            m_cal = xgb.train(xgb_params,
+                              xgb.DMatrix(X_fit, label=y_fit),
+                              num_boost_round=n_rounds)
+            cal_preds = m_cal.predict(xgb.DMatrix(X_cal))
+            ir = IsotonicRegression(out_of_bounds='clip')
+            ir.fit(cal_preds, y_cal)
+            raw_probs = ir.transform(raw_probs)
+
     importance   = model.get_score(importance_type='gain')
     feat_weights = {fn: float(importance.get(fn, 0.0)) for fn in feat_cols}
     feat_sorted  = sorted(feat_cols, key=lambda f: feat_weights[f], reverse=True)
@@ -672,12 +852,12 @@ def _resolve_horse_name(brand: str, today_rows: pd.DataFrame) -> str:
     return ''
 
 
-def _build_horse_record(tr, today_rows, feat_sorted) -> dict:
+def _build_horse_record(tr, today_rows, feat_sorted, harville: dict = None, horse_idx: int = 0) -> dict:
     """Build one horse's output record from its feature row + source row.
 
     The record is the JSON shape consumed by app.py and the UI: identity
     fields (no, name, brand, jockey, trainer), today's setup (draw, weight,
-    rating, win_odds), the three probability fields (prob, win_prob, edge),
+    rating, win_odds), probability fields (prob, win_prob, place_prob, edge),
     and a sorted feature snapshot for explanation.
     """
     brand = tr['node']
@@ -688,7 +868,7 @@ def _build_horse_record(tr, today_rows, feat_sorted) -> dict:
     jockey  = orig['JockeyCN'].iloc[0]  if len(orig) and 'JockeyCN'  in orig.columns else ''
     trainer = orig['TrainerCN'].iloc[0] if len(orig) and 'TrainerCN' in orig.columns else ''
 
-    return {
+    rec = {
         'no':       '',           # filled by caller after enumeration
         'name':     _resolve_horse_name(brand, today_rows),
         'brand':    brand,
@@ -704,24 +884,32 @@ def _build_horse_record(tr, today_rows, feat_sorted) -> dict:
         'features': {c: round(float(tr.get(c, 0) or 0), 4) for c in feat_sorted},
     }
 
+    if harville is not None:
+        rec['place_prob'] = round(float(harville['place_probs'][horse_idx]), 4)
+        rec['place_edge'] = round(float(harville['place_probs'][horse_idx]) * float(tr.get('odds_raw') or 0), 2)
+
+    return rec
+
 
 def _tally_race(horses, today_feats, race_no_int, cfg, accum):
     """PHASE 6 — TALLY top-1 accuracy + bet P&L for one race.
 
-    Mutates `accum` (a dict carrying running totals across all races):
-        accum['top1_races']    += 1
-        accum['top1_correct']  += 1 if model's top pick wins
-        accum['bets_placed']   += N where N = horses meeting bet criteria
-        accum['bets_won']      += M where M wagered horses actually won
-        accum['units_staked']  += N      (one unit per bet)
-        accum['units_net']     += (odds - 1) per win, -1 per loss
+    Mutates `accum`:
+        top1_races / top1_correct — accuracy tracking
+        bets_placed / bets_won / units_staked / units_net — P&L
+        hard_stopped / hard_stopped_bets — bets blocked by bet_max_odds (for RCA)
+    Bet sizing: flat 1u when kelly_fraction=0 (default), or fractional Kelly
+    when kelly_fraction>0. Kelly f = (p*odds - 1) / (odds - 1), capped at
+    kelly_max_bet to prevent ruinous single-race exposure.
     """
     if not horses:
         return
 
     bet_edge_threshold = cfg.get('bet_edge_threshold', 1.0)
-    bet_min_odds      = cfg.get('bet_min_odds', 0.0)
-    bet_max_odds      = cfg.get('bet_max_odds', 999.0)
+    bet_min_odds       = cfg.get('bet_min_odds', 0.0)
+    bet_max_odds       = cfg.get('bet_max_odds', 999.0)
+    kelly_fraction     = cfg.get('kelly_fraction', 0.0)
+    kelly_max_bet      = cfg.get('kelly_max_bet', 5.0)
 
     # Top-1 accuracy
     accum['top1_races'] += 1
@@ -736,21 +924,45 @@ def _tally_race(horses, today_feats, race_no_int, cfg, accum):
     if predicted_winner['brand'] in actual_winners:
         accum['top1_correct'] += 1
 
-    # Bet on every horse with positive EV (edge > threshold) within odds band.
-    # Multiple bets per race are allowed — one model, multiple opinions.
     for h in horses:
         if h['edge'] <= bet_edge_threshold:
             continue
         odds_val = float(h.get('win_odds') or 0)
-        if odds_val <= 1.0 or odds_val < bet_min_odds or odds_val > bet_max_odds:
+        if odds_val <= 1.0 or odds_val < bet_min_odds:
             continue
+
+        # Hard stop: block bets above max odds ceiling; record for root-cause analysis.
+        if odds_val > bet_max_odds:
+            accum['hard_stopped'] += 1
+            accum['hard_stopped_bets'].append({
+                'race':     race_no_int,
+                'brand':    h['brand'],
+                'name':     h.get('name', ''),
+                'odds':     round(odds_val, 1),
+                'edge':     round(float(h['edge']), 2),
+                'win_prob': round(float(h['win_prob']), 4),
+            })
+            continue
+
+        # Bet sizing: fractional Kelly or flat 1 unit.
+        if kelly_fraction > 0:
+            p     = float(h['win_prob'])
+            b_net = odds_val - 1.0
+            # Full Kelly f* = (p·b - q) / b  where b = net odds, q = 1-p
+            kelly_f  = max(0.0, (p * odds_val - 1.0) / b_net)
+            bet_size = min(kelly_f * kelly_fraction, kelly_max_bet)
+            if bet_size < 0.01:
+                continue   # Kelly says too small to bother
+        else:
+            bet_size = 1.0
+
         accum['bets_placed']  += 1
-        accum['units_staked'] += 1.0
+        accum['units_staked'] += bet_size
         if h['brand'] in actual_winners:
             accum['bets_won']  += 1
-            accum['units_net'] += odds_val - 1.0   # profit = odds − stake
+            accum['units_net'] += bet_size * (odds_val - 1.0)
         else:
-            accum['units_net'] -= 1.0              # loss   = stake
+            accum['units_net'] -= bet_size
 
 
 def _format_race_meta(today_rows, race_no_int) -> tuple:
@@ -802,7 +1014,8 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
     output = {}
     accum  = {'top1_correct': 0, 'top1_races': 0,
               'bets_placed':  0, 'bets_won':   0,
-              'units_staked': 0.0, 'units_net':  0.0}
+              'units_staked': 0.0, 'units_net':  0.0,
+              'hard_stopped': 0, 'hard_stopped_bets': []}
 
     for race_no, grp in today_feats.groupby('race_no'):
         race_no_int = int(race_no)
@@ -814,10 +1027,35 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
             rec['no'] = str(len(horses) + 1)
             horses.append(rec)
 
+        # ── Harville derivative probabilities (H160) ────────────────
+        win_probs = np.array([float(h['win_prob']) for h in horses])
+        if len(win_probs) >= 2:
+            hv = compute_race_harville_probs(win_probs)
+            for idx, h in enumerate(horses):
+                h['place_prob'] = round(float(hv['place_probs'][idx]), 4)
+                h['place_edge'] = round(float(hv['place_probs'][idx]) * float(h.get('win_odds') or 0), 2)
+
+            # Top-5 Q pairs by probability
+            q_pairs = []
+            n = len(win_probs)
+            for a in range(n):
+                for b in range(a + 1, n):
+                    q_pairs.append({
+                        'brands': [horses[a]['brand'], horses[b]['brand']],
+                        'q_prob': round(float(hv['q_matrix'][a][b]), 4),
+                        'qp_prob': round(float(hv['qp_matrix'][a][b]), 4),
+                    })
+            q_pairs.sort(key=lambda x: x['q_prob'], reverse=True)
+        else:
+            hv = None
+            q_pairs = []
+
         _tally_race(horses, today_feats, race_no_int, cfg, accum)
 
         rn_key = str(race_no_int).zfill(2)
         output[rn_key] = {'distance': dist, 'class': cls_str, 'horses': horses}
+        if q_pairs:
+            output[rn_key]['q_pairs'] = q_pairs[:5]
 
     # 7. PERSIST — embed model metadata then write the file
     output['_model']          = cfg.get('name', '')
@@ -826,6 +1064,9 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
     output['_generated_at']   = datetime.now().isoformat(timespec='seconds')
     output['_feature_cols']   = feat_sorted
     output['_feature_weights']= {k: round(v, 1) for k, v in feat_weights.items()}
+    if accum['hard_stopped']:
+        output['_hard_stopped_count'] = accum['hard_stopped']
+        output['_hard_stopped_bets']  = accum['hard_stopped_bets']
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as fh:
@@ -852,6 +1093,7 @@ def run_date(date_str: str, res_csv, sec, prof_dict, rh,
         'units_staked': round(accum['units_staked'], 1),
         'units_net':    round(accum['units_net'], 2),
         'roi':          roi,
+        'hard_stopped': accum['hard_stopped'],
         'elapsed':      round(elapsed, 1),
     }
 
@@ -931,10 +1173,9 @@ def retally(model_name: str, verbose: bool = False) -> dict:
     """Re-apply current bet-filter params to existing per-date predictions.json
     and regenerate summary.json without re-training the model.
 
-    Uses the SQLite DB (same DB_PATH as the full backtest) to look up actual
-    winners for each backtested date.
-
-    Returns the new summary dict.
+    Uses the SQLite DB to look up actual winners, placegetters, and dividends
+    for backtested dates. Supports WIN, PLACE, QIN, and QPL bet evaluation
+    via the Harville formula (H160).
     """
     from model_config import load_config as _lc, bet_params_hash, model_params_hash
 
@@ -943,6 +1184,10 @@ def retally(model_name: str, verbose: bool = False) -> dict:
     bet_edge = float(cfg.get('bet_edge_threshold') or 1.0)
     bet_min  = float(cfg.get('bet_min_odds')  or 0.0)
     bet_max  = float(cfg.get('bet_max_odds')  or 999.0)
+    place_edge = float(cfg.get('place_edge_threshold', 0.0) or 0.0)
+    q_edge     = float(cfg.get('q_edge_threshold', 0.0) or 0.0)
+    qp_edge    = float(cfg.get('qp_edge_threshold', 0.0) or 0.0)
+    q_top_n    = int(cfg.get('q_top_n', 5))
 
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
@@ -952,6 +1197,12 @@ def retally(model_name: str, verbose: bool = False) -> dict:
         'top1_correct': 0, 'top1_races': 0,
         'bets_placed': 0,  'bets_won': 0,
         'units_staked': 0.0, 'units_net': 0.0,
+        'place_bets_placed': 0, 'place_bets_won': 0,
+        'place_units_staked': 0.0, 'place_units_net': 0.0,
+        'q_bets_placed': 0, 'q_bets_won': 0,
+        'q_units_staked': 0.0, 'q_units_net': 0.0,
+        'qp_bets_placed': 0, 'qp_bets_won': 0,
+        'qp_units_staked': 0.0, 'qp_units_net': 0.0,
         'per_date': [],
     }
 
@@ -972,20 +1223,49 @@ def retally(model_name: str, verbose: bool = False) -> dict:
                 print(f"  {date_str}: skip — {e}")
             continue
 
-        # Actual winners from DB: race_no -> set of winning brands
+        # Actual winners: race_no -> set of winning brands
         winners: dict[str, set] = {}
+        # Top-2 finishers for Q: race_no -> set of brands
+        top2: dict[str, set] = {}
+        # Actual placegetters (top-3): race_no -> set of brands
+        placers: dict[str, set] = {}
         for row in conn.execute(
-            "SELECT race_no, brand FROM results WHERE date=? AND position='1'",
+            "SELECT race_no, brand, position FROM results WHERE date=? AND position IN (1,2,3)",
             (date_str,)
         ).fetchall():
             rn = str(int(row['race_no']))
-            winners.setdefault(rn, set()).add(row['brand'])
+            brand = row['brand']
+            pos = int(row['position'])
+            winners.setdefault(rn, set())
+            top2.setdefault(rn, set())
+            placers.setdefault(rn, set())
+            if pos == 1:
+                winners[rn].add(brand)
+            if pos <= 2:
+                top2[rn].add(brand)
+            placers[rn].add(brand)
+
+        # Dividends for this date: (course,race_no,pool,comb) -> dividend
+        div_lookup: dict = {}
+        for row in conn.execute(
+            "SELECT course, race_no, pool, combination, dividend FROM dividends WHERE date=?",
+            (date_str,)
+        ).fetchall():
+            key = (row['course'], row['race_no'], row['pool'], row['combination'])
+            div_lookup[key] = row['dividend']
 
         day = {'date': date_str, 'races': 0, 'horses': 0,
                'top1_correct': 0, 'top1_races': 0,
                'bets_placed': 0,  'bets_won': 0,
-               'units_staked': 0.0, 'units_net': 0.0, 'roi': 0.0}
+               'units_staked': 0.0, 'units_net': 0.0, 'roi': 0.0,
+               'place_bets_placed': 0, 'place_bets_won': 0,
+               'place_units_staked': 0.0, 'place_units_net': 0.0, 'place_roi': 0.0,
+               'q_bets_placed': 0, 'q_bets_won': 0,
+               'q_units_staked': 0.0, 'q_units_net': 0.0, 'q_roi': 0.0,
+               'qp_bets_placed': 0, 'qp_bets_won': 0,
+               'qp_units_staked': 0.0, 'qp_units_net': 0.0, 'qp_roi': 0.0}
 
+        course_for_date = ''
         for rk, race in preds.items():
             if rk.startswith('_'):
                 continue
@@ -994,8 +1274,14 @@ def retally(model_name: str, verbose: bool = False) -> dict:
                 continue
             rn      = str(int(rk))
             win_set = winners.get(rn, set())
+            top2_set = top2.get(rn, set())
+            plc_set = placers.get(rn, set())
             day['races']  += 1
             day['horses'] += len(horses)
+
+            # Detect course from first race
+            if not course_for_date:
+                course_for_date = _detect_course_from_predictions(date_str, rk, conn)
 
             # Top-1: highest win_prob
             best = max(horses, key=lambda h: float(h.get('win_prob') or 0))
@@ -1003,7 +1289,7 @@ def retally(model_name: str, verbose: bool = False) -> dict:
             if best.get('brand') in win_set:
                 day['top1_correct'] += 1
 
-            # Bet filter
+            # ── WIN bets ──────────────────────────────────────────
             for h in horses:
                 edge = float(h.get('edge') or 0)
                 if edge <= bet_edge:
@@ -1019,30 +1305,121 @@ def retally(model_name: str, verbose: bool = False) -> dict:
                 else:
                     day['units_net'] -= 1.0
 
+            # ── Harville probs for this race ─────────────────────
+            n = len(horses)
+            win_probs = np.array([float(h.get('win_prob') or 0) for h in horses])
+            hv = compute_race_harville_probs(win_probs) if n >= 2 else None
+
+            # ── PLACE bets (via Harville) ────────────────────────
+            if hv is not None and place_edge > 0:
+                for idx, h in enumerate(horses):
+                    place_prob = float(hv['place_probs'][idx])
+                    # Look up place dividend for this brand
+                    brand = h.get('brand', '')
+                    div_key = (course_for_date, int(rn), 'PLACE', brand)
+                    place_div = div_lookup.get(div_key, 0.0)
+                    if place_div <= 1.0:
+                        continue
+                    place_edge_val = place_prob * place_div
+                    if place_edge_val <= place_edge:
+                        continue
+                    day['place_bets_placed']  += 1
+                    day['place_units_staked'] += 1.0
+                    if brand in plc_set:
+                        day['place_bets_won']  += 1
+                        day['place_units_net'] += place_div - 1.0
+                    else:
+                        day['place_units_net'] -= 1.0
+
+            # ── Q / QP bets (via Harville) ───────────────────────
+            if hv is not None and n >= 2 and (q_edge > 0 or qp_edge > 0):
+                q_pairs = []
+                for a in range(n):
+                    for b in range(a + 1, n):
+                        q_pairs.append((a, b, hv['q_matrix'][a][b], hv['qp_matrix'][a][b]))
+                q_pairs.sort(key=lambda x: x[2], reverse=True)
+
+                for a, b, qp, qpp in q_pairs[:q_top_n]:
+                    brands = sorted([horses[a]['brand'], horses[b]['brand']])
+                    comb   = ','.join(brands)
+                    # Q bet
+                    if q_edge > 0:
+                        q_div_key = (course_for_date, int(rn), 'QIN', comb)
+                        q_div = div_lookup.get(q_div_key, 0.0)
+                        q_edge_val = qp * q_div
+                        if q_div > 1.0 and q_edge_val > q_edge:
+                            day['q_bets_placed']  += 1
+                            day['q_units_staked'] += 1.0
+                            if brands[0] in top2_set and brands[1] in top2_set:
+                                day['q_bets_won']  += 1
+                                day['q_units_net'] += q_div - 1.0
+                            else:
+                                day['q_units_net'] -= 1.0
+                    # QP bet
+                    if qp_edge > 0:
+                        qp_div_key = (course_for_date, int(rn), 'QPL', comb)
+                        qp_div = div_lookup.get(qp_div_key, 0.0)
+                        qp_edge_val = qpp * qp_div
+                        if qp_div > 1.0 and qp_edge_val > qp_edge:
+                            day['qp_bets_placed']  += 1
+                            day['qp_units_staked'] += 1.0
+                            if brands[0] in plc_set and brands[1] in plc_set:
+                                day['qp_bets_won']  += 1
+                                day['qp_units_net'] += qp_div - 1.0
+                            else:
+                                day['qp_units_net'] -= 1.0
+
+        # ── Round day figures ───────────────────────────────────
         day['units_staked'] = round(day['units_staked'], 1)
         day['units_net']    = round(day['units_net'], 2)
         day['roi'] = (round(day['units_net'] / day['units_staked'], 4)
                       if day['units_staked'] else 0.0)
+        day['place_units_staked'] = round(day['place_units_staked'], 1)
+        day['place_units_net']    = round(day['place_units_net'], 2)
+        day['place_roi'] = (round(day['place_units_net'] / day['place_units_staked'], 4)
+                            if day['place_units_staked'] else 0.0)
+        day['q_units_staked'] = round(day['q_units_staked'], 1)
+        day['q_units_net']    = round(day['q_units_net'], 2)
+        day['q_roi'] = (round(day['q_units_net'] / day['q_units_staked'], 4)
+                         if day['q_units_staked'] else 0.0)
+        day['qp_units_staked'] = round(day['qp_units_staked'], 1)
+        day['qp_units_net']    = round(day['qp_units_net'], 2)
+        day['qp_roi'] = (round(day['qp_units_net'] / day['qp_units_staked'], 4)
+                          if day['qp_units_staked'] else 0.0)
 
-        accum['dates_run']    += 1
-        accum['total_races']  += day['races']
-        accum['top1_correct'] += day['top1_correct']
-        accum['top1_races']   += day['top1_races']
-        accum['bets_placed']  += day['bets_placed']
-        accum['bets_won']     += day['bets_won']
-        accum['units_staked'] += day['units_staked']
-        accum['units_net']    += day['units_net']
+        # ── Accumulate ──────────────────────────────────────────
+        accum['dates_run']   += 1
+        accum['total_races'] += day['races']
+        for key in ('top1_correct', 'top1_races',
+                    'bets_placed', 'bets_won',
+                    'place_bets_placed', 'place_bets_won',
+                    'q_bets_placed', 'q_bets_won',
+                    'qp_bets_placed', 'qp_bets_won'):
+            accum[key] += day.get(key, 0)
+        accum['units_staked']       += day['units_staked']
+        accum['units_net']          += day['units_net']
+        accum['place_units_staked'] += day['place_units_staked']
+        accum['place_units_net']    += day['place_units_net']
+        accum['q_units_staked']     += day['q_units_staked']
+        accum['q_units_net']        += day['q_units_net']
+        accum['qp_units_staked']    += day['qp_units_staked']
+        accum['qp_units_net']       += day['qp_units_net']
         accum['per_date'].append(day)
 
         if verbose:
             print(f"  {date_str}: {day['races']}場 "
-                  f"bets={day['bets_placed']} won={day['bets_won']} "
-                  f"net={day['units_net']:+.2f}")
+                  f"win={day['bets_placed']}/{day['bets_won']} net={day['units_net']:+.2f} "
+                  f"plc={day['place_bets_placed']}/{day['place_bets_won']} net={day['place_units_net']:+.2f} "
+                  f"q={day['q_bets_placed']}/{day['q_bets_won']} net={day['q_units_net']:+.2f}")
 
     conn.close()
 
-    roi      = (round(accum['units_net'] / accum['units_staked'], 4)
-                if accum['units_staked'] else None)
+    # ── Final summary ───────────────────────────────────────────
+    def _roi(s, n): return round(n / s, 4) if s > 0 else None
+    roi      = _roi(accum['units_staked'], accum['units_net'])
+    place_roi= _roi(accum['place_units_staked'], accum['place_units_net'])
+    q_roi    = _roi(accum['q_units_staked'], accum['q_units_net'])
+    qp_roi   = _roi(accum['qp_units_staked'], accum['qp_units_net'])
     top1_acc = (round(accum['top1_correct'] / accum['top1_races'], 4)
                 if accum['top1_races'] else 0.0)
 
@@ -1060,11 +1437,26 @@ def retally(model_name: str, verbose: bool = False) -> dict:
         'units_net':     round(accum['units_net'], 2),
         'roi':           roi,
         'roi_units':     round(accum['units_net'], 2),
-        'bet_hash':      bet_params_hash(cfg),
-        'model_hash':    model_params_hash(cfg),
-        'updated':       datetime.now().isoformat(),
-        'retallied_at':  datetime.now().isoformat(),
-        'per_date':      accum['per_date'],
+        'place_bets_placed': accum['place_bets_placed'],
+        'place_bets_won':    accum['place_bets_won'],
+        'place_units_staked': round(accum['place_units_staked'], 1),
+        'place_units_net':    round(accum['place_units_net'], 2),
+        'place_roi':          place_roi,
+        'q_bets_placed':  accum['q_bets_placed'],
+        'q_bets_won':     accum['q_bets_won'],
+        'q_units_staked': round(accum['q_units_staked'], 1),
+        'q_units_net':    round(accum['q_units_net'], 2),
+        'q_roi':          q_roi,
+        'qp_bets_placed': accum['qp_bets_placed'],
+        'qp_bets_won':    accum['qp_bets_won'],
+        'qp_units_staked': round(accum['qp_units_staked'], 1),
+        'qp_units_net':    round(accum['qp_units_net'], 2),
+        'qp_roi':          qp_roi,
+        'bet_hash':       bet_params_hash(cfg),
+        'model_hash':     model_params_hash(cfg),
+        'updated':        datetime.now().isoformat(),
+        'retallied_at':   datetime.now().isoformat(),
+        'per_date':       accum['per_date'],
     }
 
     summary_path = out_dir / 'summary.json'
@@ -1073,10 +1465,29 @@ def retally(model_name: str, verbose: bool = False) -> dict:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
     if verbose:
-        roi_str = f'{accum["units_net"]:+.2f}u ({roi:+.1%})' if roi else '—'
-        print(f"\n  Re-tally 完成: {accum['dates_run']} 日期  "
-              f"{accum['bets_placed']} 注  {accum['bets_won']} 中  ROI {roi_str}")
+        print(f"\n  Re-tally 完成: {accum['dates_run']} 日期")
+        print(f"    WIN:  {accum['bets_placed']} 注  {accum['bets_won']} 中  "
+              f"ROI {roi:+.2%}" if roi is not None else f"    WIN:  0 注")
+        print(f"    PLC:  {accum['place_bets_placed']} 注  {accum['place_bets_won']} 中  "
+              f"ROI {place_roi:+.2%}" if place_roi is not None else f"    PLC:  0 注")
+        print(f"    Q:    {accum['q_bets_placed']} 注  {accum['q_bets_won']} 中  "
+              f"ROI {q_roi:+.2%}" if q_roi is not None else f"    Q:    0 注")
+        print(f"    QP:   {accum['qp_bets_placed']} 注  {accum['qp_bets_won']} 中  "
+              f"ROI {qp_roi:+.2%}" if qp_roi is not None else f"    QP:   0 注")
     return summary
+
+
+def _detect_course_from_predictions(date_str: str, race_no_str: str, conn) -> str:
+    """Determine course (ST/HV) for a race by checking the DB races table."""
+    try:
+        rn = int(race_no_str)
+        row = conn.execute(
+            "SELECT course FROM races WHERE date=? AND raceno=? LIMIT 1",
+            (date_str, rn)
+        ).fetchone()
+        return row['course'] if row else 'ST'
+    except Exception:
+        return 'ST'
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

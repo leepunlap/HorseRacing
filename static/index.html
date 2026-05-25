@@ -17,26 +17,29 @@ body{background:#f0f2f5}
 .login-box button{width:100%;padding:14px;margin-top:20px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14pt;cursor:pointer}
 .login-box .error{color:#e74c3c;margin-top:14px;font-size:11pt;display:none}
 .app{display:none}.app.auth{display:flex}
-.sidebar{position:fixed;top:0;left:0;height:100vh;background:#1a3a5c;color:#fff;padding:12px 0;z-index:50;overflow-y:auto;overflow-x:hidden;white-space:nowrap;width:210px;transition:width .2s ease}
-.sidebar.collapsed{width:52px}
-.sidebar-header{padding:10px 14px;font-size:16pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center}
-.sidebar-toggle{background:none;border:none;color:#fff;cursor:pointer;font-size:18px;padding:0;line-height:1}
-.sidebar-header .logo-text{transition:opacity .15s}
-.sidebar.collapsed .sidebar-header .logo-text{opacity:0}
+.sidebar{position:fixed;top:0;left:0;height:100vh;background:#4a5568;color:#fff;padding:12px 0;z-index:50;overflow-y:auto;overflow-x:hidden;white-space:nowrap;width:218px;transition:width .2s ease}
+.sidebar.collapsed{width:64px}
+.sidebar-header{padding:10px 14px;font-size:16pt;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;align-items:center}
+.sidebar.collapsed .sidebar-header{justify-content:center;padding:10px 0}
+.sidebar:not(.collapsed) .sidebar-header{justify-content:space-between}
+.sidebar-toggle{background:rgba(255,255,255,0.12);border:none;color:#fff;cursor:pointer;font-size:22px;line-height:1;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .15s;width:40px;height:40px;flex-shrink:0}
+.sidebar-toggle:hover{background:rgba(255,255,255,0.22)}
+.sidebar-header .logo-text{transition:opacity .15s;white-space:nowrap}
+.sidebar.collapsed .sidebar-header .logo-text{display:none}
 .sidebar:not(.collapsed) .sidebar-header .logo-text{opacity:1}
-.nav-item{display:flex;align-items:center;padding:12px 14px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:11pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.1)}
-.nav-item .icon{width:24px;margin-right:12px;font-size:15px;text-align:center;flex-shrink:0}
+.nav-item{display:flex;align-items:center;padding:14px 16px;cursor:pointer;color:rgba(255,255,255,0.75);font-size:11pt}.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,0.12)}
+.nav-item .icon{width:32px;margin-right:14px;font-size:22px;text-align:center;flex-shrink:0}
 .nav-item span:not(.icon){transition:opacity .15s}
 .sidebar.collapsed .nav-item span:not(.icon){opacity:0}
 .sidebar:not(.collapsed) .nav-item span:not(.icon){opacity:1}
-.main{flex:1;padding:20px;overflow-y:auto;margin-left:218px;transition:margin-left .2s ease}
-.sidebar.collapsed~.main{margin-left:60px}
+.main{flex:1;padding:20px;overflow-y:auto;margin-left:232px;transition:margin-left .2s ease}
+.sidebar.collapsed~.main{margin-left:72px}
 .logout-btn{position:fixed;top:10px;right:16px;z-index:52;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:10pt;cursor:pointer}
 
 /* Mobile: sidebar overlays content when expanded */
 @media(max-width:767px){
-  .sidebar:not(.collapsed){width:210px;box-shadow:4px 0 20px rgba(0,0,0,0.3)}
-  .main{margin-left:60px!important}
+  .sidebar:not(.collapsed){width:232px;box-shadow:4px 0 20px rgba(0,0,0,0.3)}
+  .main{margin-left:72px!important}
 }
 .page{display:none}.page.show{display:block}
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
@@ -144,7 +147,7 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 <body>
 
 <div class="login-overlay" id="loginOverlay">
-<div class="login-box"><h1>🏇 馬場分析</h1><p>輸入密碼</p>
+<div class="login-box"><h1>馬場分析</h1><p>輸入密碼</p>
 <input type="password" id="pwInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
 <div style="margin-top:10px;font-size:10pt;color:#888;text-align:left;padding-left:4px">
 <label style="cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="rememberPw" onchange="savePwCookie()"> 記住密碼（365天）</label>
@@ -153,14 +156,15 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 
 <div class="app" id="app">
   <div class="sidebar collapsed" id="sidebar">
-    <div class="sidebar-header"><span class="logo-icon">🏇</span><span class="logo-text">馬場分析</span><button class="sidebar-toggle" onclick="toggleSidebar()">☰</button></div>
-    <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">📊</span><span>儀表板</span></div>
-    <div class="nav-item" data-page="races" onclick="go('races')"><span class="icon">🏁</span><span>賽事</span></div>
-    <div class="nav-item" data-page="model" onclick="go('model')"><span class="icon">🤖</span><span>模型</span></div>
-    <div class="nav-item" data-page="eric" onclick="go('eric')"><span class="icon">📜</span><span>Eric 定律</span></div>
-    <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">🐴</span><span>馬匹</span></div>
-    <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">🏇</span><span>騎師</span></div>
-    <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">👨‍🏫</span><span>練馬師</span></div>
+    <div class="sidebar-header"><span class="logo-text">馬場分析</span><button class="sidebar-toggle" onclick="toggleSidebar()">☰</button></div>
+    <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">◉</span><span>儀表板</span></div>
+    <div class="nav-item" data-page="races" onclick="go('races')"><span class="icon">⚑</span><span>賽事</span></div>
+    <div class="nav-item" data-page="model" onclick="go('model')"><span class="icon">⚙</span><span>策略</span></div>
+    <div class="nav-item" data-page="eric" onclick="go('eric')"><span class="icon">☰</span><span>Eric 定律</span></div>
+    <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">♞</span><span>馬匹</span></div>
+    <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">♘</span><span>騎師</span></div>
+    <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">⌘</span><span>練馬師</span></div>
+    <div class="nav-item" onclick="window.open('/chat','_self')" style="border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:14px"><span class="icon">⚡</span><span>Eric AI</span></div>
   </div>
   <button class="logout-btn" onclick="logout()">登出</button>
 
@@ -326,6 +330,12 @@ function showApp(){
   document.getElementById('loginOverlay').style.display='none';
   document.getElementById('app').classList.add('auth');
   connectProgressWS();
+  // If returning from chat page, redirect back
+  if(sessionStorage.getItem('chat_return')){
+    sessionStorage.removeItem('chat_return');
+    location.replace('/chat');
+    return;
+  }
   go(getCookie('last_page')||'dashboard');
 }
 function logout(){clearAndShowLogin()}
@@ -341,7 +351,7 @@ function go(name){
   document.querySelector(`[data-page="${name}"]`)?.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('show');
-  const titles={dashboard:'儀表板',races:'賽事',model:'模型',eric:'Eric 定律',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'};
+  const titles={dashboard:'儀表板',races:'賽事',model:'策略',eric:'Eric 定律',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'};
   document.getElementById('pageTitle').textContent=titles[name]||'';
   if(name==='dashboard')loadDashboard();
   if(name==='races')loadRaces();
@@ -401,12 +411,18 @@ function renderModelNav(navId, selectedName, clickFn){
   if(!nav||!_modelsCache)return;
   nav.innerHTML=_modelsCache.map(m=>{
     const s=m.summary||{};
+    const st=m.stale||{};
+    const needsRerun=st.needs_rerun;
+    const needsRetally=st.needs_retally;
     const hasBets=(s.bets_placed||0)>0;
-    const roi=hasBets?(s.roi_units!=null?s.roi_units:(s.units_net||0)):null;
-    const roiStr=roi!=null?(roi>=0?`+${roi.toFixed(1)}`:`${roi.toFixed(1)}`)+' 單位':null;
-    const dates=(s.dates_run||0)>0?`${s.dates_run}場日`:'未回測';
+    const datesCount=s.dates_run>0?s.dates_run:(s.per_date?s.per_date.length:0);
+    const dates=datesCount>0?`${datesCount}場日`:'未回測';
+    const roi=(!needsRerun&&hasBets)?(s.roi_units!=null?s.roi_units:(s.units_net||0)):null;
+    const roiStr= needsRerun&&hasBets ? '結果已失效'
+                : roi!=null ? (roi>=0?`+${roi.toFixed(1)}`:`${roi.toFixed(1)}`)+' 單位'+(needsRetally?' ⚠':'')
+                : '';
     const sub=roiStr?`${roiStr} · ${dates}`:dates;
-    const profitCls=!hasBets?'no-data':(roi>=0?'profit':'loss');
+    const profitCls=needsRerun?'no-data':(!hasBets?'no-data':(roi>=0?'profit':'loss'));
     const cls=profitCls+(m.name===selectedName?' selected':'');
     const mark=m.active?'<span style="font-size:7pt;vertical-align:super;margin-left:2px">✓</span>':'';
     const staleBadge=_modelStaleBadge(m);
@@ -470,6 +486,10 @@ async function initModelNav(){
 }
 
 async function selectModel(name){
+  const curDate=document.getElementById('dateSelect').value;
+  const curRace=document.querySelector('#raceTabs button.active')?.id?.replace('rtab','');
+  if(curDate)setCookie('race_date',curDate,365);
+  if(curRace)setCookie('race_no',curRace,365);
   racesModel=name;
   activeModel=name;
   await _ensureModels();
@@ -483,7 +503,7 @@ async function loadRaces(dateStr){
 
   // ── Stage 0: immediate loading overlay ──────────────────────
   const earlyModel=getSelectedModel();
-  const earlyDate=dateStr||document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
+  const earlyDate=dateStr||getCookie('race_date')||document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
   setRaceLoading(10,'初始化策略導覽...',earlyModel,earlyDate);
 
   await initModelNav();
@@ -494,7 +514,7 @@ async function loadRaces(dateStr){
   _loadingModel=model; _loadingDate=null;
 
   if(!dateStr){
-    dateStr=document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
+    dateStr=getCookie('race_date')||document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
   }
 
   // ── Stage 1: fetch available dates ──────────────────────────
@@ -524,6 +544,17 @@ async function loadRaces(dateStr){
     document.getElementById('raceTabs').style.display='';
     document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">暫無賽事數據</div>';
     renderRunBanner(null);
+    return;
+  }
+  if(rc.races.length===0){
+    setRaceLoading(null);
+    document.getElementById('raceTabs').style.display='';
+    document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">此日期暫無賽事數據，請選擇其他日期</div>';
+    document.getElementById('raceTable').innerHTML='';
+    document.getElementById('dashInfo').innerHTML=`<span style="font-size:11pt">${dateStr} · 無賽事</span>`;
+    document.getElementById('betSummary').textContent='';
+    renderRunBanner(null);
+    renderScrapePill(rc);
     return;
   }
 
@@ -563,8 +594,12 @@ async function loadRaces(dateStr){
     return`<button onclick="showRace(${r.race_no})" id="rtab${r.race_no}">R${r.race_no}${badge}<small>${r.distance}m ${r.class}</small></button>`;
   }).join('');
 
-  // Show first race content while tabs are still hidden (avoids layout flash)
-  if(rc.races.length)showRace(rc.races[0].race_no,true);
+  // Show saved race, or first race
+  if(rc.races.length){
+    const savedRace=getCookie('race_no');
+    const rn=savedRace&&rc.races.find(r=>r.race_no==savedRace)?parseInt(savedRace):rc.races[0].race_no;
+    showRace(rn,true);
+  }
 
   // ── Done: dismiss overlay ──────────────────────────────────
   _setRaceLoadingPct(100,'完成');
@@ -572,7 +607,9 @@ async function loadRaces(dateStr){
 }
 
 function selectDate(){
-  loadRaces(document.getElementById('dateSelect').value);
+  const d=document.getElementById('dateSelect').value;
+  setCookie('race_date',d,365);
+  loadRaces(d);
 }
 
 /* ─── "X 小時前" relative-time formatter ─────────────────────────────────
@@ -865,6 +902,7 @@ function buildFeatChart(hh, featMin, featMax){
  * ───────────────────────────────────────────────────────────────────────────── */
 // silent=true when called from loadRaces (overlay still visible; no dim needed)
 function showRace(rn, silent){
+  setCookie('race_no',rn,365);
   // PHASE 1 — Activate tab, lookup race
   document.querySelectorAll('#raceTabs button').forEach(b=>b.classList.remove('active'));
   const tab=document.getElementById('rtab'+rn);if(tab)tab.classList.add('active');
@@ -912,11 +950,9 @@ function showRace(rn, silent){
   }
 
   // PHASE 4 — Build table header
-  // When missingPreds is true, prediction columns still appear (so the user
-  // can see what's missing) but are styled grey via the col-pred-missing class
-  // applied to each <tr>.
   const showPredCols = hasPreds || missingPreds;
   const showFeatCols = hasFeat  || missingPreds;
+  const noPredLabel = missingPreds ? '<span style="color:#aaa;font-size:8pt">未預測</span>' : '—';
   let h=`<table class="race-tbl"><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(showFeatCols)h+=`<th style="width:510px">特徵組別得分</th>`;
   if(showPredCols)h+=`<th>勝率</th><th>值博率</th>`;
@@ -965,22 +1001,22 @@ function showRace(rn, silent){
     if(showFeatCols){
       h += hasFeat
         ? `<td style="padding:1px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`
-        : `<td>—</td>`;
+        : `<td>${noPredLabel}</td>`;
     }
     if(showPredCols){
       if(hasPreds){
         h+=`<td style="padding:1px 3px"><div>${prob}</div><div style="height:3px;background:#27ae60;width:${Math.min(hh.win_prob*250,100)}%;border-radius:1px;margin-top:1px"></div></td>`;
         h+=`<td style="padding:1px 3px"><div style="${ec?ec:''}">${edge}</div><div class="edge-bar" style="width:${Math.min((hh.edge||0)*25,90)}%;background:${isLong?'#bbb':((hh.edge||0)>1.3?'#27ae60':(hh.edge||0)>0.9?'#f0a030':'#ccc')}"></div></td>`;
       } else {
-        h+=`<td>—</td><td>—</td>`;
+        h+=`<td>${noPredLabel}</td><td>${noPredLabel}</td>`;
       }
     }
-    h+=`<td style="font-weight:bold;color:#1a3a5c">${predRank[hh.no]||'-'}</td>`;
+    h+=`<td style="font-weight:bold;color:#1a3a5c">${hasPreds?(predRank[hh.no]||'-'):noPredLabel}</td>`;
     h+=`<td style="font-weight:bold">${hh.position||'-'}</td>`;
     h+=`<td style="color:#888">${hh.lbw||'-'}</td>`;
-    h+=`<td style="color:#888">${hh.running||'-'}</td>`;
-    h+=`<td>${bet>0?'$'+bet:''}</td>`;
-    h+=`<td style="${profitStyle}">${profit}</td>`;
+    h+=`<td style="color:#888">${fmtRunning(hh.running)}</td>`;
+    h+=`<td>${hasPreds&&bet>0?'$'+bet:missingPreds?noPredLabel:''}</td>`;
+    h+=`<td style="${profitStyle}">${hasPreds?profit:missingPreds?noPredLabel:'-'}</td>`;
     h+='</tr>';
   });
   h+='</tbody></table>';
@@ -1139,7 +1175,7 @@ async function editParam(key, label, type, el){
   async function commit(){
     const newVal=type==='float'?parseFloat(input.value):parseInt(input.value,10);
     if(isNaN(newVal)||String(newVal)===String(current)){input.replaceWith(el);return;}
-    if(!confirm(`確認更改「${modelName}」\n參數：${label}\n\n舊值：${current}\n新值：${newVal}\n\n⚠️ 此為模型參數，更改後需重新執行完整回測，現有結果將標記為過期。`)){
+    if(!confirm(`確認更改「${modelName}」\n參數：${label}\n\n舊值：${current}\n新值：${newVal}\n\n⚠️ 此為策略參數，更改後需重新執行完整回測，現有結果將標記為過期。`)){
       input.replaceWith(el);return;
     }
     input.disabled=true;
@@ -1172,22 +1208,30 @@ async function loadModelPage(){
   // Model list + activate buttons
   document.getElementById('modelList').innerHTML=d.models.map(m=>{
     const s=m.summary||{};
+    const st=m.stale||{};
     const dates_run = s.dates_run||0;
     const hasRun    = dates_run > 0;
-    const acc=s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—';
-    const roi=s.roi_units!=null?(s.roi_units>=0?'+':'')+s.roi_units.toFixed(2)+'u':'—';
+    const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
     const bg=m.active?'#1a3a5c':'#fff', fg=m.active?'#fff':'#333', sub=m.active?'rgba(255,255,255,0.65)':'#888';
-    const statusBadge = hasRun
+    const statusBadge = needsRerun
+      ? `<span style="font-size:7pt;background:#fce4e4;color:#a00;padding:1px 6px;border-radius:8px;margin-left:4px">⚠ 結果已失效</span>`
+      : needsRetally
+      ? `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">🔄 待重新計算</span>`
+      : hasRun
       ? `<span style="font-size:7pt;background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;margin-left:4px">已執行 ${dates_run}日</span>`
       : `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">未執行</span>`;
-    return `<div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid #ddd;border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
+    const acc = needsRerun ? '—' : (s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—');
+    const roiVal = needsRerun ? null : s.roi_units;
+    const roi = roiVal!=null ? (roiVal>=0?'+':'')+roiVal.toFixed(2)+'u'+(needsRetally?' ⚠':'') : '—';
+    const roiColor = needsRerun?'#bbb':(roiVal>=0?'#27ae60':'#e74c3c');
+    return `<div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid ${needsRerun?'#e74c3c':needsRetally?'#f0c040':'#ddd'};border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
       <div style="font-weight:bold;font-size:11pt">${m.name}${m.active?' ✓':''}${statusBadge}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.strategy_type||''} v${m.version||'?'}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.description||''}</div>
       ${m.notes?`<div style="font-size:8pt;color:${sub};font-style:italic;margin:2px 0">📝 ${m.notes}</div>`:''}
       ${m.parent?`<div style="font-size:8pt;color:${sub};margin:2px 0">⬆ 派生自: ${m.parent}</div>`:''}
-      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${(s.roi_units||0)>=0?'#27ae60':'#e74c3c'}">${roi}</b> &ensp; 下注: ${s.bets_placed||'—'}場</div>
-      ${!m.active?`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">設為使用中</button>`:''}
+      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${roiColor}">${roi}</b> &ensp; 下注: ${needsRerun?'—':(s.bets_placed||'—')}場</div>
+      ${m.active?`<span style="display:inline-block;margin-top:6px;font-size:7.5pt;padding:3px 10px;background:#d4edda;color:#155724;border-radius:10px;font-weight:600;border:1px solid #c3e6cb">✓ 使用中</span>`:`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">設為使用中</button>`}
     </div>`;
   }).join('');
   // Load config for active model
@@ -1208,12 +1252,13 @@ async function loadModelConfig(name){
   if(!d)return;
   modelConfigCache=d;
   renderModelDescSection(d);
+  renderFeatureNotes(name);
   renderModelFeatures(d);
   renderModelXGB(d.config);
   renderModelPace(d.config);
   renderModelGoing(d.config);
   renderModelLayoff(d.config);
-  if(inv) renderModelInventory(inv);
+  if(inv) renderModelInventory(inv, d.stale||{});
   else if(invEl) invEl.innerHTML='';
   loadJobsPane();
 }
@@ -1308,6 +1353,20 @@ const SHRINKAGE_ZH={
   jt_alpha:'騎師×練馬師',jh_alpha:'騎師×馬匹',dist_alpha:'距離',going_alpha:'場地',
 };
 
+async function renderFeatureNotes(strategyName){
+  const safeId = strategyName.replace(/[^a-zA-Z0-9]/g,'_');
+  const el = document.getElementById('featureNotes_'+safeId);
+  if(!el) return;
+  const notes = await loadValidationNotes();
+  const fn = (notes.features||{})[strategyName]||{};
+  el.innerHTML = fn.status||fn.notes
+    ? `<div class="note-row"><div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:8.5pt;font-weight:600;color:#1a3a5c">驗證筆記</span>
+        ${_noteDisplay('feat',strategyName,fn)}
+      </div></div>`
+    : '';
+}
+
 function renderModelDescSection(d){
   const el=document.getElementById('modelDescSection');
   if(!el)return;
@@ -1360,9 +1419,26 @@ function renderModelDescSection(d){
       </div>
     </div>`:'';
 
+  const betEdge = cfg.bet_edge_threshold ?? '1.0';
+  const betMin  = cfg.bet_min_odds ?? '1.0';
+  const betMax  = cfg.bet_max_odds ?? '6.5';
+
+  const betParamsHtml = `
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid #eee;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:9pt">
+      <span style="color:#1a3a5c;font-weight:600">下注門檻：</span>
+      <span style="color:#888">值博率 &gt;</span>
+      <span onclick="editParam('bet_edge_threshold','值博率門檻','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betEdge}</span>
+      <span style="color:#888;margin-left:4px">賠率</span>
+      <span onclick="editParam('bet_min_odds','最低賠率','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betMin}</span>
+      <span style="color:#888">–</span>
+      <span onclick="editParam('bet_max_odds','最高賠率','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betMax}</span>
+      <span style="color:#888">倍</span>
+      <span style="font-size:7.5pt;color:#aaa;margin-left:4px">（點擊數值編輯，改動後僅需重新計算）</span>
+    </div>`;
+
   const strategyBlock=`
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee">
-      ${parentLine}${overviewHtml}${notesHtml}${strengthsHtml}${limitHtml}${betHtml}${shrinkHtml}
+      ${parentLine}${overviewHtml}${notesHtml}${strengthsHtml}${limitHtml}${betHtml}${shrinkHtml}${betParamsHtml}
     </div>`;
 
   el.innerHTML=`<div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:12px 14px">
@@ -1372,32 +1448,48 @@ function renderModelDescSection(d){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
     ${strategyBlock}
+    <div id="featureNotes_${cfg_name.replace(/[^a-zA-Z0-9]/g,'_')}" style="margin-top:10px;padding-top:10px;border-top:1px solid #eee"></div>
   </div>`;
 }
 
-function renderModelInventory(inv){
+function renderModelInventory(inv, stale){
   const el=document.getElementById('modelInventory');
   if(!el)return;
+  const modelName=modelConfigCache?.config?.name||'';
+  const st=stale||{};
+  const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
   const done=inv.backtested||[], pending=inv.not_backtested||[];
   const pct=inv.total_available>0?Math.round(inv.total_backtested/inv.total_available*100):0;
   const barW=Math.min(pct,100);
-  const barCol=pct>=80?'#27ae60':pct>=40?'#f0a030':'#e74c3c';
+  const barCol=needsRerun?'#e74c3c':(pct>=80?'#27ae60':pct>=40?'#f0a030':'#e74c3c');
 
-  const chips=(dates,cls)=>dates.map(d=>`<span class="date-chip ${cls}">${d}</span>`).join('');
+  const chips=(dates,cls,clickable,invalid)=>dates.map(d=>{
+    const chipStyle=invalid?'background:#fce4e4;color:#a00;border-color:#e74c3c;':needsRetally?'border-color:#f0c040;':'';
+    return clickable
+      ?`<span class="date-chip ${cls}" style="${chipStyle}cursor:pointer" onclick="_goRaceDate('${d}','${modelName}')">${d}</span>`
+      :`<span class="date-chip ${cls}" style="${chipStyle}">${d}</span>`;
+  }).join('');
+
+  const staleNote=needsRerun
+    ?`<div style="font-size:9pt;color:#a00;background:#fce4e4;border:1px solid #e74c3c;border-radius:4px;padding:5px 10px;margin-bottom:8px">⚠ 模型參數已更改，以下回測結果均已失效，需重新執行完整回測</div>`
+    :needsRetally
+    ?`<div style="font-size:9pt;color:#856404;background:#fff3cd;border:1px solid #f0c040;border-radius:4px;padding:5px 10px;margin-bottom:8px">🔄 下注參數已更改，下注分析需重新計算（預測準確率仍有效）</div>`
+    :'';
 
   el.innerHTML=`
-    <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:14px">
+    <div style="background:#fff;border:1px solid ${needsRerun?'#e74c3c':needsRetally?'#f0c040':'#dee2e6'};border-radius:6px;padding:14px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
         <b style="font-size:11pt;color:#1a3a5c">回測覆蓋率</b>
         <span style="font-size:10pt;color:#555">${inv.total_backtested} / ${inv.total_available} 日</span>
         <div style="flex:1;min-width:120px;max-width:260px;background:#eee;border-radius:6px;height:8px;overflow:hidden">
           <div style="width:${barW}%;height:100%;background:${barCol};border-radius:6px;transition:.3s"></div>
         </div>
-        <span style="font-size:10pt;font-weight:bold;color:${barCol}">${pct}%</span>
+        <span style="font-size:10pt;font-weight:bold;color:${barCol}">${pct}%${needsRerun?' (已失效)':needsRetally?' (待更新)':''}</span>
       </div>
+      ${staleNote}
       ${done.length?`<div class="inv-section">
-        <h6>✅ 已回測 (${done.length})</h6>
-        <div class="date-chips">${chips(done,'done')}</div>
+        <h6>${needsRerun?'⚠ 已失效':'✅ 已回測'} (${done.length})</h6>
+        <div class="date-chips">${chips(done,'done',true,needsRerun)}</div>
       </div>`:''}
       ${pending.length?`<div class="inv-section">
         <h6>⬜ 未回測 (${pending.length})</h6>
@@ -1854,16 +1946,87 @@ async function activateModel(name){
 //  Eric 定律 Page
 // ═══════════════════════════════════════════════════════════════════════════
 let _ericCache=null;
+let _validationNotes=null;
+
+async function loadValidationNotes(){
+  if(_validationNotes) return _validationNotes;
+  const d=await api('/api/validation-notes');
+  _validationNotes=d||{};
+  return _validationNotes;
+}
+
+async function saveHypothesisNote(hypId, status, notes, strategy){
+  const r=await fetch(`/api/validation-notes/hypothesis/${encodeURIComponent(hypId)}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({status,notes,strategy})
+  });
+  if(r.ok){ _validationNotes=null; await loadValidationNotes(); }
+  return r.ok;
+}
+
+async function saveFeatureNote(strategy, status, notes){
+  const r=await fetch(`/api/validation-notes/feature/${encodeURIComponent(strategy)}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({status,notes,strategy})
+  });
+  if(r.ok){ _validationNotes=null; await loadValidationNotes(); }
+  return r.ok;
+}
+
+function fmtRunning(raw){
+  if(!raw) return '-';
+  let s = String(raw).trim();
+  if(!s || s==='None') return '-';
+  // Already has separators (spaces or hyphens from scraped HTML)
+  if(/[\s-]/.test(s)) return s.replace(/\s+/g,'-');
+  // Lumped digits from CSV (e.g. "121091" → "12-10-9-1")
+  // Greedy parse: positions are 1-14, try 2-digit then 1-digit
+  let i = 0, parts = [];
+  while(i < s.length){
+    let pos = parseInt(s.substring(i,i+2));
+    if(s.length - i >= 2 && pos >= 1 && pos <= 14){
+      parts.push(pos);
+      i += 2;
+    } else {
+      parts.push(parseInt(s[i]));
+      i += 1;
+    }
+  }
+  return parts.join('-');
+}
+
+function _statusBadge(status){
+  if(!status) return '';
+  const map={validated:['#e8f5e9','#2e7d32','✓ 已驗證'],needs_tuning:['#fff3e0','#e65100','⚙ 需調校'],not_working:['#ffebee','#c62828','✗ 未成立']};
+  const c=map[status]; if(!c) return '';
+  return`<span style="display:inline-block;font-size:7.5pt;padding:1px 7px;border-radius:10px;background:${c[0]};color:${c[1]};border:1px solid ${c[1]}44;font-weight:600;flex-shrink:0">${c[2]}</span>`;
+}
+
+function _noteDisplay(prefix, id, currentNote){
+  const note=currentNote||{};
+  const status=note.status||'';
+  if(!status && !note.notes) return '';
+  const dateStr=note.date?`<span style="font-size:7pt;color:#888;margin-left:4px">${note.date}</span>`:'';
+  const strat=note.strategy?`<span style="font-size:7pt;padding:1px 6px;border-radius:8px;background:#e3f2fd;color:#1565c0;font-weight:600;margin-left:4px">${note.strategy}</span>`:'';
+  const text=(note.notes||'').replace(/</g,'&lt;');
+  return`<div style="margin-top:3px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+    ${_statusBadge(status)}${strat}${dateStr}
+    ${text?`<span style="font-size:7.5pt;color:#777">${text}</span>`:''}
+  </div>`;
+}
 
 async function loadEricPage(){
   const el=document.getElementById('ericContent');
   if(!el)return;
-  if(_ericCache){renderEricPage(_ericCache);return;}
+  if(_ericCache){renderEricPage(_ericCache,_validationNotes);return;}
   el.innerHTML=_loadingHtml('載入 Eric 定律…');
-  const d=await api('/api/eric-hypotheses');
+  const [d, notes] = await Promise.all([api('/api/eric-hypotheses'), loadValidationNotes()]);
   if(!d)return;
   _ericCache=d;
-  renderEricPage(d);
+  _validationNotes=notes;
+  renderEricPage(d, notes);
 }
 
 function _ericCatPill(text){
@@ -1873,11 +2036,12 @@ function _ericFeatPill(text){
   return`<span style="display:inline-block;font-size:7pt;padding:1px 7px;border-radius:10px;background:#e0f7fa;color:#00695c;border:1px solid #80cbc4;font-weight:600;white-space:nowrap;font-family:monospace">${text}</span>`;
 }
 
-function renderEricPage(d){
+function renderEricPage(d, notes){
   const el=document.getElementById('ericContent');
   if(!el)return;
   const sections=d.sections||[];
   const total=sections.reduce((s,sec)=>s+sec.groups.reduce((ss,g)=>ss+g.hypotheses.length,0),0);
+  const hypNotes=(notes||{}).hypotheses||{};
 
   let h=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="font-size:9.5pt;color:#555">共 <b>${total}</b> 條定律，涵蓋 V1 至 V10.30</span>
@@ -1907,9 +2071,18 @@ function renderEricPage(d){
         const pills=(cats.length||feats.length)
           ?`<span style="display:inline-flex;flex-wrap:wrap;gap:3px;margin-left:6px;vertical-align:middle">${cats.map(_ericCatPill).join('')}${feats.map(_ericFeatPill).join('')}</span>`
           :'';
+        const currentNote=hypNotes[hyp.id];
+        const noteHtml=_noteDisplay('hyp',hyp.id,currentNote);
+        const validationHtml=hyp.validation
+          ?`<div style="margin-top:3px;font-size:8pt;color:#555;line-height:1.5;background:#fafafa;border-left:3px solid #ccc;padding:4px 8px;border-radius:0 3px 3px 0">${hyp.validation.replace(/\n/g,'<br>')}</div>`
+          :'';
         h+=`<div style="display:flex;gap:6px;padding:4px 6px;border-bottom:1px solid #f3f3f3;align-items:flex-start">
           <span class="hyp-pill" style="flex-shrink:0;margin-top:2px">Eric ${hyp.id}</span>
-          <span style="font-size:9.5pt;color:#333;line-height:1.55;flex:1">${hyp.text}${pills}</span>
+          <div style="flex:1;min-width:0">
+            <span style="font-size:9.5pt;color:#333;line-height:1.55">${hyp.text}${pills}</span>
+            ${validationHtml}
+            ${noteHtml}
+          </div>
         </div>`;
       });
     });
@@ -2016,6 +2189,14 @@ function _renderDashStatus(data){
 // ── Stat cards ───────────────────────────────────────────────────────────
 function _renderDashStatCards(data){
   const s=data.summary||{};
+  const st=data.stale||{};
+  if(st.needs_rerun){
+    document.getElementById('dashStats').innerHTML=
+      `<div style="grid-column:1/-1;text-align:center;color:#a00;padding:20px;font-size:11pt;background:#fce4e4;border-radius:6px;border:1px solid #e74c3c">
+        ⚠ 模型參數已更改，回測結果已全部失效。請重新執行完整回測以獲得有效數據。
+      </div>`;
+    return;
+  }
   if(!s.dates_run){
     document.getElementById('dashStats').innerHTML=
       `<div style="grid-column:1/-1;text-align:center;color:#888;padding:20px;font-size:11pt">
@@ -2023,13 +2204,14 @@ function _renderDashStatCards(data){
       </div>`;
     return;
   }
+  const staleWarn=st.needs_retally?` <span style="font-size:8pt;color:#856404;font-weight:normal">(待更新)</span>`:'';
   const acc=s.top1_pct!=null?s.top1_pct.toFixed(1)+'%':'—';
   const accCls=s.top1_pct!=null?(s.top1_pct>=35?'good':s.top1_pct>=25?'':'bad'):'';
   const roi=s.roi_units!=null?(s.roi_units>=0?'+':'')+s.roi_units.toFixed(2):'—';
-  const roiCls=s.roi_units!=null?(s.roi_units>0?'good':'bad'):'';
+  const roiCls=st.needs_retally?'':(s.roi_units!=null?(s.roi_units>0?'good':'bad'):'');
   const betsWon=s.bets_won||0, betsPlaced=s.bets_placed||0;
   const winPct=betsPlaced?(betsWon/betsPlaced*100).toFixed(1)+'%':'—';
-  const winCls=betsPlaced?(betsWon/betsPlaced>=0.20?'good':''):'';
+  const winCls=st.needs_retally?'':(betsPlaced?(betsWon/betsPlaced>=0.20?'good':''):'');
   const perDayRoi=s.dates_run>1?((s.roi_units||0)/s.dates_run).toFixed(2):null;
   document.getElementById('dashStats').innerHTML=`
     <div class="stat-card ${accCls}">
@@ -2038,23 +2220,23 @@ function _renderDashStatCards(data){
       <div class="stat-sub">首選馬奪冠比率</div>
     </div>
     <div class="stat-card ${roiCls}">
-      <div class="stat-label">累計盈虧（單位）</div>
-      <div class="stat-value">${roi}</div>
+      <div class="stat-label">累計盈虧（單位）${staleWarn}</div>
+      <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${roi}</div>
       <div class="stat-sub">${s.units_staked?'投注 '+s.units_staked.toFixed(0)+' 單位':''}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">下注場次</div>
-      <div class="stat-value">${betsPlaced}</div>
+      <div class="stat-label">下注場次${staleWarn}</div>
+      <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${betsPlaced}</div>
       <div class="stat-sub">${s.dates_run} 日回測</div>
     </div>
     <div class="stat-card ${winCls}">
-      <div class="stat-label">下注命中率</div>
-      <div class="stat-value">${winPct}</div>
+      <div class="stat-label">下注命中率${staleWarn}</div>
+      <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${winPct}</div>
       <div class="stat-sub">${betsWon} 勝 / ${betsPlaced} 注</div>
     </div>
-    ${perDayRoi!=null?`<div class="stat-card ${parseFloat(perDayRoi)>=0?'good':'bad'}">
-      <div class="stat-label">平均每日盈虧</div>
-      <div class="stat-value">${parseFloat(perDayRoi)>=0?'+':''}${perDayRoi}</div>
+    ${perDayRoi!=null?`<div class="stat-card ${!st.needs_retally&&parseFloat(perDayRoi)>=0?'good':!st.needs_retally?'bad':''}">
+      <div class="stat-label">平均每日盈虧${staleWarn}</div>
+      <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${parseFloat(perDayRoi)>=0?'+':''}${perDayRoi}</div>
       <div class="stat-sub">單位 / 日</div>
     </div>`:''}`;
 }
@@ -2069,8 +2251,16 @@ function _renderDashCharts(data){
   if(dashChartCumPnl){dashChartCumPnl.dispose();dashChartCumPnl=null;}
   if(dashChartAcc){dashChartAcc.dispose();dashChartAcc=null;}
 
+  const st=data.stale||{};
   const perDate=(data.summary||{}).per_date||[];
   const noData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10pt">暫無數據</div>';
+  const invalidData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#a00;font-size:10pt;background:#fce4e4;border-radius:4px">⚠ 結果已失效，請重新回測</div>';
+  if(st.needs_rerun){
+    document.getElementById('chartPnl').innerHTML=invalidData;
+    document.getElementById('chartCumPnl').innerHTML=invalidData;
+    document.getElementById('chartAccuracy').innerHTML=invalidData;
+    return;
+  }
   if(!perDate.length){
     document.getElementById('chartPnl').innerHTML=noData;
     document.getElementById('chartCumPnl').innerHTML=noData;
@@ -2093,32 +2283,39 @@ function _renderDashCharts(data){
   const gridBase={left:48,right:12,top:10,bottom:50};
   const axLabel={fontSize:8,rotate:30};
 
+  // Greyed colours for needs_retally P&L (predictions valid, bet analysis stale)
+  const pnlColor=st.needs_retally?(v=>v>=0?'#a8d5b5':'#f0a0a0'):(v=>v>=0?'#27ae60':'#e74c3c');
+  const lineCol=st.needs_retally?'#aaa':(cumPnls[cumPnls.length-1]>=0?'#27ae60':'#e74c3c');
+  const retallySuffix=st.needs_retally?' (待更新)':'';
+
   // Per-date P&L bars
   dashChartPnl=echarts.init(document.getElementById('chartPnl'));
   dashChartPnl.setOption({
-    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>${p[0].value>=0?'+':''}${p[0].value} 單位`},
+    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>${p[0].value>=0?'+':''}${p[0].value} 單位${retallySuffix}`},
     xAxis:{type:'category',data:dates,axisLabel:axLabel},
     yAxis:{type:'value',axisLabel:{fontSize:9}},
-    series:[{type:'bar',data:pnls.map(v=>({value:v,itemStyle:{color:v>=0?'#27ae60':'#e74c3c'}}))}],
+    series:[{type:'bar',data:pnls.map(v=>({value:v,itemStyle:{color:pnlColor(v)}}))}],
     grid:gridBase,
   });
+  dashChartPnl.on('click',p=>p.name&&_goRaceDate(p.name));
 
   // Cumulative P&L line
   const lastCum=cumPnls[cumPnls.length-1];
   dashChartCumPnl=echarts.init(document.getElementById('chartCumPnl'));
   dashChartCumPnl.setOption({
-    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>累計: ${p[0].value>=0?'+':''}${p[0].value} 單位`},
+    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>累計: ${p[0].value>=0?'+':''}${p[0].value} 單位${retallySuffix}`},
     xAxis:{type:'category',data:dates,axisLabel:axLabel},
     yAxis:{type:'value',axisLabel:{fontSize:9}},
     series:[{type:'line',data:cumPnls,smooth:true,
-      lineStyle:{color:lastCum>=0?'#27ae60':'#e74c3c',width:2},
-      areaStyle:{opacity:0.08,color:lastCum>=0?'#27ae60':'#e74c3c'},
+      lineStyle:{color:lineCol,width:2},
+      areaStyle:{opacity:0.08,color:lineCol},
       symbol:'circle',symbolSize:4,
-      itemStyle:{color:lastCum>=0?'#27ae60':'#e74c3c'}}],
+      itemStyle:{color:lineCol}}],
     grid:gridBase,
   });
+  dashChartCumPnl.on('click',p=>p.name&&_goRaceDate(p.name));
 
-  // Per-date accuracy bars
+  // Per-date accuracy bars (always valid regardless of stale type)
   dashChartAcc=echarts.init(document.getElementById('chartAccuracy'));
   dashChartAcc.setOption({
     tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>命中率: ${p[0].value??'—'}%`},
@@ -2127,21 +2324,49 @@ function _renderDashCharts(data){
     series:[{type:'bar',data:accs.map(v=>v==null?{value:0,itemStyle:{color:'#eee'}}:{value:v,itemStyle:{color:v>=35?'#27ae60':v>=20?'#f0a030':'#e74c3c'}})}],
     grid:{...gridBase,bottom:50},
   });
+  dashChartAcc.on('click',p=>p.name&&_goRaceDate(p.name));
+}
+
+function _goRaceDate(dateStr,modelName){
+  if(modelName){
+    racesModel=modelName;
+    activeModel=modelName;
+  }
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  document.querySelector('[data-page="races"]')?.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
+  document.getElementById('page-races')?.classList.add('show');
+  document.getElementById('pageTitle').textContent='賽事';
+  setCookie('last_page','races',365);
+  setCookie('race_date',dateStr,365);
+  loadRaces(dateStr);
 }
 
 // ── Issues / diagnostic warnings ─────────────────────────────────────────
 function _renderDashIssues(data){
   const s=data.summary||{};
+  const st=data.stale||{};
   const perDate=s.per_date||[];
   const issues=[];
 
-  if(!s.dates_run){
+  // Staleness is always the primary issue
+  if(st.needs_rerun){
+    issues.push({lvl:'error',icon:'🔴',text:`模型參數已更改，所有回測結果已失效。${st.reason||''} 請重新執行完整回測。`});
+  } else if(st.needs_retally){
+    issues.push({lvl:'warn',icon:'⚠️',text:`下注參數已更改，下注盈虧分析待重新計算。${st.reason||''} 預測準確率仍有效。`});
+  }
+
+  if(st.needs_rerun){
+    // Don't show any metric-based issues for fully invalidated models
+  } else if(!s.dates_run){
     issues.push({lvl:'error',icon:'🔴',text:'此策略尚未執行任何回測。請前往「賽事」頁面選擇此策略並執行。'});
   } else {
-    if((s.roi_units||0)<0)
-      issues.push({lvl:'error',icon:'🔴',text:`ROI 為負 (${s.roi_units.toFixed(2)} 單位)，策略在回測期間虧損。`});
-    else
-      issues.push({lvl:'ok',icon:'✅',text:`ROI 為正 (+${(s.roi_units||0).toFixed(2)} 單位)，策略在回測期間盈利。`});
+    if(!st.needs_retally){
+      if((s.roi_units||0)<0)
+        issues.push({lvl:'error',icon:'🔴',text:`ROI 為負 (${s.roi_units.toFixed(2)} 單位)，策略在回測期間虧損。`});
+      else
+        issues.push({lvl:'ok',icon:'✅',text:`ROI 為正 (+${(s.roi_units||0).toFixed(2)} 單位)，策略在回測期間盈利。`});
+    }
 
     if(s.top1_pct!=null&&s.top1_pct<25)
       issues.push({lvl:'warn',icon:'⚠️',text:`命中率偏低 (${s.top1_pct.toFixed(1)}%)，首選馬奪冠比率低於 25%。`});
@@ -2151,9 +2376,11 @@ function _renderDashIssues(data){
     if(s.dates_run<5)
       issues.push({lvl:'warn',icon:'⚠️',text:`回測日數不足 (${s.dates_run} 日)，統計意義有限，建議執行更多回測後再評估。`});
 
-    const betsPlaced=s.bets_placed||0, betsWon=s.bets_won||0;
-    if(betsPlaced>0&&betsWon/betsPlaced<0.15)
-      issues.push({lvl:'warn',icon:'⚠️',text:`下注命中率偏低 (${(betsWon/betsPlaced*100).toFixed(1)}%)。`});
+    if(!st.needs_retally){
+      const betsPlaced=s.bets_placed||0, betsWon=s.bets_won||0;
+      if(betsPlaced>0&&betsWon/betsPlaced<0.15)
+        issues.push({lvl:'warn',icon:'⚠️',text:`下注命中率偏低 (${(betsWon/betsPlaced*100).toFixed(1)}%)。`});
+    }
 
     if(perDate.length){
       const daysSince=Math.floor((Date.now()-new Date(perDate[perDate.length-1].date).getTime())/86400000);
@@ -2163,7 +2390,7 @@ function _renderDashIssues(data){
   }
 
   if(!data.active)
-    issues.push({lvl:'info',icon:'ℹ️',text:'此策略目前不是使用中策略。如需設為使用中，請前往「模型」頁面操作。'});
+    issues.push({lvl:'info',icon:'ℹ️',text:'此策略目前不是使用中策略。如需設為使用中，請前往「策略」頁面操作。'});
 
   if(data.features_disabled?.length)
     issues.push({lvl:'info',icon:'ℹ️',text:`此策略停用了 ${data.features_disabled.length} 個特徵: ${data.features_disabled.join(', ')}`});
