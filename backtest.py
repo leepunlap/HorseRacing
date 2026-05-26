@@ -72,6 +72,7 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import xgboost as xgb
 from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LogisticRegression
 import warnings; warnings.filterwarnings('ignore')
 
 import model_config as _mc
@@ -937,9 +938,12 @@ def _train_and_predict(train_feats, today_feats, feat_cols, cfg):
                               xgb.DMatrix(X_fit, label=y_fit),
                               num_boost_round=n_rounds)
             cal_preds = m_cal.predict(xgb.DMatrix(X_cal))
-            ir = IsotonicRegression(out_of_bounds='clip')
-            ir.fit(cal_preds, y_cal)
-            raw_probs = ir.transform(raw_probs)
+            # Platt scaling — logistic regression on OOS XGBoost scores.
+            # Produces smooth sigmoid calibration: no 0.0 or 1.0 cliffs,
+            # all horses get non-zero probability suitable for Harville.
+            lr = LogisticRegression()
+            lr.fit(cal_preds.reshape(-1, 1), y_cal)
+            raw_probs = lr.predict_proba(raw_probs.reshape(-1, 1))[:, 1]
 
     importance   = model.get_score(importance_type='gain')
     feat_weights = {fn: float(importance.get(fn, 0.0)) for fn in feat_cols}

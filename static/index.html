@@ -402,9 +402,10 @@ function _invalidateModelsCache(){
 // clickFn: name of a global JS function called with the model name on click.
 function _modelStaleBadge(m){
   const st=m.stale||{};
-  if(!st.stale)return '';
-  if(st.needs_rerun)   return '<span class="stale-badge rerun">需重新回測</span>';
-  if(st.needs_retally) return '<span class="stale-badge retally">需重新計算</span>';
+  const s=m.summary||{};
+  const datesCount=s.dates_run||(s.per_date?s.per_date.length:0);
+  if(st.needs_rerun) return '<span class="stale-badge rerun">' + datesCount + ' 場已失效</span>';
+  if(st.needs_retally) return '<span class="stale-badge retally">' + datesCount + ' 場待更新</span>';
   return '';
 }
 

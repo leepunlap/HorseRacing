@@ -1,10 +1,10 @@
 {
-  "name": "純技術指標策略",
-  "description": "純技術指標策略：停用配對特徵，只用客觀技術指標",
+  "name": "\u7d14\u6280\u8853\u6307\u6a19\u7b56\u7565",
+  "description": "\u7d14\u6280\u8853\u6307\u6a19\u7b56\u7565\uff1a\u505c\u7528\u914d\u5c0d\u7279\u5fb5\uff0c\u53ea\u7528\u5ba2\u89c0\u6280\u8853\u6307\u6a19",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
-  "parent": "均衡基礎策略",
-  "notes": "停用騎師×馬匹配對、騎師×練馬師配對及騎師勝率三個特徵，僅保留客觀技術指標，測試模型對騎師特徵的依賴程度",
+  "parent": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "notes": "\u505c\u7528\u9a0e\u5e2b\u00d7\u99ac\u5339\u914d\u5c0d\u3001\u9a0e\u5e2b\u00d7\u7df4\u99ac\u5e2b\u914d\u5c0d\u53ca\u9a0e\u5e2b\u52dd\u7387\u4e09\u500b\u7279\u5fb5\uff0c\u50c5\u4fdd\u7559\u5ba2\u89c0\u6280\u8853\u6307\u6a19\uff0c\u6e2c\u8a66\u6a21\u578b\u5c0d\u9a0e\u5e2b\u7279\u5fb5\u7684\u4f9d\u8cf4\u7a0b\u5ea6",
   "created": "2026-05-25",
   "active": false,
   "xgb": {

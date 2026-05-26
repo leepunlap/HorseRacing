@@ -62,10 +62,24 @@ Used by `retally()` to evaluate PLACE/Q/QP bets against dividend data.
 - Real-time live odds integration (H136) — edge uses historical odds
 - Harville is implemented but disabled by default (thresholds = 0.0)
 - Proper Q architecture (H3) — only quick proxy features exist; full architecture below
+- Pre-race place pool odds — needed for valid PLC betting backtest; currently only post-race dividends available
 
-### 11. Q architecture (H3) — proper vs quick version
+### 11. Calibration system
+- **Platt scaling** (LogisticRegression on XGBoost scores) replaces IsotonicRegression. Produces smooth sigmoid — no 0.0 or 1.0 probability cliffs. All horses get non-zero probability.
+- **WalkForwardCalibration** class: per-date accumulator of (pred_sum, actual_sum) per odds bucket per pool. Factors computed from dates before target date only. Applied to WIN/PLACE/Q/QP in retally.
+- **Optimal bet_max_odds**: 5.0x for baseline strategies, 8.0x for 黑馬獵手策略 (from audit sweep).
 
-H3: "連贏需要考慮配搭互動，簡單排名不夠" (Q needs pair interactions, not simple ranking)
+### 12. Known profitability facts
+- Model is conservative at odds <7x (under-predicts win rates), overconfident at >10x (3.5x inflated at 25x+)
+- HKJC commission 16.5% → break-even edge ≈ 1.197
+- Best profit on Good going, Class 3-5 races. Worst on Soft/Yielding and G1 races.
+- 穩健保守策略 (0/52 wins) — effectively broken, needs reset or removal
+- Cap 5.0x blocks 4,201 horses vs 125 bets placed — prevents worst bets but doesn't guarantee profit
+- 深度推算策略 has best hit rate (19.2%) — deeper trees may help but risk overfitting
+
+### 13. Q architecture (H3) — proper vs quick version
+
+H3: \"連贏需要考慮配搭互動，簡單排名不夠\" (Q needs pair interactions, not simple ranking)
 
 **Current (quick)**: 2 proxy features per horse — `q_style_compat` (complementary-style partner count) and `q_field_strength` (strong-jockey count). These let XGBoost learn some Q pair signal from per-horse data. No separate Q model.
 
