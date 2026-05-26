@@ -48,7 +48,7 @@ def _coerce_int(raw) -> int | None:
 
 
 def _load_split(conn: sqlite3.Connection, before: str | None, between: tuple[str, str] | None,
-                feature_ids: list[str]) -> tuple[np.ndarray, np.ndarray, list[int], list[int], list[int]]:
+                feature_ids: list[str], *, want_dates: bool = False):
     """Return X, y_label (4..0 ranking labels), group sizes, race_ids, positions.
 
     `before`: load races strictly < this date (training).
@@ -56,17 +56,19 @@ def _load_split(conn: sqlite3.Connection, before: str | None, between: tuple[str
     """
     if before is not None:
         races = conn.execute(
-            "SELECT id FROM races WHERE date < ? ORDER BY date, id", (before,),
+            "SELECT id, date FROM races WHERE date < ? ORDER BY date, id", (before,),
         ).fetchall()
     else:
         lo, hi = between
         races = conn.execute(
-            "SELECT id FROM races WHERE date BETWEEN ? AND ? ORDER BY date, id",
+            "SELECT id, date FROM races WHERE date BETWEEN ? AND ? ORDER BY date, id",
             (lo, hi),
         ).fetchall()
     race_ids = [r[0] for r in races]
+    race_dates = {r[0]: r[1] for r in races}
     if not race_ids:
-        return np.empty((0, len(feature_ids))), np.empty(0), [], [], []
+        empty = np.empty((0, len(feature_ids))), np.empty(0), [], [], []
+        return (*empty, []) if want_dates else empty
 
     # Pull horse entries per race
     entries: dict[int, list[dict]] = {}
@@ -109,7 +111,11 @@ def _load_split(conn: sqlite3.Connection, before: str | None, between: tuple[str
                 X[i, j] = v
 
     y = np.array([max(0.0, 5 - p) for p in positions])  # 1st=4, 5th+=0
-    return X, y, groups, [k[0] for k in keys_order], positions
+    rids = [k[0] for k in keys_order]
+    if want_dates:
+        dates = [race_dates.get(rid) for rid in rids]
+        return X, y, groups, rids, positions, dates
+    return X, y, groups, rids, positions
 
 
 def _flat_metrics(probs: np.ndarray, groups: list[int],
@@ -221,7 +227,8 @@ def run(split: str, until: str, *, feature_filter: list[str] | None = None,
         objective: str = "rank:pairwise", eta: float = 0.05, max_depth: int = 6,
         num_round: int = 200, subsample: float = 0.8, colsample: float = 0.8,
         benter_alpha: float = 1.0, benter_beta: float = 0.9,
-        use_market: bool = True, select_by: str = "prob") -> dict:
+        use_market: bool = True, select_by: str = "prob",
+        time_decay_tau: float | None = None) -> dict:
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA query_only = 1")
 
@@ -229,7 +236,14 @@ def run(split: str, until: str, *, feature_filter: list[str] | None = None,
     fids = [fid for fid in fids_all if (not feature_filter or fid in feature_filter)]
 
     t0 = time.time()
-    X_tr, y_tr, g_tr, rids_tr, _ = _load_split(conn, before=split, between=None, feature_ids=fids)
+    want_dates = time_decay_tau is not None
+    if want_dates:
+        X_tr, y_tr, g_tr, rids_tr, _, dates_tr = _load_split(
+            conn, before=split, between=None, feature_ids=fids, want_dates=True)
+    else:
+        X_tr, y_tr, g_tr, rids_tr, _ = _load_split(
+            conn, before=split, between=None, feature_ids=fids)
+        dates_tr = None
     X_te, y_te, g_te, rids_te, pos_te = _load_split(conn, before=None, between=(split, until), feature_ids=fids)
     if len(X_tr) == 0 or len(X_te) == 0:
         return {"error": "empty train or test set"}
@@ -268,7 +282,23 @@ def run(split: str, until: str, *, feature_filter: list[str] | None = None,
         "subsample": subsample, "colsample_bytree": colsample,
         "tree_method": "hist", "verbosity": 0,
     }
-    bst = stage1_xgb.train(X_tr, y_tr, g_tr, params=params, num_boost_round=num_round)
+    # Optional time-decay weighting: XGBoost ranking takes one weight PER
+    # GROUP (race), not per row. All horses in a race share the same date,
+    # so derive the weight from the first row of each group.
+    sample_w = None
+    if time_decay_tau and dates_tr:
+        from datetime import date as _date
+        cutoff = _date.fromisoformat(split)
+        per_group = []
+        i = 0
+        for g in g_tr:
+            d = dates_tr[i] if i < len(dates_tr) else None
+            days_ago = (cutoff - _date.fromisoformat(d)).days if d else 0
+            per_group.append(math.exp(-days_ago / float(time_decay_tau)))
+            i += g
+        sample_w = np.array(per_group, dtype=float)
+    bst = stage1_xgb.train(X_tr, y_tr, g_tr, params=params,
+                           num_boost_round=num_round, weight=sample_w)
     scores_te = stage1_xgb.predict_scores(bst, X_te)
     f_probs = stage1_xgb.scores_to_probs(scores_te, g_te)
 
@@ -343,6 +373,8 @@ def main() -> None:
     p.add_argument("--no-market", action="store_true")
     p.add_argument("--select-by", choices=["prob", "edge"], default="prob",
                    help="rank horses per race by prob (default) or by prob*odds")
+    p.add_argument("--time-decay-tau", type=float, default=None,
+                   help="time-decay half-life in days (exp weighting). None = uniform.")
     p.add_argument("--tag", default="run")
     ns = p.parse_args()
 
@@ -357,6 +389,7 @@ def main() -> None:
         num_round=ns.num_round, subsample=ns.subsample, colsample=ns.colsample,
         benter_alpha=ns.alpha, benter_beta=ns.beta,
         use_market=not ns.no_market, select_by=ns.select_by,
+        time_decay_tau=ns.time_decay_tau,
     )
     out["tag"] = ns.tag
     print(json.dumps(out, indent=2))
