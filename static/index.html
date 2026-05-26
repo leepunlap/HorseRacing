@@ -1097,7 +1097,7 @@ function renderPerformanceCharts(charts) {
       <div class="chart-card wide">
         <h3>${t('每日下注金額與盈虧', 'Daily stake placed & win/loss by race day')}</h3>
         <div id="apex-daily" class="apex-chart"></div>
-        <p class="chart-note">${t('藍柱 = 該日總投注金額；綠/紅柱 = 該日盈虧（正/負）。點擊任何柱可跳到該日賽事。', 'blue bars = total stake placed that day · green/red bars = daily PnL (positive/negative) · click any bar to jump to that day on the Races tab')}</p>
+        <p class="chart-note">${t('藍線 = 該日總投注金額；綠/紅柱 = 該日盈虧（正/負）。點擊任何柱可跳到該日賽事。', 'blue line = total stake placed that day · green/red columns = daily PnL (positive/negative) · click any column to jump to that day on the Races tab')}</p>
       </div>
       <div class="chart-card wide">
         <h3>${t('每日場次與預測勝場', 'Daily races & predicted wins')}</h3>
@@ -1474,17 +1474,17 @@ function kellyBucketsChartOpts(scenarios) {
 }
 
 function dailyActivityChartOpts(points) {
-  // Per-day stake (always +) and PnL (signed). Plain numeric arrays so the
-  // category axis labels survive; per-bar red-on-negative is done via
-  // plotOptions.bar.colors.ranges (stake is always +, so only the PnL series
-  // gets recoloured red when negative).
+  // Mixed chart: per-day stake as a line (always positive, smooth trend),
+  // PnL as bars (signed — green positive, red negative via colors.ranges).
+  // Plain numeric arrays so the category axis labels survive; ApexCharts
+  // mixed charts require chart.type='line' and per-series type overrides.
   const categories = points.map(p => p.date);
   const stakeData  = points.map(p => +(p.daily_stake || 0).toFixed(2));
   const pnlData    = points.map(p => +(p.daily_pnl   || 0).toFixed(2));
   return {
     ..._baseOpts(),
-    chart: { ..._baseOpts().chart, type: 'bar', height: 320, stacked: false,
-             // Click-through: jump to the Races tab on the date of the clicked bar
+    chart: { ..._baseOpts().chart, type: 'line', height: 320, stacked: false,
+             // Click-through: jump to the Races tab on the date of the clicked element
              events: {
                dataPointSelection: (_e, _ctx, conf) => {
                  const date = points[conf.dataPointIndex]?.date;
@@ -1499,8 +1499,8 @@ function dailyActivityChartOpts(points) {
              },
     },
     series: [
-      { name: t('投注金額 ($)', 'Stake placed ($)'), data: stakeData },
-      { name: t('盈虧 ($)',     'PnL ($)'),         data: pnlData },
+      { name: t('投注金額 ($)', 'Stake placed ($)'), type: 'line', data: stakeData },
+      { name: t('盈虧 ($)',     'PnL ($)'),         type: 'column', data: pnlData },
     ],
     colors: ['#5ec0ff', '#4dd17a'],
     plotOptions: {
@@ -1510,7 +1510,9 @@ function dailyActivityChartOpts(points) {
       },
     },
     dataLabels: { enabled: false },
-    stroke: { width: 0 },
+    stroke: { width: [2.5, 0], curve: 'straight' },
+    markers: { size: [4, 0], hover: { size: [6, 0] } },
+    fill: { type: ['solid', 'solid'], opacity: [1.0, 0.85] },
     xaxis: {
       categories, type: 'category',
       title: { text: t('賽事日期', 'Race date'), style: { color: '#8290a8' } },
@@ -1526,6 +1528,7 @@ function dailyActivityChartOpts(points) {
     annotations: { yaxis: [{ y: 0, borderColor: '#8290a8', strokeDashArray: 0,
                              label: { borderColor: 'transparent', text: '' } }] },
     tooltip: { ..._baseOpts().tooltip,
+               shared: true, intersect: false,
                y: { formatter: (v, { seriesIndex, dataPointIndex }) => {
                  const p = points[dataPointIndex];
                  if (seriesIndex === 0) return `$${v.toFixed(2)} (${p.daily_bets} bets)`;
