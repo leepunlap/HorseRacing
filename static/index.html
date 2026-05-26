@@ -2110,6 +2110,13 @@ function renderRaces() {
   const racesHtml = (data?.races || []).map(r => renderRaceBlock(r, data, sid)).join('')
     || `<div class="empty">${t('此日無賽事資料', 'no race data for this date')}</div>`;
 
+  // Bets-only summary: one flat table across the meeting showing every horse
+  // the strategy would have backed. Only renders when at least one race in the
+  // current view has a prediction.
+  const strat = (state.strategies || []).find(s => s.id == sid);
+  const hasAnyPred = (data?.races || []).some(r => r.has_predictions);
+  const betsHtml = (strat && hasAnyPred) ? renderBetsSummary(data, strat) : '';
+
   main.innerHTML = `
     <div class="panel">
       <h2>${t('賽果', 'Races')} ${state.raceDate ? `· ${state.raceDate}` : ''}</h2>
@@ -2122,9 +2129,217 @@ function renderRaces() {
       </div>
       ${datePicker}
     </div>
+    ${betsHtml}
     ${racesHtml}
   `;
   wireRaceControls();
+}
+
+function renderBetsSummary(data, strat) {
+  const lang = state.lang;
+  const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(1) + '%';
+  const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
+  const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
+
+  const rows = [];
+  let totalStake = 0, totalPnl = 0, settled = 0;
+  for (const r of (data.races || [])) {
+    if (!r.has_predictions) continue;
+    // Determine top horse per race by edge (same logic as renderRaceBlock).
+    const topBrand = (r.horses || [])
+      .filter(h => h.calibrated_prob != null && h.odds != null)
+      .reduce((best, h) => {
+        const e = h.calibrated_prob * h.odds;
+        const bestE = best ? best.calibrated_prob * best.odds : -Infinity;
+        return e > bestE ? h : best;
+      }, null)?.brand;
+    for (const h of (r.horses || [])) {
+      const a = analyseHorse(h, strat, lang, h.brand === topBrand);
+      if (!a.bet) continue;
+      rows.push({ r, h, a });
+      if (a.stake != null) totalStake += a.stake;
+      if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
+    }
+  }
+  if (rows.length === 0) {
+    return `<div class="race-block"><div class="race-hdr">
+      <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
+      <span class="meta">${t('此日無建議下注', 'no recommended bets for this date')}</span>
+    </div></div>`;
+  }
+
+  const roi = totalStake > 0 ? (totalPnl / totalStake * 100) : null;
+  const pnlCls = totalPnl > 0 ? 'pnl-win' : (totalPnl < 0 ? 'pnl-lose' : '');
+
+  const body = rows.map(({ r, h, a }) => {
+    const won = h.position == 1 || h.position === '1';
+    const placed = h.position && (parseInt(h.position) || 99) <= 3;
+    const cls = won ? 'winner' : (placed ? 'placed' : '');
+    const reason = lang === 'zh' ? a.reasonZh : a.reasonEn;
+    const mkt = h.odds && h.odds > 0 ? 1.0 / h.odds : null;
+    const pnlCls = a.pnl == null ? '' : (a.pnl > 0 ? 'pnl-win' : (a.pnl < 0 ? 'pnl-lose' : ''));
+    return `
+      <tr class="${cls}">
+        <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
+        <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
+        <td class="h-name">${escapeHtml(h.horse_name || '')} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
+        <td>${escapeHtml(localiseName(h.jockey, lang, 'jockey'))}</td>
+        <td class="num">${h.draw ?? '—'}</td>
+        <td class="num">${fmtNum(h.odds, 2)}</td>
+        <td class="num">${fmtPct(mkt)}</td>
+        <td class="num">${fmtPct(h.calibrated_prob)}</td>
+        <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
+        <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
+        <td class="bet">✓</td>
+        <td class="assessment" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
+        <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>
+        <td class="num ${pnlCls}">${a.pnl == null ? '—' : fmtMoney(a.pnl)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <div class="race-block">
+      <div class="race-hdr">
+        <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
+        <span>${rows.length} ${t('注', 'bets')}</span>
+        <span>${t('總投注', 'stake')}: ${fmtMoney(totalStake)}</span>
+        <span class="${pnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
+        ${roi != null && settled ? `<span class="${pnlCls}">ROI: ${roi.toFixed(1)}%</span>` : ''}
+      </div>
+      <div class="race-body">
+        <table>
+          <thead><tr>
+            <th>${t('場次', 'race')}</th>
+            <th>${t('實際', 'actual')}</th>
+            <th>${t('馬', 'horse')}</th>
+            <th>${t('騎師', 'jockey')}</th>
+            <th>${t('閘', 'dr')}</th>
+            <th>${t('賠率', 'odds')}</th>
+            <th>${t('市場', 'mkt p')}</th>
+            <th>${t('模型', 'cal p')}</th>
+            <th>edge</th>
+            <th>${t('時間', 'time')}</th>
+            <th>${t('決策', 'bet')}</th>
+            <th>${t('評估', 'assessment')}</th>
+            <th class="num">${t('投注', 'stake')}</th>
+            <th class="num">${t('盈虧', 'pnl')}</th>
+          </tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// Shared layman-betting analysis. Used by both the per-race tables AND the
+// "bets only" summary at the top of the races page. Mirrors the server-side
+// logic in betting/filters.py + betting/sizing.py.
+const RACE_BANKROLL = 10000;
+function formatDriverVal(v) {
+  if (typeof v !== 'number' || !isFinite(v)) return '—';
+  if (Math.abs(v) >= 1) return v.toFixed(2);
+  return v.toFixed(3);
+}
+
+// HKJC jockey + trainer EN→ZH translation for the active 2026 roster. The DB
+// usually stores Chinese names but a few recent meetings were scraped from the
+// English HKJC URL and came back in English; this map fills that gap on the
+// SPA side so the UI is consistent when the Chinese language is selected.
+const JOCKEY_EN_ZH = {
+  "A Atzeni":"艾兆禮","A Badel":"巴度","B Avdulla":"艾道拿","C L Chau":"周俊樂",
+  "C Williams":"韋立彬","C Y Ho":"何澤堯","E Brown":"布浩榮","H Bentley":"班德禮",
+  "H Bowman":"布文","H T Mo":"莫艾誠","H Y Yuen":"袁幸堯","J McDonald":"麥道朗",
+  "J Moreira":"莫雷拉","J Orman":"奧爾民","K C Leung":"梁家俊","K Teetan":"田泰安",
+  "L Ferraris":"費利士","M Chadwick":"蔡明紹","M F Poon":"潘明輝","M L Yeung":"楊明綸",
+  "P N Wong":"黃皓楠","R Kingscote":"紀仁安","Y L Chung":"鍾易禮","Z Purton":"潘頓",
+};
+const TRAINER_EN_ZH = {
+  "A S Cruz":"告東尼","B Crawford":"高富瀚","C Fownes":"方嘉柏","C H Yip":"葉楚航",
+  "C S Shum":"沈集成","C W Chang":"鄭俊偉","D A Hayes":"大衛希斯","D Eustace":"易思達",
+  "D J Hall":"賀賢","D J Whyte":"韋達","F C Lor":"羅富全","H Tanaka":"田中博康",
+  "J Richards":"李家樂","J Size":"蔡約翰","K H Ting":"丁冠豪","K L Man":"文家良",
+  "K W Lui":"呂健威","M Newnham":"紐德安","P C Ng":"伍鵬志","P F Yiu":"姚本輝",
+  "W K Mo":"巫偉傑","W Y So":"蘇偉賢","Y Ikee":"池江泰寿","Y S Tsui":"徐雨石",
+};
+function localiseName(name, lang, kind) {
+  if (!name) return '';
+  if (lang !== 'zh') return name;
+  const map = kind === 'jockey' ? JOCKEY_EN_ZH : TRAINER_EN_ZH;
+  return map[name] || name;
+}
+function formatFinishTime(v) {
+  if (v == null || v === '') return '';
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  if (!isFinite(n)) return String(v);
+  return n.toFixed(2);
+}
+function analyseHorse(h, strat, lang, isTopPick) {
+  if (!strat || h.calibrated_prob == null || h.odds == null) {
+    return { bet: false, reasonZh: '—', reasonEn: '—', stake: null, pnl: null };
+  }
+  const p = h.calibrated_prob, o = h.odds;
+  const edgeV = p * o;
+  const minP = strat.min_prob ?? 0.05;
+  const minO = strat.bet_min_odds ?? 2.5;
+  const maxO = strat.bet_max_odds ?? 25;
+
+  // Rule: every race bets on its top-edge horse. The non-top-edge gate is the
+  // only blocker — safety rails (min/max odds, min prob) are advisory under
+  // this strategy and don't veto the bet.
+  const blocks = [];
+  if (!isTopPick) blocks.push({ zh: '非本場最高 edge — 每場只下注 edge 最高的馬', en: 'not top edge — one bet per race rule (highest prob × odds)' });
+
+  const drivers = h.feature_drivers || { top: [], bottom: [] };
+  const driverLine = (arr, arrow) => arr.map(d => {
+    const nm = lang === 'zh' ? d.name_zh : d.name_en;
+    const num = (typeof d.value === 'number' && typeof d.field_mean === 'number')
+      ? ` (${formatDriverVal(d.value)} vs ${formatDriverVal(d.field_mean)})`
+      : '';
+    return `${arrow}${String(nm ?? '')}${num}`;
+  }).join('、');
+
+  if (blocks.length) {
+    const lblZh = drivers.top.length ? ` · 上揚因素：${driverLine(drivers.top, '↑')}` : '';
+    const lblEn = drivers.top.length ? ` · Tailwinds: ${driverLine(drivers.top, '↑')}` : '';
+    return {
+      bet: false,
+      reasonZh: '不下注 — ' + blocks.map(b => b.zh).join('；') + lblZh,
+      reasonEn: 'Skip — ' + blocks.map(b => b.en).join('; ') + lblEn,
+      stake: null, pnl: null,
+    };
+  }
+
+  const kellyF = (p * o - 1) / (o - 1);
+  const kFrac = strat.kelly_fraction ?? 0.25;
+  const bankCap = (strat.kelly_max_bankroll_pct ?? 0.05) * RACE_BANKROLL;
+  const rawStake = kFrac === 0 ? bankCap : Math.max(0, kellyF * kFrac * RACE_BANKROLL);
+  const stake = Math.min(rawStake, bankCap);
+  let pnl = null;
+  const posInt = parseInt(h.position);
+  if (h.position != null && !Number.isNaN(posInt)) {
+    pnl = posInt === 1 ? stake * (o - 1) : -stake;
+  } else if (h.position != null) {
+    pnl = 0;
+  }
+  const mktPct = (1 / o * 100).toFixed(1);
+  const modelPct = (p * 100).toFixed(1);
+  const driversZh = [
+    drivers.top.length    ? `上揚因素：${driverLine(drivers.top, '↑')}`    : '',
+    drivers.bottom.length ? `下挫因素：${driverLine(drivers.bottom, '↓')}` : '',
+  ].filter(Boolean).join(' · ');
+  const driversEn = [
+    drivers.top.length    ? `Tailwinds: ${driverLine(drivers.top, '↑')}`    : '',
+    drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
+  ].filter(Boolean).join(' · ');
+  const sizingZh = kFrac === 0 ? '平注' : rawStake > bankCap ? '資金上限' : `${kFrac} Kelly`;
+  const sizingEn = kFrac === 0 ? 'flat stake' : rawStake > bankCap ? 'capped by bankroll' : `sized by ${kFrac}-Kelly`;
+  return {
+    bet: true,
+    reasonZh: `下注 — 模型 ${modelPct}% 對市場 ${mktPct}%，edge ${edgeV.toFixed(2)}×（${sizingZh}）${driversZh ? ' · ' + driversZh : ''}`,
+    reasonEn: `Bet — model ${modelPct}% vs market ${mktPct}%, edge ${edgeV.toFixed(2)}× (${sizingEn})${driversEn ? ' · ' + driversEn : ''}`,
+    stake, pnl,
+  };
 }
 
 function renderRaceBlock(r, data, sid) {
@@ -2132,98 +2347,17 @@ function renderRaceBlock(r, data, sid) {
   const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
   const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
   const strat = (state.strategies || []).find(s => s.id == sid);
-  const BANKROLL = 10000;  // placeholder until per-strategy bankroll lands
 
-  // Per-horse betting analysis: would-we-bet, why/why-not (layman), stake, PnL.
-  // Mirrors the server-side logic in betting/filters.py + betting/sizing.py so
-  // the table matches what audit.py would have produced for the same window.
-  function analyse(h) {
-    if (!strat || h.calibrated_prob == null || h.odds == null) {
-      return { bet: false, reasonZh: '—', reasonEn: '—', stake: null, pnl: null };
-    }
-    const p = h.calibrated_prob, o = h.odds;
-    const edgeV = p * o;
-    const minP = strat.min_prob ?? 0.05;
-    const minO = strat.bet_min_odds ?? 2.5;
-    const maxO = strat.bet_max_odds ?? 25;
-    const eThr = strat.edge_threshold ?? 1.05;
-
-    const blocks = [];     // structured reasons for skipping
-    if (p < minP)   blocks.push({ k: 'prob_low',  zh: `模型機率僅 ${(p*100).toFixed(1)}%，低於 ${(minP*100).toFixed(0)}% 門檻`, en: `model gives only ${(p*100).toFixed(1)}% (need ≥${(minP*100).toFixed(0)}%)` });
-    if (o < minO)   blocks.push({ k: 'odds_low',  zh: `賠率 ${o} 太低，低於 ${minO} 下限`, en: `odds ${o} too low (min ${minO})` });
-    if (o > maxO)   blocks.push({ k: 'odds_high', zh: `賠率 ${o} 太高（冷門），超過 ${maxO} 上限`, en: `odds ${o} too high (longshot — max ${maxO})` });
-    if (edgeV < eThr) blocks.push({ k: 'edge_low', zh: `edge ${edgeV.toFixed(2)} 未達 ${eThr} 門檻 — 期望值不足`, en: `edge ${edgeV.toFixed(2)} below ${eThr} threshold (insufficient expected value)` });
-
-    // Pull the feature-driver attribution attached by the backend, then build
-    // a layman-readable "stood out / held back" line we'll append to the
-    // reason text below. Each driver carries z-score vs field plus value /
-    // field_mean so the SPA can show "rating 78 (field avg 72)" style hints.
-    const drivers = h.feature_drivers || { top: [], bottom: [] };
-    const driverLine = (arr, arrow) => arr.map(d => {
-      const nm = state.lang === 'zh' ? d.name_zh : d.name_en;
-      const num = (typeof d.value === 'number' && typeof d.field_mean === 'number')
-        ? ` (${formatDriverVal(d.value)} vs ${formatDriverVal(d.field_mean)})`
-        : '';
-      return `${arrow}${escapeReasonText(nm)}${num}`;
-    }).join('、');
-
-    if (blocks.length) {
-      const lblZh = drivers.top.length ? ` · 上揚因素：${driverLine(drivers.top, '↑')}` : '';
-      const lblEn = drivers.top.length ? ` · Tailwinds: ${driverLine(drivers.top, '↑')}` : '';
-      return {
-        bet: false,
-        reasonZh: '不下注 — ' + blocks.map(b => b.zh).join('；') + lblZh,
-        reasonEn: 'Skip — ' + blocks.map(b => b.en).join('; ') + lblEn,
-        stake: null, pnl: null,
-      };
-    }
-
-    // Fractional Kelly with bankroll cap (matches betting/sizing.py).
-    // kFrac == 0 means flat staking: every qualifying bet uses the bankroll
-    // cap as its stake — disabling Kelly entirely without changing filters.
-    const kellyF = (p * o - 1) / (o - 1);   // full Kelly fraction
-    const kFrac = strat.kelly_fraction ?? 0.25;
-    const bankCap = (strat.kelly_max_bankroll_pct ?? 0.05) * BANKROLL;
-    const rawStake = kFrac === 0 ? bankCap : Math.max(0, kellyF * kFrac * BANKROLL);
-    const stake = Math.min(rawStake, bankCap);
-    let pnl = null;
-    const posInt = parseInt(h.position);
-    if (h.position != null && !Number.isNaN(posInt)) {
-      pnl = posInt === 1 ? stake * (o - 1) : -stake;
-    } else if (h.position != null) {
-      // Non-numeric position (WV/PU/FE) — treat as void, no PnL
-      pnl = 0;
-    }
-    const mktPct = (1 / o * 100).toFixed(1);
-    const modelPct = (p * 100).toFixed(1);
-    const driversZh = [
-      drivers.top.length    ? `上揚因素：${driverLine(drivers.top, '↑')}`    : '',
-      drivers.bottom.length ? `下挫因素：${driverLine(drivers.bottom, '↓')}` : '',
-    ].filter(Boolean).join(' · ');
-    const driversEn = [
-      drivers.top.length    ? `Tailwinds: ${driverLine(drivers.top, '↑')}`    : '',
-      drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
-    ].filter(Boolean).join(' · ');
-    const sizingZh = kFrac === 0 ? '平注' : rawStake > bankCap ? '資金上限' : `${kFrac} Kelly`;
-    const sizingEn = kFrac === 0 ? 'flat stake' : rawStake > bankCap ? 'capped by bankroll' : `sized by ${kFrac}-Kelly`;
-    return {
-      bet: true,
-      reasonZh: `下注 — 模型 ${modelPct}% 對市場 ${mktPct}%，edge ${edgeV.toFixed(2)}×（${sizingZh}）${driversZh ? ' · ' + driversZh : ''}`,
-      reasonEn: `Bet — model ${modelPct}% vs market ${mktPct}%, edge ${edgeV.toFixed(2)}× (${sizingEn})${driversEn ? ' · ' + driversEn : ''}`,
-      stake, pnl,
-    };
-  }
-
-  function formatDriverVal(v) {
-    if (typeof v !== 'number' || !isFinite(v)) return '—';
-    if (Math.abs(v) >= 1) return v.toFixed(2);
-    return v.toFixed(3);
-  }
-  function escapeReasonText(s) {
-    // Names are already plain text — no HTML escaping needed here because the
-    // outer cell uses escapeHtml on the whole reason string.
-    return String(s ?? '');
-  }
+  // One-bet-per-race rule: find the brand with the highest edge (prob × odds),
+  // pass `isTopPick` down so analyseHorse only marks that horse as a bet.
+  const topBrand = (r.horses || [])
+    .filter(h => h.calibrated_prob != null && h.odds != null)
+    .reduce((best, h) => {
+      const e = h.calibrated_prob * h.odds;
+      const bestE = best ? best.calibrated_prob * best.odds : -Infinity;
+      return e > bestE ? h : best;
+    }, null)?.brand;
+  const analyse = (h) => analyseHorse(h, strat, state.lang, h.brand === topBrand);
 
   const dividends = (data.dividends || []).filter(d => d.course === r.course && d.race_no === r.race_no);
   const divChunks = dividends.map(d =>
@@ -2290,13 +2424,13 @@ function renderRaceBlock(r, data, sid) {
                 <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
                 <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
                 <td class="h-name">${escapeHtml(h.horse_name || '')} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
-                <td>${escapeHtml(h.jockey || '')}</td>
+                <td>${escapeHtml(localiseName(h.jockey, lang, 'jockey'))}</td>
                 <td class="num">${h.draw ?? '—'}</td>
                 <td class="num">${fmtNum(h.odds, 2)}</td>
                 <td class="num">${fmtPct(mkt)}</td>
                 <td class="num">${fmtPct(h.calibrated_prob)}</td>
                 <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
-                <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(h.finish_time || '')}</td>
+                <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
                 <td class="${a.bet ? 'bet' : ''}">${a.bet ? '✓' : ''}</td>
                 <td class="assessment" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
                 <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>

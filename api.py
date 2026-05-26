@@ -362,14 +362,14 @@ def create_strategy(name: str, name_zh: str | None = None, name_en: str | None =
 
 @router.get("/strategies/{strategy_id}/audit")
 def strategy_audit(strategy_id: int, date_from: str, date_to: str,
-                   max_odds: float = 25.0, edge: float = 1.05,
+                   max_odds: float = 25.0,
                    kelly: float = 0.25, bankroll: float = 10000.0) -> dict:
     from betting import filters as filt, audit
     if not DB_PATH.exists():
         raise HTTPException(404, "DB not initialized")
     conn = _connect()
     try:
-        s = filt.FilterSettings(bet_max_odds=max_odds, edge_threshold=edge)
+        s = filt.FilterSettings(bet_max_odds=max_odds)
         return audit.audit(conn, strategy_id, date_from, date_to,
                            settings=s, kelly_fraction_strat=kelly, bankroll=bankroll)
     finally:
@@ -471,7 +471,6 @@ def strategy_dashboard(strategy_id: int) -> dict:
             from betting import audit as audit_mod, filters as filt
             settings = filt.FilterSettings(
                 bet_max_odds=float(strategy["bet_max_odds"] or 20.0),
-                edge_threshold=float(strategy["edge_threshold"] or 1.05),
                 min_prob=float(strategy["min_prob"] or 0.05),
                 bet_min_odds=float(strategy["bet_min_odds"] or 2.5),
             )
@@ -569,30 +568,27 @@ def strategy_charts(strategy_id: int,
                           Tells you where on the price ladder the model works.
 
     Bets are filtered using the strategy's own thresholds (bet_max_odds /
-    bet_min_odds / min_prob / edge_threshold), mirroring betting.filters.evaluate.
-    Stakes are sized by fractional Kelly capped at bankroll-pct, mirroring
-    betting.sizing.size_bet. Bankroll defaults to HK$10,000 (matches sim_mode).
+    bet_min_odds / min_prob), mirroring betting.filters.evaluate, and only the
+    top-probability horse in each race is eligible (one bet per race rule —
+    edge gating was removed). Stakes are sized by fractional Kelly capped at
+    bankroll-pct (kelly_fraction=0 = flat). Bankroll = HK$10,000.
     """
     if not DB_PATH.exists():
         raise HTTPException(404, "DB not initialized")
     conn = _connect()
     try:
         strat = conn.execute(
-            "SELECT bet_max_odds, bet_min_odds, min_prob, edge_threshold, "
+            "SELECT bet_max_odds, bet_min_odds, min_prob, "
             "       kelly_fraction, kelly_max_bankroll_pct "
             "FROM strategies WHERE id = ?",
             (strategy_id,),
         ).fetchone()
         if not strat:
             raise HTTPException(404, f"strategy {strategy_id} not found")
-        bet_max_odds, bet_min_odds, min_prob, edge_thr, kelly_frac, kelly_max_bank = strat
-        # Use explicit None checks — `value or default` evaluates `0` as
-        # falsy, which would silently override an intentional kelly_fraction=0
-        # (flat staking) with the 0.25 default.
+        bet_max_odds, bet_min_odds, min_prob, kelly_frac, kelly_max_bank = strat
         bet_max_odds   = float(20.0   if bet_max_odds  is None else bet_max_odds)
         bet_min_odds   = float(2.5    if bet_min_odds  is None else bet_min_odds)
         min_prob       = float(0.05   if min_prob      is None else min_prob)
-        edge_thr       = float(1.05   if edge_thr      is None else edge_thr)
         kelly_frac     = float(0.25   if kelly_frac    is None else kelly_frac)
         kelly_max_bank = float(0.05   if kelly_max_bank is None else kelly_max_bank)
         bankroll = 10000.0
@@ -649,32 +645,36 @@ def strategy_charts(strategy_id: int,
             "n_samples": len(b),
         })
 
-    # ── Pass 1: build the "qualified" list — every bet that passed the
-    #    strategy's filters AND has a positive Kelly. Stake sizing happens
-    #    in pass 2; this lets us reuse the same qualifying set to compute
-    #    Kelly what-ifs (flat / 1/4 / 1/2 / 3/4 / full).
-    qualified: list[dict] = []
+    # ── Pass 1: build the "qualified" list. Strategy rule: one bet per race
+    #    on the horse with the highest edge (prob × odds), subject to the
+    #    odds / min-prob safety rails.
+    by_race: dict[int, list[dict]] = {}
     for d, prob, odds, won, race_id, course, race_class, distance in rows:
         if prob is None or odds is None:
             continue
-        if not (bet_min_odds <= odds <= bet_max_odds):
-            continue
-        if prob < min_prob:
-            continue
-        edge = prob * odds
-        if edge < edge_thr:
-            continue
-        kelly_full = ((prob * odds - 1) / (odds - 1)) if odds > 1 else 0.0
-        if kelly_full <= 0:
-            continue
-        qualified.append({
-            "date": d, "prob": float(prob), "odds": float(odds),
-            "won": int(won), "kelly_full": float(kelly_full),
-            "race_id": race_id, "course": course or "",
+        by_race.setdefault(race_id, []).append({
+            "date": d, "prob": float(prob),
+            "odds": float(odds),
+            "won": int(won), "race_id": race_id,
+            "course": course or "",
             "class": (race_class or "").strip(),
             "distance": int(distance) if distance else 0,
-            "edge": float(edge),
+            "edge": float(prob) * float(odds),
         })
+
+    qualified: list[dict] = []
+    for race_id, cand in by_race.items():
+        if not cand:
+            continue
+        top = max(cand, key=lambda x: x["edge"])
+        odds = top["odds"]
+        prob = top["prob"]
+        # Rule: every race gets exactly one bet on the top-edge horse. Safety
+        # rails no longer veto. Kelly fraction is clamped to 0 for negative-EV
+        # picks so the stake math still works under flat staking.
+        kelly_full = ((prob * odds - 1) / (odds - 1)) if odds > 1 else 0.0
+        kelly_full = max(0.0, kelly_full)
+        qualified.append({**top, "kelly_full": float(kelly_full)})
 
     # Pass 2: production sizing — fractional Kelly capped by bankroll-pct.
     placed: list[dict] = []
@@ -797,22 +797,23 @@ def strategy_charts(strategy_id: int,
     #    because the knob being swept needs to be the one varying). All
     #    other thresholds stay at the strategy's current values.
     def _sweep(values: list[float], knob: str, current_value: float) -> list[dict]:
+        # Sweeps still operate on the top-edge-per-race set (matches the live
+        # strategy rule). For each candidate threshold, re-pick the top edge
+        # under that knob value and recompute totals.
         out = []
         for v in values:
             n = wins = 0
             stake = pay = 0.0
-            for d, prob, odds, won, _rid, _co, _cl, _di in rows:
-                if prob is None or odds is None:
-                    continue
+            for race_id, cand in by_race.items():
+                if not cand: continue
+                top = max(cand, key=lambda x: x["edge"])
+                odds, prob, won = top["odds"], top["prob"], top["won"]
                 _max  = v if knob == "max_odds" else bet_max_odds
                 _min  = v if knob == "min_odds" else bet_min_odds
                 _mp   = v if knob == "min_prob" else min_prob
-                _ethr = v if knob == "edge" else edge_thr
                 if not (_min <= odds <= _max): continue
                 if prob < _mp: continue
-                e = prob * odds
-                if e < _ethr: continue
-                kf = ((prob*odds - 1) / (odds - 1)) if odds > 1 else 0.0
+                kf = ((prob * odds - 1) / (odds - 1)) if odds > 1 else 0.0
                 if kf <= 0: continue
                 s = (kelly_max_bank * bankroll if kelly_frac == 0
                      else min(kf * kelly_frac * bankroll, kelly_max_bank * bankroll))
@@ -835,7 +836,6 @@ def strategy_charts(strategy_id: int,
         "max_odds":  _sweep([10, 12, 15, 20, 25, 30, 40], "max_odds",  bet_max_odds),
         "min_odds":  _sweep([1.5, 2.0, 2.5, 3.0, 4.0],     "min_odds",  bet_min_odds),
         "min_prob":  _sweep([0.02, 0.05, 0.08, 0.10, 0.15], "min_prob", min_prob),
-        "edge":      _sweep([1.00, 1.03, 1.05, 1.10, 1.20], "edge",     edge_thr),
     }
 
     # ── Segment analysis: stratify placed bets by track / class / distance.
@@ -893,21 +893,26 @@ def strategy_charts(strategy_id: int,
         "by_distance": [{"label": k, **_seg_agg(v)} for k, v in by_distance.items() if v],
     }
 
-    # ── Top-N per race: only bet the highest-edge horse(s) per race.
-    by_race: dict[int, list[dict]] = {}
-    for q in qualified:
-        by_race.setdefault(q["race_id"], []).append(q)
+    # ── Top-N per race what-if: ranked by edge (matches the live "top edge
+    #    per race" rule when n_top=1). Re-derived from the full `by_race`
+    #    candidate map so we can show the trade-off of betting more horses
+    #    per race.
     top_n_scenarios = []
-    for n_top in (1, 2, 3, 99):   # 99 = "all qualifying"
+    for n_top in (1, 2, 3, 99):   # 99 = "everyone passing the safety rails"
         items = []
-        for rid, ranked in by_race.items():
-            ranked_sorted = sorted(ranked, key=lambda x: -x["edge"])
-            for q in ranked_sorted[:n_top]:
-                stake_q = min(q["kelly_full"] * kelly_frac * bankroll,
-                              kelly_max_bank * bankroll)
+        for rid, cand in by_race.items():
+            ranked = sorted(cand, key=lambda x: -x["edge"])
+            for q in ranked[:n_top]:
+                odds = q["odds"]
+                if not (bet_min_odds <= odds <= bet_max_odds): continue
+                if q["prob"] < min_prob: continue
+                kf = ((q["prob"] * odds - 1) / (odds - 1)) if odds > 1 else 0.0
+                if kf <= 0: continue
+                stake_q = (kelly_max_bank * bankroll if kelly_frac == 0
+                           else min(kf * kelly_frac * bankroll, kelly_max_bank * bankroll))
                 if stake_q <= 0: continue
                 items.append({**q, "stake": stake_q,
-                              "payout": stake_q * q["odds"] if q["won"] else 0.0})
+                              "payout": stake_q * odds if q["won"] else 0.0})
         agg = _seg_agg(items)
         top_n_scenarios.append({
             "label": "all" if n_top == 99 else f"top {n_top}",
@@ -964,7 +969,7 @@ def strategy_charts(strategy_id: int,
         },
         "thresholds": {
             "bet_max_odds": bet_max_odds, "bet_min_odds": bet_min_odds,
-            "min_prob": min_prob, "edge_threshold": edge_thr,
+            "min_prob": min_prob,
             "kelly_fraction": kelly_frac, "bankroll": bankroll,
         },
     }

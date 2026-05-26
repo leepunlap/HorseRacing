@@ -1,12 +1,11 @@
 """Counterfactual bet audit (sweep over caps).
 
-Given a strategy and date range, replay predictions vs. results and report:
-  * placed: bets that passed all filters
-  * blocked: bets blocked by edge / odds / Kelly / circuit-breaker
-  * Each grouped by blocking reason
-  * A sweep across alternative (max_odds, edge_threshold, kelly_fraction) grids
-    so the operator can see how the strategy would have performed with
-    different settings.
+Selection rule: one bet per race, on the horse with the highest edge
+(prob × odds) — provided that horse passes the strategy's safety rails:
+odds within [min, max], prob ≥ min, finite. Everything else is
+`not_top_edge`.
+
+Sweep grids: (max_odds, kelly_fraction).
 
 Reuses `betting.filters` + `betting.sizing` so the audit is faithful to
 the live decision logic.
@@ -62,7 +61,7 @@ def audit(
     settings = settings or filt.FilterSettings()
     rows = conn.execute(
         """
-        SELECT p.race_id, p.brand, p.calibrated_prob, p.odds_at_prediction, p.edge,
+        SELECT p.race_id, p.brand, p.calibrated_prob, p.odds_at_prediction,
                r.position
         FROM predictions p
         JOIN races ra ON ra.id = p.race_id
@@ -73,18 +72,43 @@ def audit(
         (strategy_id, date_from, date_to),
     ).fetchall()
 
+    # One bet per race: pick the horse with the highest edge (prob × odds).
+    # Everything else is `not_top_edge`. Then apply odds/prob safety rails
+    # only to the chosen horse.
+    by_race: dict[int, list[tuple]] = {}
+    for r in rows:
+        by_race.setdefault(r[0], []).append(r)
+
     placed = blocked = wins = 0
     by_reason: dict[str, int] = {}
     total_stake = total_payout = 0.0
-    for race_id, brand, prob, odds, edge, position in rows:
-        ok, reason = filt.evaluate(prob=prob, odds=odds, edge=edge, settings=settings)
-        if not ok:
-            blocked += 1
-            by_reason[reason] = by_reason.get(reason, 0) + 1
+
+    def _edge(r):
+        prob, odds = r[2], r[3]
+        if prob is None or odds is None: return None
+        return prob * odds
+
+    for rid, race_rows in by_race.items():
+        scored = [r for r in race_rows if _edge(r) is not None]
+        if not scored:
+            blocked += len(race_rows)
+            by_reason["no_edge"] = by_reason.get("no_edge", 0) + len(race_rows)
             continue
+        top = max(scored, key=_edge)
+        for r in race_rows:
+            if r is not top:
+                blocked += 1
+                by_reason["not_top_edge"] = by_reason.get("not_top_edge", 0) + 1
+        _race_id, _brand, prob, odds, position = top
+        # Rule: every race gets exactly one bet on the top-edge horse. Safety
+        # rails (odds range, min prob) no longer veto the bet — sizing alone
+        # absorbs the risk via fractional Kelly + bankroll caps.
         sr = siz.size_bet(prob=prob or 0.0, decimal_odds=odds or 0.0, bankroll=bankroll,
                           kelly_fraction_strat=kelly_fraction_strat)
         if sr.stake <= 0:
+            # Sizing returns 0 only when prob/odds are degenerate (NaN, ≤0,
+            # negative Kelly with non-flat sizing). Flat staking always
+            # produces a positive stake.
             blocked += 1
             by_reason[sr.reason or "size_zero"] = by_reason.get(sr.reason or "size_zero", 0) + 1
             continue
@@ -93,6 +117,7 @@ def audit(
         if _won(position):
             wins += 1
             total_payout += sr.stake * float(odds)
+
     roi = ((total_payout - total_stake) / total_stake) if total_stake > 0 else 0.0
     return {
         "strategy_id": strategy_id,
@@ -115,15 +140,13 @@ def sweep(
     date_to: str,
     *,
     max_odds_grid: Iterable[float] = (5, 8, 12, 16, 20, 25, 40),
-    edge_grid: Iterable[float] = (1.00, 1.05, 1.10, 1.20),
-    kelly_grid: Iterable[float] = (0.0625, 0.125, 0.25, 0.5),
+    kelly_grid: Iterable[float] = (0.0, 0.0625, 0.125, 0.25, 0.5),
 ) -> list[dict]:
     out: list[dict] = []
     for mo in max_odds_grid:
-        for et in edge_grid:
-            for kf in kelly_grid:
-                s = filt.FilterSettings(bet_max_odds=float(mo), edge_threshold=float(et))
-                row = audit(conn, strategy_id, date_from, date_to,
-                            settings=s, kelly_fraction_strat=float(kf))
-                out.append({**row, "_grid": {"max_odds": mo, "edge": et, "kelly": kf}})
+        for kf in kelly_grid:
+            s = filt.FilterSettings(bet_max_odds=float(mo))
+            row = audit(conn, strategy_id, date_from, date_to,
+                        settings=s, kelly_fraction_strat=float(kf))
+            out.append({**row, "_grid": {"max_odds": mo, "kelly": kf}})
     return out
