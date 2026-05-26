@@ -1001,11 +1001,24 @@ function _destroyApexChart(id) {
 
 function _mountApexChart(id, options) {
   const el = document.getElementById(id);
-  if (!el || typeof ApexCharts === 'undefined') return;
+  if (!el) { console.warn(`[chart ${id}] container not found`); return; }
+  if (typeof ApexCharts === 'undefined') {
+    console.warn(`[chart ${id}] ApexCharts library not loaded`);
+    el.innerHTML = `<div class="empty">ApexCharts not loaded</div>`;
+    return;
+  }
   _destroyApexChart(id);
-  const c = new ApexCharts(el, options);
-  c.render();
-  _apexCharts[id] = c;
+  try {
+    const c = new ApexCharts(el, options);
+    c.render().catch(err => {
+      console.error(`[chart ${id}] render() failed:`, err);
+      el.innerHTML = `<div class="empty">chart render error: ${escapeHtml(String(err))}</div>`;
+    });
+    _apexCharts[id] = c;
+  } catch (err) {
+    console.error(`[chart ${id}] construction failed:`, err, options);
+    el.innerHTML = `<div class="empty">chart error: ${escapeHtml(String(err))}</div>`;
+  }
 }
 
 // Project-wide default styling — applied to every chart.
@@ -1231,26 +1244,39 @@ function _roiBarOpts(items, opts = {}) {
   };
 }
 
+// "Empty" placeholder options — a valid ApexCharts config that just shows
+// the noData text. Used by every what-if builder when its data is missing.
+function _emptyChartOpts(message) {
+  return {
+    ..._baseOpts(),
+    chart: { ..._baseOpts().chart, type: 'bar', height: 240 },
+    series: [{ name: '', data: [] }],
+    noData: { text: message, style: { color: '#8290a8' } },
+    xaxis: { categories: [] },
+    legend: { show: false },
+  };
+}
+
 function sweepChartOpts(scenarios, fmtLabel) {
-  if (!scenarios.length) return { noData: { text: t('（無資料）', '(no data)') } };
+  if (!scenarios.length) return _emptyChartOpts(t('（無資料）', '(no data)'));
   const items = scenarios.map(s => ({ ...s, label_text: fmtLabel(s.value) }));
   return _roiBarOpts(items, { height: 240 });
 }
 
 function segmentChartOpts(items) {
-  if (!items.length) return { noData: { text: t('（無資料）', '(no data)') } };
+  if (!items.length) return _emptyChartOpts(t('（無資料）', '(no data)'));
   const enriched = items.map(i => ({ ...i, label_text: i.label, is_current: false }));
   return _roiBarOpts(enriched, { height: 240 });
 }
 
 function topNChartOpts(scenarios) {
-  if (!scenarios.length) return { noData: { text: t('（無資料）', '(no data)') } };
+  if (!scenarios.length) return _emptyChartOpts(t('（無資料）', '(no data)'));
   const enriched = scenarios.map(s => ({ ...s, label_text: s.label, is_current: s.label === 'all' }));
   return _roiBarOpts(enriched, { height: 240 });
 }
 
 function bankrollChartOpts(path, startBankroll) {
-  if (!path.length) return { noData: { text: t('（無資料）', '(no data)') } };
+  if (!path.length) return _emptyChartOpts(t('（無資料）', '(no data)'));
   const bankSeries = path.map(p => ({ x: new Date(p.date).getTime(), y: p.bankroll }));
   const ddSeries   = path.map(p => ({ x: new Date(p.date).getTime(), y: -p.drawdown }));  // negative so it shows below 0
   return {
