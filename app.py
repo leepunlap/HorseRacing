@@ -662,6 +662,9 @@ async def list_models_endpoint(auth = Depends(verify_token)):
             "notes":           cfg.get("notes", ""),
             "notes_en":        cfg.get("notes_en", ""),
             "active":          cfg.get("active", False),
+            # `enabled` controls UI visibility: only enabled strategies appear in
+            # the dashboard/races nav. Missing flag means enabled (backward compat).
+            "enabled":         cfg.get("enabled", True),
             "created":         cfg.get("created", ""),
             "bet_max_odds":    cfg.get("bet_max_odds"),
             "stale":           _staleness(cfg.get("name", "")),
@@ -765,6 +768,7 @@ async def get_model_stats(name: str, auth = Depends(verify_token)):
         "notes":                cfg.get("notes", ""),
         "notes_en":             cfg.get("notes_en", ""),
         "active":               cfg.get("active", False),
+        "enabled":              cfg.get("enabled", True),
         "created":              cfg.get("created", ""),
         "bet_edge_threshold":   cfg.get("bet_edge_threshold", 1.0),
         "bet_max_odds":         cfg.get("bet_max_odds"),
@@ -1091,6 +1095,59 @@ async def activate_model(name: str, auth = Depends(verify_token)):
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
     set_active_model(name)
     return {"success": True, "active": name}
+
+
+def _set_enabled(name: str, enabled: bool) -> dict:
+    """Helper: flip the `enabled` flag on a config and return the updated record."""
+    cfg_path = MODELS_DIR / name / "config.json"
+    if not cfg_path.exists():
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
+    # Refuse to disable the active strategy — would leave the UI without a default.
+    if not enabled and cfg.get("active"):
+        raise HTTPException(status_code=409,
+            detail="Cannot disable the active strategy; activate another strategy first.")
+    cfg["enabled"] = enabled
+    cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding='utf-8')
+    return {"success": True, "name": name, "enabled": enabled}
+
+
+@app.post("/api/models/{name}/enable")
+async def enable_model(name: str, auth = Depends(verify_token)):
+    """Mark strategy `enabled=true` so it appears in nav menus."""
+    return _set_enabled(name, True)
+
+
+@app.post("/api/models/{name}/disable")
+async def disable_model(name: str, auth = Depends(verify_token)):
+    """Mark strategy `enabled=false` — hides it from nav menus everywhere
+    except the strategy management page. The active strategy cannot be
+    disabled (409); activate another first."""
+    return _set_enabled(name, False)
+
+
+@app.delete("/api/models/{name}/results")
+async def delete_model_results(name: str, auth = Depends(verify_token)):
+    """Erase a strategy's backtest output: summary.json and every per-date
+    predictions.json under models/{name}/results/. The strategy config is
+    untouched. Use when starting fresh after a parameter overhaul."""
+    cfg_path = MODELS_DIR / name / "config.json"
+    if not cfg_path.exists():
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    results = MODELS_DIR / name / "results"
+    if not results.exists():
+        return {"success": True, "name": name, "removed": 0}
+    removed = 0
+    for child in results.iterdir():
+        if child.is_dir():
+            for f in child.iterdir():
+                f.unlink()
+            child.rmdir()
+            removed += 1
+        else:
+            child.unlink()
+            removed += 1
+    return {"success": True, "name": name, "removed": removed}
 
 
 # ─── Run prediction/backtest with live progress ───────────────────────────────

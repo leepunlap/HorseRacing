@@ -458,7 +458,9 @@ function _modelStaleBadge(m){
 function renderModelNav(navId, selectedName, clickFn){
   const nav=document.getElementById(navId);
   if(!nav||!_modelsCache)return;
-  nav.innerHTML=_modelsCache.map(m=>{
+  // Dashboard + Races nav only show enabled strategies. Disabled strategies
+  // remain visible on the Strategy page (Available tab) for management.
+  nav.innerHTML=_modelsCache.filter(m => m.enabled !== false).map(m=>{
     const s=m.summary||{};
     const st=m.stale||{};
     const needsRerun=st.needs_rerun;
@@ -1299,46 +1301,144 @@ async function editParam(key, label, type, el){
   });
 }
 
+// Which subset of strategies the Strategy page is currently showing.
+// 'enabled' = appears in dashboard/races nav; 'available' = hidden, manage-only.
+let _modelListTab = 'enabled';
+let _modelListData = null;   // cached /api/models response for tab re-renders
+
 async function loadModelPage(){
   const d=await api('/api/models');
   if(!d)return;
-  // Model list + activate buttons
-  document.getElementById('modelList').innerHTML=d.models.map(m=>{
-    const s=m.summary||{};
-    const st=m.stale||{};
-    const dates_run = s.dates_run||0;
-    const hasRun    = dates_run > 0;
-    const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
-    const bg=m.active?'#1a3a5c':'#fff', fg=m.active?'#fff':'#333', sub=m.active?'rgba(255,255,255,0.65)':'#888';
-    const statusBadge = needsRerun
-      ? `<span style="font-size:7pt;background:#f0f0f0;color:#999;padding:1px 6px;border-radius:8px;margin-left:4px">📭 ${T('無有效數據','no valid data')}</span>`
-      : needsRetally
-      ? `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">🔄 ${T('待重新計算','needs retally')}</span>`
-      : hasRun
-      ? `<span style="font-size:7pt;background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;margin-left:4px">${T(`已執行 ${dates_run}日`,`ran ${dates_run} days`)}</span>`
-      : `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">${T('未執行','not run')}</span>`;
-    const acc = needsRerun ? '—' : (s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—');
-    const roiVal = needsRerun ? null : s.roi_units;
-    const roi = roiVal!=null ? (roiVal>=0?'+':'')+roiVal.toFixed(2)+'u'+(needsRetally?' ⚠':'') : '—';
-    const roiColor = needsRerun?'#bbb':(roiVal>=0?'#27ae60':'#e74c3c');
-    const label = pickName(m);
-    const desc  = lang === 'en' ? (m.description_en || m.description || '') : (m.description || '');
-    const notes = lang === 'en' ? (m.notes_en || m.notes || '')             : (m.notes || '');
-    const parentLbl = lang === 'en' ? (m.parent_en || m.parent || '')       : (m.parent || '');
-    return `      <div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid ${needsRerun?'#ddd':needsRetally?'#f0c040':'#ddd'};border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
-      <div style="font-weight:bold;font-size:11pt">${label}${m.active?' ✓':''}${statusBadge}</div>
+  _modelListData = d;
+  _renderModelListTabs();
+  // Load config for the currently-active (always enabled) strategy.
+  const active=d.models.find(m=>m.active)||d.models[0];
+  if(active)await loadModelConfig(active.name);
+  showModelTab(modelTabActive);
+}
+
+function switchModelListTab(tab){
+  if(tab !== 'enabled' && tab !== 'available') return;
+  _modelListTab = tab;
+  _renderModelListTabs();
+}
+
+function _renderModelListTabs(){
+  if(!_modelListData) return;
+  const all = _modelListData.models || [];
+  const enabledModels   = all.filter(m => m.enabled !== false);
+  const availableModels = all.filter(m => m.enabled === false);
+  const tabBtn = (key, label, count) => {
+    const active = _modelListTab === key;
+    const bg = active ? '#1a3a5c' : '#f5f5f5';
+    const fg = active ? '#fff'    : '#555';
+    return `<button onclick="switchModelListTab('${key}')" style="font-size:10pt;padding:6px 14px;background:${bg};color:${fg};border:1px solid #ccc;border-radius:6px 6px 0 0;border-bottom:none;cursor:pointer;font-weight:${active?'700':'500'}">${label} <span style="font-size:8.5pt;opacity:0.85">(${count})</span></button>`;
+  };
+  const subset = _modelListTab === 'available' ? availableModels : enabledModels;
+  const hint = _modelListTab === 'available'
+    ? T('可用但目前未啟用 — 啟用後才會在儀表板與賽事頁出現。',
+        'Available but not currently enabled — enable to make them appear on the Dashboard and Races pages.')
+    : T('已啟用的策略 — 出現在儀表板與賽事頁的策略選單中。',
+        'Enabled strategies — these appear in the Dashboard and Races strategy selectors.');
+  const cardsHtml = subset.length
+    ? subset.map(_renderModelCard).join('')
+    : `<div style="font-size:9pt;color:#888;padding:10px 4px">${T('沒有符合條件的策略。','No strategies in this tab.')}</div>`;
+  document.getElementById('modelList').innerHTML = `
+    <div style="display:flex;gap:4px;border-bottom:1px solid #ccc;margin-bottom:8px;padding-bottom:0">
+      ${tabBtn('enabled',   T('已啟用','Enabled'),   enabledModels.length)}
+      ${tabBtn('available', T('可用','Available'), availableModels.length)}
+    </div>
+    <div style="font-size:9pt;color:#666;margin-bottom:8px">${hint}</div>
+    <div id="modelListCards">${cardsHtml}</div>`;
+}
+
+// Renders one strategy card. Action buttons differ by tab:
+//   Enabled tab → Activate / Active badge + Disable
+//   Available tab → Enable + Delete-backtest
+function _renderModelCard(m){
+  const s=m.summary||{};
+  const st=m.stale||{};
+  const dates_run = s.dates_run||0;
+  const hasRun    = dates_run > 0;
+  const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
+  const isAvailable = _modelListTab === 'available';
+  // In the Available tab, no model is "active visually" — they're all hidden from nav.
+  const showActive = m.active && !isAvailable;
+  const bg = showActive ? '#1a3a5c' : (isAvailable ? '#fafafa' : '#fff');
+  const fg = showActive ? '#fff'    : '#333';
+  const sub= showActive ? 'rgba(255,255,255,0.65)' : '#888';
+  const cardOpacity = isAvailable ? '0.85' : '1';
+  const statusBadge = needsRerun
+    ? `<span style="font-size:7pt;background:#f0f0f0;color:#999;padding:1px 6px;border-radius:8px;margin-left:4px">📭 ${T('無有效數據','no valid data')}</span>`
+    : needsRetally
+    ? `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">🔄 ${T('待重新計算','needs retally')}</span>`
+    : hasRun
+    ? `<span style="font-size:7pt;background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;margin-left:4px">${T(`已執行 ${dates_run}日`,`ran ${dates_run} days`)}</span>`
+    : `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">${T('未執行','not run')}</span>`;
+  const acc = needsRerun ? '—' : (s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—');
+  const roiVal = needsRerun ? null : s.roi_units;
+  const roi = roiVal!=null ? (roiVal>=0?'+':'')+roiVal.toFixed(2)+'u'+(needsRetally?' ⚠':'') : '—';
+  const roiColor = needsRerun?'#bbb':(roiVal>=0?'#27ae60':'#e74c3c');
+  const label = pickName(m);
+  const desc  = lang === 'en' ? (m.description_en || m.description || '') : (m.description || '');
+  const notes = lang === 'en' ? (m.notes_en || m.notes || '')             : (m.notes || '');
+  const parentLbl = lang === 'en' ? (m.parent_en || m.parent || '')       : (m.parent || '');
+  const safe = m.name.replace(/'/g,"\\'");
+
+  // Action button block. Active strategy can't be disabled; the rest can.
+  let actions = '';
+  if(isAvailable){
+    actions = `
+      <button onclick="enableModel('${safe}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#27ae60;color:#fff;border:none;border-radius:3px;cursor:pointer">${T('啟用','Enable')}</button>
+      <button onclick="deleteModelBacktest('${safe}')" ${hasRun?'':'disabled'} style="margin-top:6px;font-size:8pt;padding:3px 10px;background:${hasRun?'#c0392b':'#ccc'};color:#fff;border:none;border-radius:3px;cursor:${hasRun?'pointer':'not-allowed'};margin-left:4px" title="${T('刪除全部回測結果（保留設定）','Delete all backtest output (config kept)')}">${T('刪除回測','Delete backtest')}</button>`;
+  } else if(m.active){
+    actions = `<span style="display:inline-block;margin-top:6px;font-size:7.5pt;padding:3px 10px;background:#d4edda;color:#155724;border-radius:10px;font-weight:600;border:1px solid #c3e6cb">✓ ${T('使用中','Active')}</span>`;
+  } else {
+    actions = `
+      <button onclick="activateModel('${safe}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">${T('設為使用中','Activate')}</button>
+      <button onclick="disableModel('${safe}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#f0f0f0;color:#555;border:1px solid #ccc;border-radius:3px;cursor:pointer;margin-left:4px" title="${T('從導覽列中隱藏（設定保留）','Hide from nav (config kept)')}">${T('停用','Disable')}</button>`;
+  }
+
+  return `      <div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};opacity:${cardOpacity};border:1px solid ${needsRerun?'#ddd':needsRetally?'#f0c040':(isAvailable?'#bbb':'#ddd')};border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
+      <div style="font-weight:bold;font-size:11pt">${label}${showActive?' ✓':''}${statusBadge}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.strategy_type||''} v${m.version||'?'}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${desc}</div>
       ${notes?`<div style="font-size:8pt;color:${sub};font-style:italic;margin:2px 0">📝 ${notes}</div>`:''}
       ${parentLbl?`<div style="font-size:8pt;color:${sub};margin:2px 0">⬆ ${T('派生自','derived from')}: ${parentLbl}</div>`:''}
       <div style="font-size:8pt;margin-top:4px">${T('準確率','Accuracy')}: <b>${acc}</b> &ensp; ROI: <b style="color:${roiColor}">${roi}</b> &ensp; ${T('下注','Bets')}: ${needsRerun?'—':(s.bets_placed||'—')+T('場','')}</div>
-      ${m.active?`<span style="display:inline-block;margin-top:6px;font-size:7.5pt;padding:3px 10px;background:#d4edda;color:#155724;border-radius:10px;font-weight:600;border:1px solid #c3e6cb">✓ ${T('使用中','Active')}</span>`:`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">${T('設為使用中','Activate')}</button>`}
+      ${actions}
     </div>`;
-  }).join('');
-  // Load config for active model
-  const active=d.models.find(m=>m.active)||d.models[0];
-  if(active)await loadModelConfig(active.name);
-  showModelTab(modelTabActive);
+}
+
+async function enableModel(name){
+  const r=await fetch('/api/models/'+encodeURIComponent(name)+'/enable',
+    {method:'POST',headers:{'Authorization':'Bearer '+token}});
+  if(!r.ok){ alert(T('啟用失敗','Enable failed')); return; }
+  _invalidateModelsCache();
+  await loadModelPage();
+}
+
+async function disableModel(name){
+  if(!confirm(T(`確認停用「${name}」？停用後將從儀表板與賽事頁的選單中隱藏。`,
+                `Disable "${name}"? It will be hidden from the Dashboard and Races strategy selectors.`))) return;
+  const r=await fetch('/api/models/'+encodeURIComponent(name)+'/disable',
+    {method:'POST',headers:{'Authorization':'Bearer '+token}});
+  if(!r.ok){
+    const msg = (await r.json().catch(()=>({}))).detail || T('停用失敗','Disable failed');
+    alert(msg); return;
+  }
+  _invalidateModelsCache();
+  await loadModelPage();
+}
+
+async function deleteModelBacktest(name){
+  if(!confirm(T(`確認刪除「${name}」的全部回測結果？此操作不可復原（設定保留，可重新執行回測）。`,
+                `Delete all backtest results for "${name}"? This cannot be undone (the config is kept; you can re-run the backtest).`))) return;
+  const r=await fetch('/api/models/'+encodeURIComponent(name)+'/results',
+    {method:'DELETE',headers:{'Authorization':'Bearer '+token}});
+  if(!r.ok){ alert(T('刪除失敗','Delete failed')); return; }
+  _invalidateModelsCache();
+  await loadModelPage();
 }
 
 async function loadModelConfig(name){

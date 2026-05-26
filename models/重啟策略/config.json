@@ -1,7 +1,7 @@
 {
   "name": "重啟策略",
   "name_en": "Reboot",
-  "description": "從零開始：所有特徵預設停用，逐個啟用以觀察單一特徵之貢獻。",
+  "description": "從零開始20260526",
   "description_en": "Start from scratch: all features disabled by default; enable them one by one to observe each feature's individual contribution.",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
@@ -11,6 +11,7 @@
   "notes_en": "Reboot strategy: features_disabled contains all 51 features. Remove a feature from the list to enable it. min_active_features=1 allows running with just one enabled feature (other strategies still use the default of 10).",
   "created": "2026-05-26",
   "active": true,
+  "enabled": true,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",
@@ -28,21 +29,57 @@
   "num_boost_rounds": 100,
   "min_active_features": 1,
   "features_disabled": [
-    "age", "sex_gelding", "rating", "races_count",
-    "horse_wr", "jockey_wr", "trainer_wr", "jt_pair", "jh_pair",
-    "dist_adapt", "going_adapt", "trainer_hot", "cold_stable_season",
-    "draw", "draw_inner", "draw_outer", "wide_draw",
-    "weight", "weight_allow",
-    "is_hv", "distance_km", "going_num", "class_num", "participants",
-    "days_since", "layoff_penalty", "rating_trend", "class_drop",
-    "gear_change", "first_gear_use",
-    "race_pace", "horse_style", "pace_style_match", "pace_draw_bonus",
-    "late_pace_avg", "early_pace_avg", "avg_overtake_dist",
-    "cold_stable_x_wide", "chri_score",
-    "inner_x_leader", "outer_x_closer", "draw_x_hv", "draw_x_going",
-    "inner_x_pace", "outer_x_fast", "late_x_outer",
-    "rpi_field_score", "rpi_pace_deviation", "rpi_pace_ratio",
-    "q_style_compat", "q_field_strength"
+    "age",
+    "sex_gelding",
+    "rating",
+    "races_count",
+    "horse_wr",
+    "jockey_wr",
+    "trainer_wr",
+    "jt_pair",
+    "jh_pair",
+    "dist_adapt",
+    "going_adapt",
+    "trainer_hot",
+    "cold_stable_season",
+    "draw",
+    "draw_inner",
+    "draw_outer",
+    "wide_draw",
+    "weight",
+    "weight_allow",
+    "is_hv",
+    "distance_km",
+    "going_num",
+    "class_num",
+    "participants",
+    "days_since",
+    "layoff_penalty",
+    "rating_trend",
+    "class_drop",
+    "gear_change",
+    "first_gear_use",
+    "race_pace",
+    "horse_style",
+    "pace_style_match",
+    "pace_draw_bonus",
+    "late_pace_avg",
+    "early_pace_avg",
+    "avg_overtake_dist",
+    "cold_stable_x_wide",
+    "chri_score",
+    "inner_x_leader",
+    "outer_x_closer",
+    "draw_x_hv",
+    "draw_x_going",
+    "inner_x_pace",
+    "outer_x_fast",
+    "late_x_outer",
+    "rpi_field_score",
+    "rpi_pace_deviation",
+    "rpi_pace_ratio",
+    "q_style_compat",
+    "q_field_strength"
   ],
   "bet_edge_threshold": 1.0,
   "shrinkage": {
@@ -64,11 +101,31 @@
     "Slow": 3
   },
   "pace_draw": {
-    "very_slow": {"inner": 18, "mid": 8,  "outer": -6},
-    "slow":      {"inner": 13, "mid": 5,  "outer": -2},
-    "medium":    {"inner": 6,  "mid": 4,  "outer": 1},
-    "medium_fast":{"inner": 1, "mid": 3,  "outer": 6},
-    "fast":      {"inner": -6, "mid": -2, "outer": 15}
+    "very_slow": {
+      "inner": 18,
+      "mid": 8,
+      "outer": -6
+    },
+    "slow": {
+      "inner": 13,
+      "mid": 5,
+      "outer": -2
+    },
+    "medium": {
+      "inner": 6,
+      "mid": 4,
+      "outer": 1
+    },
+    "medium_fast": {
+      "inner": 1,
+      "mid": 3,
+      "outer": 6
+    },
+    "fast": {
+      "inner": -6,
+      "mid": -2,
+      "outer": 15
+    }
   },
   "pace_bucket": {
     "very_slow_leader_pct": 0.45,
@@ -77,10 +134,22 @@
     "medium_fast_closer_pct": 0.3
   },
   "early_pace_thresholds": [
-    [0.95, 0],
-    [1.0,  1],
-    [1.05, 2],
-    [null, 3]
+    [
+      0.95,
+      0
+    ],
+    [
+      1.0,
+      1
+    ],
+    [
+      1.05,
+      2
+    ],
+    [
+      null,
+      3
+    ]
   ],
   "draw_inner_max": 5,
   "draw_outer_min": 10,
@@ -107,7 +176,11 @@
   },
   "trainer_form_days": 365,
   "rating_trend_window": 3,
-  "standard_gear": ["", "B", "TT"],
+  "standard_gear": [
+    "",
+    "B",
+    "TT"
+  ],
   "bet_max_odds": 5.0,
   "bet_min_odds": 1.0,
   "use_isotonic_calibration": true,
