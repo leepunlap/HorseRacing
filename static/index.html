@@ -293,6 +293,12 @@
                                     line-height: 1.4; color: var(--muted); font-size: 11.5px; }
   .race-block table td.pnl-win { color: var(--good); font-weight: 600; }
   .race-block table td.pnl-lose { color: var(--bad); }
+  /* Predicted-rank cell tints: green when the actual winner was the model's
+     top pick; lighter blue when the winner was in the model's top-3. */
+  .race-block table td.pred-hit  { background: rgba(77,209,122,0.30) !important;
+                                    color: var(--good); font-weight: 700; }
+  .race-block table td.pred-near { background: rgba(94,192,255,0.20) !important;
+                                    color: var(--accent); font-weight: 600; }
   .race-block .dividends { padding: 8px 16px; border-top: 1px solid var(--border);
                            font-family: var(--mono); font-size: 11px;
                            color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
@@ -643,11 +649,15 @@ async function loadSchema() {
 }
 
 async function loadRaces() {
-  // Default strategy filter to the first enabled one if not set
-  if (state.raceStrategy == null) {
-    const strats = state.strategies?.length ? state.strategies : await api('/api/strategies').catch(() => []);
-    state.strategies = strats;
-    const def = strats.find(s => s.enabled) || strats[0];
+  // Always ensure state.strategies is populated — even if the user already
+  // had a raceStrategy from their cookie, analyse() needs strat lookup to
+  // work (otherwise every assessment cell silently shows '—').
+  if (!state.strategies?.length) {
+    state.strategies = await api('/api/strategies').catch(() => []);
+  }
+  // Default strategy filter to the first enabled one if still not set
+  if (state.raceStrategy == null && state.strategies.length) {
+    const def = state.strategies.find(s => s.enabled) || state.strategies[0];
     if (def) { state.raceStrategy = def.id; saveUi({ raceStrategy: state.raceStrategy }); }
   }
   // Date calendar
@@ -2217,6 +2227,15 @@ function renderRaceBlock(r, data, sid) {
     `<span><b>${escapeHtml(d.pool)}</b> ${escapeHtml(d.combination)}: $${d.dividend}</span>`
   );
   const lang = state.lang;
+
+  // Predicted rank = position the model gave this horse (1 = top pick),
+  // computed per race over horses that have a calibrated_prob. Horses
+  // without a prediction get null.
+  const predRank = {};
+  const ranked = (r.horses || [])
+    .filter(h => h.calibrated_prob != null)
+    .sort((a, b) => b.calibrated_prob - a.calibrated_prob);
+  ranked.forEach((h, i) => { predRank[h.brand] = i + 1; });
   return `
     <div class="race-block">
       <div class="race-hdr">
@@ -2232,7 +2251,8 @@ function renderRaceBlock(r, data, sid) {
       <div class="race-body">
         <table>
           <thead><tr>
-            <th>${t('排位', 'pos')}</th>
+            <th>${t('實際', 'actual')}</th>
+            <th>${t('預測', 'pred')}</th>
             <th>${t('馬', 'horse')}</th>
             <th>${t('騎師', 'jockey')}</th>
             <th>${t('閘', 'dr')}</th>
@@ -2254,9 +2274,18 @@ function renderRaceBlock(r, data, sid) {
             const reason = lang === 'zh' ? a.reasonZh : a.reasonEn;
             const mkt = h.odds && h.odds > 0 ? 1.0 / h.odds : null;
             const pnlCls = a.pnl == null ? '' : (a.pnl > 0 ? 'pnl-win' : (a.pnl < 0 ? 'pnl-lose' : ''));
+            // Visual tag for prediction quality: green if model's top pick
+            // won, blue if winner was in model's top-3, plain otherwise.
+            const pr = predRank[h.brand];
+            const isActualWinner = won;
+            const isTopPick = pr === 1;
+            const predCls = pr == null ? '' :
+              (isActualWinner && isTopPick) ? 'pred-hit' :
+              (isActualWinner && pr <= 3)   ? 'pred-near' : '';
             return `
               <tr class="${cls}">
                 <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
+                <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
                 <td class="h-name">${escapeHtml(h.horse_name || '')} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
                 <td>${escapeHtml(h.jockey || '')}</td>
                 <td class="num">${h.draw ?? '—'}</td>
