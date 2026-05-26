@@ -123,7 +123,7 @@
     "B",
     "TT"
   ],
-  "bet_max_odds": 6.5,
+  "bet_max_odds": 5.0,
   "bet_min_odds": 1.0,
   "use_isotonic_calibration": true,
   "kelly_fraction": 0.25,
