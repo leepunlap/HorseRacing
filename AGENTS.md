@@ -61,3 +61,22 @@ Used by `retally()` to evaluate PLACE/Q/QP bets against dividend data.
 ### 10. What's NOT implemented
 - Real-time live odds integration (H136) — edge uses historical odds
 - Harville is implemented but disabled by default (thresholds = 0.0)
+- Proper Q architecture (H3) — only quick proxy features exist; full architecture below
+
+### 11. Q architecture (H3) — proper vs quick version
+
+H3: "連贏需要考慮配搭互動，簡單排名不夠" (Q needs pair interactions, not simple ranking)
+
+**Current (quick)**: 2 proxy features per horse — `q_style_compat` (complementary-style partner count) and `q_field_strength` (strong-jockey count). These let XGBoost learn some Q pair signal from per-horse data. No separate Q model.
+
+**Proper (not built)**: Separate pair-level XGBoost classifier. Training data = C(n,2) pairs × 250 dates (~180K rows). Features per pair:
+- `style_compat` — Harville measure of running-style complement
+- `draw_spread` — |draw_i - draw_j| 
+- `rating_gap` — |rating_i - rating_j|
+- `jockey_wr_product` — geometric mean of both jockey WRs
+- `trainer_wr_product` — geometric mean of both trainer WRs
+- `harville_q_prob` — baseline from win probabilities
+- `shared_history` — have they raced together before?
+- `pace_match` — do both benefit from same race pace?
+
+Binary target: did this pair finish 1-2? (~1% positive rate). Model stacked on top of win-prob model. Output replaces current Harville Q probabilities with calibrated pair probabilities.

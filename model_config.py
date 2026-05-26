@@ -289,6 +289,18 @@ FEATURES = [
       'description_zh': "馬匹前段/後段步速均值的比率。連續值：低=前置型，高=追後型。",
       'hypotheses': ['H87', 'H88'],
       'tunable': False},
+
+    # ── Q pair proxies (H3 quick version; see AGENTS.md for full architecture) ──
+    {'name': 'q_style_compat',   'category': 'Q Pair',
+      'description': "Count of field horses with complementary running style (leader+closer etc). Higher = more Q partner candidates.",
+      'description_zh': "賽事中跑法互補（領放+追後等）的馬匹數量。越高=更多的連贏配搭可能性。",
+      'hypotheses': ['H3'],
+      'tunable': False},
+    {'name': 'q_field_strength', 'category': 'Q Pair',
+      'description': "Count of field horses with jockey WR above 15%. Measures Q field competitiveness.",
+      'description_zh': "騎師勝率 > 15% 的參賽馬數量。衡量連贏競爭強度。",
+      'hypotheses': ['H3'],
+      'tunable': False},
 ]
 
 FEATURE_MAP   = {f['name']: f for f in FEATURES}
@@ -296,7 +308,7 @@ FEATURE_COLS  = [f['name'] for f in FEATURES]
 FEATURE_CATEGORIES = [
     'Horse Profile', 'Win Rates', 'Adaptability', 'Trainer Form',
     'Draw', 'Weight', 'Race Context', 'Form', 'Gear', 'Pace',
-    'Composite', 'Interactions',
+    'Composite', 'Interactions', 'Q Pair',
 ]
 FEATURE_CATEGORY_ZH = {
     'Horse Profile': '馬匹資料',
@@ -311,6 +323,7 @@ FEATURE_CATEGORY_ZH = {
     'Pace':          '步速',
     'Composite':     '綜合指標',
     'Interactions':  '交互特徵',
+    'Q Pair':        '連贏配搭',
 }
 
 FEATURE_NAME_ZH = {
@@ -363,6 +376,8 @@ FEATURE_NAME_ZH = {
     'rpi_field_score':   'RPI 全場步速',
     'rpi_pace_deviation':'RPI 步速波動',
     'rpi_pace_ratio':    'RPI 前後比率',
+    'q_style_compat':   'Q跑法互補',
+    'q_field_strength': 'Q競爭強度',
 }
 
 

@@ -650,6 +650,36 @@ def build_horse_features(rw, grp, race_pace_str, rpi_field_score, stats, hs_styl
     else:
         f['rpi_pace_ratio'] = 1.0
 
+    # ── Q pair proxies (H3 quick version) ────────────────────────────────
+    # Complementary running-style pairs: leader(0)+closer(3), leader(0)+midfield(2),
+    # stalker(1)+closer(3), stalker(1)+midfield(2)
+    COMPAT_PAIRS = {(0,3), (3,0), (0,2), (2,0), (1,3), (3,1), (1,2), (2,1)}
+    my_style = hs_style.get(b, 2)
+    compat_count = 0
+    for _, other_rw in grp.iterrows():
+        ob = other_rw.get('BrandNo', '') or ''
+        if ob == b: continue
+        other_style = hs_style.get(ob, 2)
+        if (my_style, other_style) in COMPAT_PAIRS:
+            compat_count += 1
+    f['q_style_compat'] = float(compat_count)
+
+    # Strong-jockey count: other horses with jockey WR > 15%
+    # JS gives {'w': wins, 'r': races} per jockey name
+    strong_jockey_count = 0
+    js = stats.get('JS', {})
+    for _, other_rw in grp.iterrows():
+        ob = other_rw.get('BrandNo', '') or ''
+        if ob == b: continue
+        j_name = other_rw.get('JockeyCN', '') or ''
+        j_data = js.get(j_name, {})
+        j_races = j_data.get('r', 0)
+        j_wins  = j_data.get('w', 0)
+        j_wr = j_wins / max(j_races, 1)
+        if j_wr > 0.15:
+            strong_jockey_count += 1
+    f['q_field_strength'] = float(strong_jockey_count)
+
     # ── Composite / Interactions ─────────────────────────────────────────
     f['cold_stable_x_wide']  = 1 if swr < cold_thresh and dv >= outer_min else 0
     f['chri_score']          = (f['weight_allow']       * chri.get('weight_allow', 0.4) +
