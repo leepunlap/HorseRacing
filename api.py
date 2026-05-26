@@ -1011,7 +1011,6 @@ def list_predicted_dates(strategy_id: int | None = None) -> dict:
     return {"dates": [dict(zip(cols, r)) for r in rows]}
 
 
-@router.get("/races/{date}")
 def _compute_feature_drivers(conn, race_id: int, horse_brands: list[str],
                              max_features: int = 3) -> dict:
     """For each horse in the race, identify the features that pushed its
@@ -1087,6 +1086,7 @@ def _compute_feature_drivers(conn, race_id: int, horse_brands: list[str],
     return out
 
 
+@router.get("/races/{date}")
 def get_races_for_date(date: str, strategy_id: int | None = None) -> dict:
     """Race cards for `date`, merged with optional strategy predictions and
     actual results. Powers the SPA's Race Viewer tab. Horses are sorted by
