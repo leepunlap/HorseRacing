@@ -1022,9 +1022,12 @@ function showRace(rn, silent){
               : '';
     const oddsStyle = isLong ? 'color:#bbb' : '';
 
-    // UI-recommended bet — edge > threshold regardless of odds (value exists in longshots too)
-    const bet = (hh.edge > EDGE_STRONG) ? STAKE_STRONG
-              : (hh.edge > EDGE_MILD)   ? STAKE_MILD
+    // UI-recommended bet — edge > threshold but capped by maxOdds
+    // Longshots (odds > maxOdds) are never recommended regardless of edge
+    const edgeThreshold = (raceCacheMeta&&raceCacheMeta.bet_edge_threshold) || 1.0;
+    const bet = isLong ? 0
+              : (hh.edge > edgeThreshold * 1.3) ? STAKE_STRONG
+              : (hh.edge > edgeThreshold * 0.9) ? STAKE_MILD
               : 0;
 
     // Profit calculation (only if race is settled AND we'd have bet)
@@ -1087,8 +1090,11 @@ function showRace(rn, silent){
   // "what if you'd followed the UI's recommended stakes?"
   let totalBet=0, totalProfit=0;
   sortedHorses.forEach(hh=>{
-    const b = ((hh.edge||0) > EDGE_STRONG) ? STAKE_STRONG
-            : ((hh.edge||0) > EDGE_MILD)   ? STAKE_MILD
+    const edgeTh = (raceCacheMeta&&raceCacheMeta.bet_edge_threshold) || 1.0;
+    const maxO = (raceCacheMeta&&raceCacheMeta.bet_max_odds) || 15.0;
+    const b = parseFloat(hh.win_odds||0) > maxO ? 0
+            : ((hh.edge||0) > edgeTh * 1.3) ? STAKE_STRONG
+            : ((hh.edge||0) > edgeTh * 0.9) ? STAKE_MILD
             : 0;
     if(b>0 && hh.position!=null){
       totalBet += b;
