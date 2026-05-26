@@ -452,8 +452,12 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
                     res = results_by_brand.get((rn, card_h.get("brand", "")))
             # Get prediction
             ph = pred_by_brand.get(brand) or pred_by_no.get(str(h.get("no", "")))
-            pos = int(res["position"]) if res and res.get("position") else None
-            res_odds = float(res["res_odds"]) if res and res.get("res_odds") else None
+            _raw_pos  = res.get("position") if res else None
+            pos       = int(_raw_pos) if _raw_pos and str(_raw_pos).isdigit() else None
+            pos_code  = str(_raw_pos) if _raw_pos and not str(_raw_pos).isdigit() else None
+            _raw_odds = res.get("res_odds") if res else None
+            try:    res_odds = float(_raw_odds) if _raw_odds else None
+            except: res_odds = None
             prob  = ph.get("prob")   if ph else None
             edge  = ph.get("edge")   if ph else None
 
@@ -471,8 +475,9 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
                 "win_prob":    ph.get("win_prob") if ph else None,
                 "edge":        edge,
                 "features":    ph.get("features") if ph else None,
-                "position":    pos,
-                "result_odds": res_odds,
+                "position":      pos,
+                "position_code": pos_code,
+                "result_odds":   res_odds,
                 "lbw":         res.get("lbw")          if res else None,
                 "running":     res.get("running_style") if res else None,
             })

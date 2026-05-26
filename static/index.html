@@ -1052,7 +1052,7 @@ function showRace(rn, silent){
       }
     }
     if(!modelStale) h+=`<td style="font-weight:bold;color:#1a3a5c">${hasPreds?(predRank[hh.no]||'-'):noPredLabel}</td>`;
-    h+=`<td style="font-weight:bold">${hh.position||'-'}</td>`;
+    h+=`<td style="font-weight:bold;color:${hh.position_code?'#888':''}">${hh.position_code||hh.position||'-'}</td>`;
     h+=`<td style="color:#888">${hh.lbw||'-'}</td>`;
     h+=`<td style="color:#888">${fmtRunning(hh.running)}</td>`;
     if(!modelStale){
