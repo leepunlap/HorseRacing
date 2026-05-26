@@ -1,10 +1,14 @@
 {
   "name": "重啟策略",
+  "name_en": "Reboot",
   "description": "從零開始：所有特徵預設停用，逐個啟用以觀察單一特徵之貢獻。",
+  "description_en": "Start from scratch: all features disabled by default; enable them one by one to observe each feature's individual contribution.",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
   "parent": null,
+  "parent_en": null,
   "notes": "重啟策略：features_disabled 含全部 51 個特徵。將欲測試之特徵從清單中移除即可啟用。min_active_features=1 允許僅啟用單一特徵試跑（其他策略仍沿用預設值 10）。",
+  "notes_en": "Reboot strategy: features_disabled contains all 51 features. Remove a feature from the list to enable it. min_active_features=1 allows running with just one enabled feature (other strategies still use the default of 10).",
   "created": "2026-05-26",
   "active": true,
   "xgb": {

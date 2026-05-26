@@ -1,10 +1,14 @@
 {
   "name": "\u9ed1\u99ac\u7375\u624b\u7b56\u7565",
+  "name_en": "Longshot Hunter",
   "description": "\u9ed1\u99ac\u7375\u624b\u7b56\u7565\uff1a\u53ea\u4e0b\u6ce8 6-15 \u500d\u5340\u9593\uff0c\u8981\u6c42\u9ad8 edge",
+  "description_en": "Longshot Hunter: bets only in the 6\u201315\u00d7 odds range and requires a high edge.",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
   "parent": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "parent_en": "Balanced Baseline",
   "notes": "\u503c\u535a\u7387\u9580\u6abb\u63d0\u9ad8\u81f31.4\uff0c\u50c5\u4e0b\u6ce8\u8ce0\u73876\u81f315\u500d\u5340\u9593\uff0c\u5c0b\u627e\u5e02\u5834\u56b4\u91cd\u4f4e\u4f30\u7684\u9577\u8ce0\u99ac\uff0c\u5e73\u6ed1\u5f37\u5ea6\u7dad\u6301\u57fa\u790e\u6c34\u6e96",
+  "notes_en": "Edge threshold raised to 1.4, bets only on 6\u201315\u00d7 odds horses, hunts for severely mispriced longshots, shrinkage kept at baseline.",
   "created": "2026-05-25",
   "active": false,
   "xgb": {

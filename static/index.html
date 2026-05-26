@@ -157,17 +157,18 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 
 <div class="app" id="app">
   <div class="sidebar collapsed" id="sidebar">
-    <div class="sidebar-header"><span class="logo-text">馬場分析</span><button class="sidebar-toggle" onclick="toggleSidebar()">☰</button></div>
-    <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">◉</span><span>儀表板</span></div>
-    <div class="nav-item" data-page="races" onclick="go('races')"><span class="icon">⚑</span><span>賽事</span></div>
-    <div class="nav-item" data-page="model" onclick="go('model')"><span class="icon">⚙</span><span>策略</span></div>
-    <div class="nav-item" data-page="eric" onclick="go('eric')"><span class="icon">☰</span><span>Eric 定律</span></div>
-    <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">♞</span><span>馬匹</span></div>
-    <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">♘</span><span>騎師</span></div>
-    <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">⌘</span><span>練馬師</span></div>
+    <div class="sidebar-header"><span class="logo-text" data-zh="馬場分析" data-en="HorseLab">馬場分析</span><button class="sidebar-toggle" onclick="toggleSidebar()">☰</button></div>
+    <div class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="icon">◉</span><span data-zh="儀表板" data-en="Dashboard">儀表板</span></div>
+    <div class="nav-item" data-page="races" onclick="go('races')"><span class="icon">⚑</span><span data-zh="賽事" data-en="Races">賽事</span></div>
+    <div class="nav-item" data-page="model" onclick="go('model')"><span class="icon">⚙</span><span data-zh="策略" data-en="Strategy">策略</span></div>
+    <div class="nav-item" data-page="eric" onclick="go('eric')"><span class="icon">☰</span><span data-zh="假設清單" data-en="Hypotheses">假設清單</span></div>
+    <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">♞</span><span data-zh="馬匹" data-en="Horses">馬匹</span></div>
+    <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">♘</span><span data-zh="騎師" data-en="Jockeys">騎師</span></div>
+    <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">⌘</span><span data-zh="練馬師" data-en="Trainers">練馬師</span></div>
     <div class="nav-item" onclick="window.open('/chat','_self')" style="border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:14px"><span class="icon">⚡</span><span>Eric AI</span></div>
   </div>
-  <button class="logout-btn" onclick="logout()">登出</button>
+  <button id="langToggleBtn" class="logout-btn" onclick="toggleLang()" style="right:90px;min-width:46px;text-align:center" title="Switch language / 切換語言">EN</button>
+  <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
 
   <div class="main">
     <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px"><span id="pageTitle">儀表板</span> <span id="dashInfo" style="font-size:12pt;color:#666"></span></h2>
@@ -249,11 +250,11 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
       </div>
       <div id="modelInventory" style="margin-bottom:14px"></div>
       <ul class="nav nav-tabs" id="modelTabs" style="font-size:10pt">
-        <li class="nav-item"><a class="nav-link active" href="#" onclick="showModelTab('features');return false">特徵列表</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('xgb');return false">XGB 參數</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('pace');return false">步速×檔位矩陣</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('going');return false">場地編碼</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('layoff');return false">久休懲罰</a></li>
+        <li class="nav-item"><a class="nav-link active" href="#" onclick="showModelTab('features');return false" data-zh="特徵列表" data-en="Features">特徵列表</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('xgb');return false" data-zh="XGB 參數" data-en="XGB Params">XGB 參數</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('pace');return false" data-zh="步速×檔位矩陣" data-en="Pace × Draw">步速×檔位矩陣</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('going');return false" data-zh="場地編碼" data-en="Going Code">場地編碼</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showModelTab('layoff');return false" data-zh="久休懲罰" data-en="Layoff Penalty">久休懲罰</a></li>
       </ul>
       <div id="modelTabContent" style="background:#fff;border:1px solid #dee2e6;border-top:none;padding:14px;border-radius:0 0 6px 6px"></div>
     </div>
@@ -345,6 +346,47 @@ function api(u){return fetch(u,{headers:{'Authorization':'Bearer '+token}}).then
 
 (function(){const s=getCookie('saved_pw');if(s){document.getElementById('pwInput').value=s;document.getElementById('rememberPw').checked=true}})();
 
+// ─── i18n (Traditional Chinese / English) ──────────────────
+// `lang` is persisted in localStorage so it survives reload. `T(zh, en)` is
+// the universal helper for inline strings; renderers also read `lang` directly
+// to pick name_zh vs name_en on data objects returned by the API.
+let lang = localStorage.getItem('lang') || 'zh';
+function T(zh, en){ return lang === 'en' ? en : zh; }
+function pickName(obj){
+  if(!obj) return '';
+  return lang === 'en' ? (obj.name_en || obj.name) : (obj.name_zh || obj.name);
+}
+function setLang(newLang){
+  if(newLang !== 'zh' && newLang !== 'en') return;
+  if(newLang === lang) return;
+  lang = newLang;
+  localStorage.setItem('lang', newLang);
+  document.documentElement.setAttribute('lang', newLang === 'zh' ? 'zh-Hant' : 'en');
+  _applyStaticI18n();
+  // Re-fire current page so all data-driven views re-render in the new language.
+  const page = getCookie('last_page') || 'dashboard';
+  go(page);
+}
+function toggleLang(){ setLang(lang === 'zh' ? 'en' : 'zh'); }
+
+// Patch DOM elements that aren't re-rendered by go(). Each translatable static
+// element gets data-zh / data-en attributes; this function reads them and sets
+// textContent. Keeps i18n config close to the HTML it controls.
+function _applyStaticI18n(){
+  document.querySelectorAll('[data-zh][data-en]').forEach(el=>{
+    el.textContent = lang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-zh');
+  });
+  document.querySelectorAll('[data-zh-attr][data-en-attr][data-i18n-attr]').forEach(el=>{
+    const attr = el.getAttribute('data-i18n-attr');
+    el.setAttribute(attr, lang === 'en' ? el.getAttribute('data-en-attr') : el.getAttribute('data-zh-attr'));
+  });
+  // Lang toggle button label reflects the *target* language (what you'll switch TO).
+  const btn = document.getElementById('langToggleBtn');
+  if(btn) btn.textContent = lang === 'en' ? '中' : 'EN';
+}
+// Apply once at load so initial render matches stored language.
+document.addEventListener('DOMContentLoaded', _applyStaticI18n);
+
 // ─── Navigation ────────────────────────────────────────────
 function toggleSidebar(){const sb=document.getElementById('sidebar');sb.classList.toggle('collapsed');document.querySelector('.sidebar-toggle').textContent=sb.classList.contains('collapsed')?'☰':'✕'}
 function go(name){
@@ -353,7 +395,11 @@ function go(name){
   document.querySelector(`[data-page="${name}"]`)?.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('show');
-  const titles={dashboard:'儀表板',races:'賽事',model:'策略',eric:'Eric 定律',horses:'馬匹',jockeys:'騎師',trainers:'練馬師'};
+  const titles = {
+    dashboard: T('儀表板','Dashboard'), races: T('賽事','Races'),  model: T('策略','Strategy'),
+    eric:      T('假設清單','Hypotheses'),
+    horses:    T('馬匹','Horses'),     jockeys: T('騎師','Jockeys'), trainers: T('練馬師','Trainers'),
+  };
   document.getElementById('pageTitle').textContent=titles[name]||'';
   if(name==='dashboard')loadDashboard();
   if(name==='races')loadRaces();
@@ -404,8 +450,8 @@ function _modelStaleBadge(m){
   const st=m.stale||{};
   const s=m.summary||{};
   const datesCount=s.dates_run||(s.per_date?s.per_date.length:0);
-  if(st.needs_rerun) return '<span class="stale-badge rerun">' + datesCount + ' 場已失效</span>';
-  if(st.needs_retally) return '<span class="stale-badge retally">' + datesCount + ' 場待更新</span>';
+  if(st.needs_rerun)   return '<span class="stale-badge rerun">'   + datesCount + T(' 場已失效',' stale') + '</span>';
+  if(st.needs_retally) return '<span class="stale-badge retally">' + datesCount + T(' 場待更新',' to refresh') + '</span>';
   return '';
 }
 
@@ -419,18 +465,19 @@ function renderModelNav(navId, selectedName, clickFn){
     const needsRetally=st.needs_retally;
     const hasBets=(s.bets_placed||0)>0;
     const datesCount=s.dates_run>0?s.dates_run:(s.per_date?s.per_date.length:0);
-    const dates=datesCount>0?`${datesCount}場日`:'未回測';
+    const dates=datesCount>0?`${datesCount}${T('場日',' days')}`:T('未回測','not run');
     const roi=(!needsRerun&&hasBets)?(s.roi_units!=null?s.roi_units:(s.units_net||0)):null;
-    const roiStr= needsRerun&&hasBets ? '結果已失效'
-                : roi!=null ? (roi>=0?`+${roi.toFixed(1)}`:`${roi.toFixed(1)}`)+' 單位'+(needsRetally?' ⚠':'')
+    const roiStr= needsRerun&&hasBets ? T('結果已失效','results stale')
+                : roi!=null ? (roi>=0?`+${roi.toFixed(1)}`:`${roi.toFixed(1)}`)+T(' 單位',' u')+(needsRetally?' ⚠':'')
                 : '';
     const sub=roiStr?`${roiStr} · ${dates}`:dates;
     const profitCls=needsRerun?'no-data':(!hasBets?'no-data':(roi>=0?'profit':'loss'));
     const cls=profitCls+(m.name===selectedName?' selected':'');
     const mark=m.active?'<span style="font-size:7pt;vertical-align:super;margin-left:2px">✓</span>':'';
     const staleBadge=_modelStaleBadge(m);
+    const label=pickName(m);
     const safe=m.name.replace(/'/g,"\\'");
-    return`<button class="${cls}" onclick="${clickFn}('${safe}')"><span style="font-size:10pt">${m.name}${mark}${staleBadge}</span><small>${sub}</small></button>`;
+    return`<button class="${cls}" onclick="${clickFn}('${safe}')"><span style="font-size:10pt">${label}${mark}${staleBadge}</span><small>${sub}</small></button>`;
   }).join('');
 }
 
@@ -1264,24 +1311,28 @@ async function loadModelPage(){
     const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
     const bg=m.active?'#1a3a5c':'#fff', fg=m.active?'#fff':'#333', sub=m.active?'rgba(255,255,255,0.65)':'#888';
     const statusBadge = needsRerun
-      ? `<span style="font-size:7pt;background:#f0f0f0;color:#999;padding:1px 6px;border-radius:8px;margin-left:4px">📭 無有效數據</span>`
+      ? `<span style="font-size:7pt;background:#f0f0f0;color:#999;padding:1px 6px;border-radius:8px;margin-left:4px">📭 ${T('無有效數據','no valid data')}</span>`
       : needsRetally
-      ? `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">🔄 待重新計算</span>`
+      ? `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">🔄 ${T('待重新計算','needs retally')}</span>`
       : hasRun
-      ? `<span style="font-size:7pt;background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;margin-left:4px">已執行 ${dates_run}日</span>`
-      : `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">未執行</span>`;
+      ? `<span style="font-size:7pt;background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;margin-left:4px">${T(`已執行 ${dates_run}日`,`ran ${dates_run} days`)}</span>`
+      : `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">${T('未執行','not run')}</span>`;
     const acc = needsRerun ? '—' : (s.top1_pct!=null?`${s.top1_pct.toFixed(1)}%`:'—');
     const roiVal = needsRerun ? null : s.roi_units;
     const roi = roiVal!=null ? (roiVal>=0?'+':'')+roiVal.toFixed(2)+'u'+(needsRetally?' ⚠':'') : '—';
     const roiColor = needsRerun?'#bbb':(roiVal>=0?'#27ae60':'#e74c3c');
+    const label = pickName(m);
+    const desc  = lang === 'en' ? (m.description_en || m.description || '') : (m.description || '');
+    const notes = lang === 'en' ? (m.notes_en || m.notes || '')             : (m.notes || '');
+    const parentLbl = lang === 'en' ? (m.parent_en || m.parent || '')       : (m.parent || '');
     return `      <div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid ${needsRerun?'#ddd':needsRetally?'#f0c040':'#ddd'};border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
-      <div style="font-weight:bold;font-size:11pt">${m.name}${m.active?' ✓':''}${statusBadge}</div>
+      <div style="font-weight:bold;font-size:11pt">${label}${m.active?' ✓':''}${statusBadge}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.strategy_type||''} v${m.version||'?'}</div>
-      <div style="font-size:8pt;color:${sub};margin:2px 0">${m.description||''}</div>
-      ${m.notes?`<div style="font-size:8pt;color:${sub};font-style:italic;margin:2px 0">📝 ${m.notes}</div>`:''}
-      ${m.parent?`<div style="font-size:8pt;color:${sub};margin:2px 0">⬆ 派生自: ${m.parent}</div>`:''}
-      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${roiColor}">${roi}</b> &ensp; 下注: ${needsRerun?'—':(s.bets_placed||'—')+'場'}</div>
-      ${m.active?`<span style="display:inline-block;margin-top:6px;font-size:7.5pt;padding:3px 10px;background:#d4edda;color:#155724;border-radius:10px;font-weight:600;border:1px solid #c3e6cb">✓ 使用中</span>`:`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">設為使用中</button>`}
+      <div style="font-size:8pt;color:${sub};margin:2px 0">${desc}</div>
+      ${notes?`<div style="font-size:8pt;color:${sub};font-style:italic;margin:2px 0">📝 ${notes}</div>`:''}
+      ${parentLbl?`<div style="font-size:8pt;color:${sub};margin:2px 0">⬆ ${T('派生自','derived from')}: ${parentLbl}</div>`:''}
+      <div style="font-size:8pt;margin-top:4px">${T('準確率','Accuracy')}: <b>${acc}</b> &ensp; ROI: <b style="color:${roiColor}">${roi}</b> &ensp; ${T('下注','Bets')}: ${needsRerun?'—':(s.bets_placed||'—')+T('場','')}</div>
+      ${m.active?`<span style="display:inline-block;margin-top:6px;font-size:7.5pt;padding:3px 10px;background:#d4edda;color:#155724;border-radius:10px;font-weight:600;border:1px solid #c3e6cb">✓ ${T('使用中','Active')}</span>`:`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">${T('設為使用中','Activate')}</button>`}
     </div>`;
   }).join('');
   // Load config for active model
@@ -1427,10 +1478,10 @@ function renderModelDescSection(d){
 
   const chips=features.map(f=>{
     const on=!disabled.has(f.name);
-    const nameZh=f.name_zh||f.name;
+    const nameLbl=pickName(f);
     return on
-      ?`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;background:#edf7ee;border:1px solid #b2dfdb;white-space:nowrap"><span style="font-weight:600;font-size:9pt;color:#1a3a5c">${nameZh}</span><span style="font-size:7pt;color:#27ae60;font-weight:700">啟用</span></span>`
-      :`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;background:#f5f5f5;border:1px solid #ddd;opacity:0.55;white-space:nowrap"><span style="font-weight:600;font-size:9pt;color:#888">${nameZh}</span><span style="font-size:7pt;color:#aaa;font-weight:700">停用</span></span>`;
+      ?`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;background:#edf7ee;border:1px solid #b2dfdb;white-space:nowrap"><span style="font-weight:600;font-size:9pt;color:#1a3a5c">${nameLbl}</span><span style="font-size:7pt;color:#27ae60;font-weight:700">${T('啟用','On')}</span></span>`
+      :`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;background:#f5f5f5;border:1px solid #ddd;opacity:0.55;white-space:nowrap"><span style="font-weight:600;font-size:9pt;color:#888">${nameLbl}</span><span style="font-size:7pt;color:#aaa;font-weight:700">${T('停用','Off')}</span></span>`;
   }).join('');
 
   // Strategy explanation block
@@ -1558,9 +1609,10 @@ function renderModelInventory(inv, stale){
 
 function showModelTab(tab){
   modelTabActive=tab;
+  // Match by the onclick handler's tab argument — language-agnostic.
   document.querySelectorAll('#modelTabs .nav-link').forEach(a=>{
-    a.classList.toggle('active', a.textContent.toLowerCase().includes(
-      {features:'特徵',xgb:'xgb',pace:'步速',going:'場地',layoff:'久休'}[tab]||tab));
+    const onClick = a.getAttribute('onclick') || '';
+    a.classList.toggle('active', onClick.includes(`showModelTab('${tab}')`));
   });
   const panels={features:'mTab-features',xgb:'mTab-xgb',pace:'mTab-pace',going:'mTab-going',layoff:'mTab-layoff'};
   document.getElementById('modelTabContent').innerHTML=`<div id="${panels[tab]}"></div>`;
@@ -1585,31 +1637,36 @@ function renderModelFeatures(d){
   const cfg=d.config||{};
   const hyps=d.hyp_catalogue||{};
   const disabled=new Set(cfg.features_disabled||[]);
-  let h=`<p style="font-size:9pt;color:#888">共 ${features.filter(f=>!disabled.has(f.name)).length} 個啟用特徵 / ${features.length} 個總特徵</p>`;
+  let h=`<p style="font-size:9pt;color:#888">${T('共','Total')} ${features.filter(f=>!disabled.has(f.name)).length} ${T('個啟用特徵 /','active features /')} ${features.length} ${T('個總特徵','features')}</p>`;
   cats.forEach(cat=>{
     const fs=features.filter(f=>f.category===cat);
     if(!fs.length)return;
-    const zhName=catZh[cat]||cat;
-    h+=`<h6 style="color:#1a3a5c;margin-top:12px;border-bottom:1px solid #eee;padding-bottom:4px">${zhName}</h6>`;
+    const catLabel = lang === 'en' ? cat : (catZh[cat]||cat);
+    h+=`<h6 style="color:#1a3a5c;margin-top:12px;border-bottom:1px solid #eee;padding-bottom:4px">${catLabel}</h6>`;
     h+=`<table style="width:100%;table-layout:fixed;font-size:9pt;margin-bottom:8px"><thead><tr>
-      <th style="width:110px;background:#f5f5f5;color:#333;padding:5px 6px">特徵</th>
-      <th style="width:22%;background:#f5f5f5;color:#333;text-align:left;padding:5px 6px">說明</th>
-      <th style="background:#f5f5f5;color:#333;text-align:left;padding:5px 6px">Eric 定律</th>
-      <th style="width:175px;background:#f5f5f5;color:#333;padding:5px 6px">可調參數</th>
-      <th style="width:52px;background:#f5f5f5;color:#333;padding:5px 6px">狀態</th>
+      <th style="width:110px;background:#f5f5f5;color:#333;padding:5px 6px">${T('特徵','Feature')}</th>
+      <th style="width:22%;background:#f5f5f5;color:#333;text-align:left;padding:5px 6px">${T('說明','Description')}</th>
+      <th style="background:#f5f5f5;color:#333;text-align:left;padding:5px 6px">${T('假設','Hypotheses')}</th>
+      <th style="width:175px;background:#f5f5f5;color:#333;padding:5px 6px">${T('可調參數','Tunable')}</th>
+      <th style="width:52px;background:#f5f5f5;color:#333;padding:5px 6px">${T('狀態','State')}</th>
     </tr></thead><tbody>`;
     fs.forEach(f=>{
       const on=!disabled.has(f.name);
-      const nameZh=f.name_zh||f.name;
-      const descZh=f.description_zh?`<div style="color:#444;line-height:1.45">${f.description_zh}</div>`:'';
+      const nameLbl = pickName(f);
+      const descTxt = lang === 'en' ? (f.description || '') : (f.description_zh || '');
+      const descZh  = descTxt ? `<div style="color:#444;line-height:1.45">${descTxt}</div>` : '';
       const hypCards=(f.hypotheses||[]).map(hid=>{
         const hh=hyps[hid];
-        if(!hh)return`<div style="display:inline-flex;align-items:baseline;gap:3px;padding:2px 7px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt"><span class="hyp-pill">Eric ${hid}</span></div>`;
-        return`<div style="display:inline-flex;align-items:baseline;gap:4px;padding:3px 8px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt;line-height:1.45"><span class="hyp-pill" style="flex-shrink:0">Eric ${hid}</span><span class="hyp-pill ver-pill" style="flex-shrink:0">${hh.version}</span><span style="color:#444">${hh.text}</span></div>`;
+        // Attribution is data-driven: pull source from hh.source. When we
+        // don't have a hit in the catalogue (legacy ID), source is unknown.
+        const src = hh?.source || '';
+        const tag = src ? `${src} ${hid}` : hid;
+        if(!hh)return`<div style="display:inline-flex;align-items:baseline;gap:3px;padding:2px 7px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt"><span class="hyp-pill">${tag}</span></div>`;
+        return`<div style="display:inline-flex;align-items:baseline;gap:4px;padding:3px 8px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt;line-height:1.45"><span class="hyp-pill" style="flex-shrink:0">${tag}</span><span class="hyp-pill ver-pill" style="flex-shrink:0">${hh.version}</span><span style="color:#444">${hh.text}</span></div>`;
       }).join('');
       h+=`<tr${on?'':' style="opacity:0.45"'}>
         <td style="background:#f9f9f9;vertical-align:top;padding:6px">
-          <div style="font-weight:600;font-size:9pt;color:#1a3a5c">${nameZh}</div>
+          <div style="font-weight:600;font-size:9pt;color:#1a3a5c">${nameLbl}</div>
         </td>
         <td style="vertical-align:top;padding:6px">${descZh}</td>
         <td style="vertical-align:top;padding:6px"><div style="display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start">${hypCards||'<span style="color:#ddd;font-size:8pt">—</span>'}</div></td>
@@ -2079,7 +2136,7 @@ async function loadEricPage(){
   const el=document.getElementById('ericContent');
   if(!el)return;
   if(_ericCache){renderEricPage(_ericCache,_validationNotes);return;}
-  el.innerHTML=_loadingHtml('載入 Eric 定律…');
+  el.innerHTML=_loadingHtml(T('載入假設清單…','Loading hypotheses…'));
   const [d, notes] = await Promise.all([api('/api/eric-hypotheses'), loadValidationNotes()]);
   if(!d)return;
   _ericCache=d;
@@ -2101,22 +2158,27 @@ function renderEricPage(d, notes){
   const total=sections.reduce((s,sec)=>s+sec.groups.reduce((ss,g)=>ss+g.hypotheses.length,0),0);
   const hypNotes=(notes||{}).hypotheses||{};
 
+  // Aggregate sources to label the page (data-driven; supports multiple authors).
+  const sourceSet = [...new Set(sections.map(s => s.source).filter(Boolean))];
+  const sourceLabel = sourceSet.length ? sourceSet.join(' · ') : '';
   let h=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span style="font-size:9.5pt;color:#555">共 <b>${total}</b> 條定律，涵蓋 V1 至 V10.30</span>
-    <span style="font-size:8.5pt;color:#888">來源：MODEL_V9.3_SPEC_TC.pdf · V10_MODEL_DOCUMENTATION_TC.pdf · 馬仔老闆 Grok 對話紀錄</span>
+    <span style="font-size:9.5pt;color:#555">${T('共','Total')} <b>${total}</b> ${T('條假設','hypotheses')}${sourceLabel?` — ${T('來源','sources')}: ${sourceLabel}`:''}</span>
     <span style="display:flex;gap:6px;align-items:center;font-size:8pt">
-      ${_ericCatPill('特徵類別')} 特徵類別&ensp;${_ericFeatPill('特徵名稱')} 特徵名稱
+      ${_ericCatPill(T('特徵類別','Category'))} ${T('特徵類別','Category')}&ensp;${_ericFeatPill(T('特徵名稱','Feature'))} ${T('特徵名稱','Feature')}
     </span>
   </div>
   <div>`;
 
   sections.forEach(sec=>{
     const secTotal=sec.groups.reduce((s,g)=>s+g.hypotheses.length,0);
+    const sourceBadge = sec.source
+      ? `<span style="font-size:8pt;color:#fff;background:#1a3a5c;padding:1px 7px;border-radius:8px;font-weight:700">${sec.source}</span>` : '';
     h+=`<div style="margin-bottom:16px">
       <div style="display:flex;align-items:baseline;gap:8px;padding:7px 12px;background:#f0f4ff;border-left:4px solid #1a3a5c;border-radius:0 4px 4px 0;margin-bottom:6px">
+        ${sourceBadge}
         <span style="font-size:10.5pt;font-weight:700;color:#1a3a5c">${sec.version}</span>
         ${sec.subtitle?`<span style="font-size:8.5pt;color:#666">${sec.subtitle}</span>`:''}
-        <span style="font-size:8pt;color:#aaa;margin-left:auto">${secTotal} 條</span>
+        <span style="font-size:8pt;color:#aaa;margin-left:auto">${secTotal} ${T('條','items')}</span>
       </div>`;
 
     sec.groups.forEach(grp=>{
@@ -2124,8 +2186,11 @@ function renderEricPage(d, notes){
         h+=`<div style="font-size:9pt;font-weight:700;color:#555;margin:10px 0 4px 4px;padding-left:8px;border-left:3px solid #c5d5e8">${grp.label}</div>`;
       }
       grp.hypotheses.forEach(hyp=>{
-        const cats=[...new Set(hyp.features.map(f=>f.category_zh))];
-        const feats=[...new Set(hyp.features.map(f=>f.name_zh))];
+        // category_zh on features is only set when the API attaches it; fall back
+        // to the bilingual feature dicts (now inline).
+        const catKey = lang === 'en' ? 'category' : 'category_zh';
+        const cats=[...new Set(hyp.features.map(f => f[catKey] || f.category))];
+        const feats=[...new Set(hyp.features.map(f => pickName(f)))];
         const pills=(cats.length||feats.length)
           ?`<span style="display:inline-flex;flex-wrap:wrap;gap:3px;margin-left:6px;vertical-align:middle">${cats.map(_ericCatPill).join('')}${feats.map(_ericFeatPill).join('')}</span>`
           :'';
@@ -2135,7 +2200,7 @@ function renderEricPage(d, notes){
           ?`<div style="margin-top:3px;font-size:8pt;color:#555;line-height:1.5;background:#fafafa;border-left:3px solid #ccc;padding:4px 8px;border-radius:0 3px 3px 0">${hyp.validation.replace(/\n/g,'<br>')}</div>`
           :'';
         h+=`<div style="display:flex;gap:6px;padding:4px 6px;border-bottom:1px solid #f3f3f3;align-items:flex-start">
-          <span class="hyp-pill" style="flex-shrink:0;margin-top:2px">Eric ${hyp.id}</span>
+          <span class="hyp-pill" style="flex-shrink:0;margin-top:2px">${hyp.source || ''} ${hyp.id}</span>
           <div style="flex:1;min-width:0">
             <span style="font-size:9.5pt;color:#333;line-height:1.55">${hyp.text}${pills}</span>
             ${validationHtml}
@@ -2561,41 +2626,67 @@ function _renderDashIssues(data){
   if(st.needs_rerun){
     // Don't show any metric-based issues for fully invalidated models
   } else if(!s.dates_run){
-    issues.push({lvl:'error',icon:'🔴',text:'此策略尚未執行任何回測。請前往「賽事」頁面選擇此策略並執行。'});
+    issues.push({lvl:'error',icon:'🔴',text: T(
+      '此策略尚未執行任何回測。請前往「賽事」頁面選擇此策略並執行。',
+      'This strategy has not been backtested yet. Open the Races page, pick this strategy, and run a backtest.')});
   } else {
     if(!st.needs_retally){
       if((s.roi_units||0)<0)
-        issues.push({lvl:'error',icon:'🔴',text:`ROI 為負 (${s.roi_units.toFixed(2)} 單位)，策略在回測期間虧損。`});
+        issues.push({lvl:'error',icon:'🔴',text: T(
+          `ROI 為負 (${s.roi_units.toFixed(2)} 單位)，策略在回測期間虧損。`,
+          `Negative ROI (${s.roi_units.toFixed(2)} u) — strategy lost during the backtest period.`)});
       else
-        issues.push({lvl:'ok',icon:'✅',text:`ROI 為正 (+${(s.roi_units||0).toFixed(2)} 單位)，策略在回測期間盈利。`});
+        issues.push({lvl:'ok',icon:'✅',text: T(
+          `ROI 為正 (+${(s.roi_units||0).toFixed(2)} 單位)，策略在回測期間盈利。`,
+          `Positive ROI (+${(s.roi_units||0).toFixed(2)} u) — strategy profitable over backtest period.`)});
     }
 
     if(s.top1_pct!=null&&s.top1_pct<25)
-      issues.push({lvl:'warn',icon:'⚠️',text:`命中率偏低 (${s.top1_pct.toFixed(1)}%)，首選馬奪冠比率低於 25%。`});
+      issues.push({lvl:'warn',icon:'⚠️',text: T(
+        `命中率偏低 (${s.top1_pct.toFixed(1)}%)，首選馬奪冠比率低於 25%。`,
+        `Low top-1 hit rate (${s.top1_pct.toFixed(1)}%) — picks win less than 25% of the time.`)});
     else if(s.top1_pct!=null&&s.top1_pct>=35)
-      issues.push({lvl:'ok',icon:'✅',text:`命中率良好 (${s.top1_pct.toFixed(1)}%)。`});
+      issues.push({lvl:'ok',icon:'✅',text: T(
+        `命中率良好 (${s.top1_pct.toFixed(1)}%)。`,
+        `Good top-1 hit rate (${s.top1_pct.toFixed(1)}%).`)});
 
     if(s.dates_run<5)
-      issues.push({lvl:'warn',icon:'⚠️',text:`回測日數不足 (${s.dates_run} 日)，統計意義有限，建議執行更多回測後再評估。`});
+      issues.push({lvl:'warn',icon:'⚠️',text: T(
+        `回測日數不足 (${s.dates_run} 日)，統計意義有限，建議執行更多回測後再評估。`,
+        `Sample size is small (${s.dates_run} day(s)) — run more backtests before relying on these numbers.`)});
 
     if(!st.needs_retally){
       const betsPlaced=s.bets_placed||0, betsWon=s.bets_won||0;
       if(betsPlaced>0&&betsWon/betsPlaced<0.15)
-        issues.push({lvl:'warn',icon:'⚠️',text:`下注命中率偏低 (${(betsWon/betsPlaced*100).toFixed(1)}%)。`});
+        issues.push({lvl:'warn',icon:'⚠️',text: T(
+          `下注命中率偏低 (${(betsWon/betsPlaced*100).toFixed(1)}%)。`,
+          `Bet hit rate is low (${(betsWon/betsPlaced*100).toFixed(1)}%).`)});
     }
 
     if(perDate.length){
       const daysSince=Math.floor((Date.now()-new Date(perDate[perDate.length-1].date).getTime())/86400000);
       if(daysSince>30)
-        issues.push({lvl:'info',icon:'ℹ️',text:`最後回測距今 ${daysSince} 天 (${perDate[perDate.length-1].date})，考慮補跑最新日期。`});
+        issues.push({lvl:'info',icon:'ℹ️',text: T(
+          `最後回測距今 ${daysSince} 天 (${perDate[perDate.length-1].date})，考慮補跑最新日期。`,
+          `Last backtest was ${daysSince} days ago (${perDate[perDate.length-1].date}); consider running on more recent dates.`)});
     }
   }
 
   if(!data.active)
-    issues.push({lvl:'info',icon:'ℹ️',text:'此策略目前不是使用中策略。如需設為使用中，請前往「策略」頁面操作。'});
+    issues.push({lvl:'info',icon:'ℹ️',text: T(
+      '此策略目前不是使用中策略。如需設為使用中，請前往「策略」頁面操作。',
+      'This is not the active strategy. Activate it from the Strategy page.')});
 
-  if(data.features_disabled?.length)
-    issues.push({lvl:'info',icon:'ℹ️',text:`此策略停用了 ${data.features_disabled.length} 個特徵: ${data.features_disabled.join(', ')}`});
+  if(data.features_disabled?.length){
+    const namesLocalised = lang === 'en' ? data.features_disabled_en : data.features_disabled_zh;
+    const names = (namesLocalised?.length === data.features_disabled.length)
+      ? namesLocalised : data.features_disabled;
+    const sep = lang === 'en' ? ', ' : '、';
+    const msg = lang === 'en'
+      ? `This strategy disables ${data.features_disabled.length} feature(s): ${names.join(sep)}`
+      : `此策略停用了 ${data.features_disabled.length} 個特徵: ${names.join(sep)}`;
+    issues.push({lvl:'info',icon:'ℹ️',text: msg});
+  }
 
   document.getElementById('dashIssues').innerHTML=issues.length
     ?`<div style="font-size:10pt;font-weight:bold;color:#1a3a5c;margin-bottom:7px">狀態診斷</div>

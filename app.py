@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from model_config import (list_models as _list_model_configs, load_config,
                           FEATURES, FEATURE_CATEGORIES, FEATURE_CATEGORY_ZH,
-                          FEATURE_NAME_ZH, staleness as _staleness)
+                          FEATURE_NAME_ZH, FEATURE_NAME_EN, staleness as _staleness)
 from backtest import calibrate_prob
 
 # ─── Config ───────────────────────────────────────────────
@@ -39,26 +39,41 @@ DEEPSEEK_URL  = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_MODEL = "deepseek-chat"
 
 
-def _parse_eric_hypotheses() -> dict:
-    """Parse ERIC_HYPOTHESIS.md into {H1: {id, version, text}, ...}"""
-    path = BASE_DIR / 'ERIC_HYPOTHESIS.md'
-    if not path.exists():
-        return {}
-    result = {}
-    current_version = ''
-    for line in path.read_text(encoding='utf-8').splitlines():
-        hdr = re.match(r'^## (.+)', line)
-        if hdr:
-            raw = re.sub(r'\s*[\(（].*', '', hdr.group(1)).strip()
-            current_version = raw
-            continue
-        hm = re.match(r'^\s*-\s*\*\*(H\d+)\*\*:\s*(.+)', line)
-        if hm:
-            hid, htext = hm.group(1), hm.group(2).strip()
-            result[hid] = {'id': hid, 'version': current_version, 'text': htext}
+def _parse_hypotheses() -> dict:
+    """Parse all *_HYPOTHESIS.md files in the repo root into a unified catalogue.
+
+    The source for each hypothesis is derived from the filename prefix:
+        ERIC_HYPOTHESIS.md   → source "Eric"
+        SYSTEM_HYPOTHESIS.md → source "System"
+        CHERRY_HYPOTHESIS.md → source "Cherry"
+
+    Each hypothesis dict carries {id, source, version, text}. If two sources
+    happen to use the same H-id (e.g. Eric's H1 and System's H1), the later
+    file wins on the bare key; consumers wanting attribution-safe lookup
+    should use the dict's `source` field instead of treating the key as
+    canonical. The renderer pulls `source` from the dict so attribution is
+    data-driven, not hardcoded.
+    """
+    result: dict = {}
+    for path in sorted(BASE_DIR.glob('*_HYPOTHESIS.md')):
+        # Derive source from filename: "ERIC_HYPOTHESIS.md" → "Eric"
+        stem = path.stem.replace('_HYPOTHESIS', '')
+        source = stem.title() if stem else 'Unknown'
+        current_version = ''
+        for line in path.read_text(encoding='utf-8').splitlines():
+            hdr = re.match(r'^## (.+)', line)
+            if hdr:
+                raw = re.sub(r'\s*[\((].*', '', hdr.group(1)).strip()
+                current_version = raw
+                continue
+            hm = re.match(r'^\s*-\s*\*\*([A-Za-z]?H\d+)\*\*:\s*(.+)', line)
+            if hm:
+                hid, htext = hm.group(1), hm.group(2).strip()
+                result[hid] = {'id': hid, 'source': source,
+                               'version': current_version, 'text': htext}
     return result
 
-_ERIC_HYPS: dict = _parse_eric_hypotheses()
+_ERIC_HYPS: dict = _parse_hypotheses()
 
 # Build reverse map: H-id → list of features that reference it
 _HYP_FEATURE_MAP: dict = {}
@@ -67,66 +82,77 @@ for _f in FEATURES:
         if _hid not in _HYP_FEATURE_MAP:
             _HYP_FEATURE_MAP[_hid] = []
         _HYP_FEATURE_MAP[_hid].append({
-            'name': _f['name'],
-            'name_zh': FEATURE_NAME_ZH.get(_f['name'], _f['name']),
-            'category': _f['category'],
-            'category_zh': FEATURE_CATEGORY_ZH.get(_f['category'], _f['category']),
+            'name':         _f['name'],
+            'name_zh':      _f.get('name_zh') or _f['name'],
+            'name_en':      _f.get('name_en') or _f['name'],
+            'category':     _f['category'],
+            'category_zh':  FEATURE_CATEGORY_ZH.get(_f['category'], _f['category']),
         })
 
 
-def _parse_eric_sections() -> list:
-    """Parse ERIC_HYPOTHESIS.md into section/group structure for the Eric 定律 page."""
-    path = BASE_DIR / 'ERIC_HYPOTHESIS.md'
-    if not path.exists():
-        return []
-    sections: list = []
-    current_section: dict | None = None
-    current_group: dict | None = None
-    _buf = ''  # accumulate sub-bullet validation comments
+def _parse_hypothesis_sections() -> list:
+    """Parse every *_HYPOTHESIS.md file into a flat list of sections.
 
-    for line in path.read_text(encoding='utf-8').splitlines():
-        hdr2 = re.match(r'^## (.+)', line)
-        if hdr2:
+    Each section is tagged with `source` (derived from the filename prefix);
+    each hypothesis dict inside also carries its `source` so renderers can
+    attribute it without hardcoding any author name.
+    """
+    all_sections: list = []
+    for path in sorted(BASE_DIR.glob('*_HYPOTHESIS.md')):
+        stem = path.stem.replace('_HYPOTHESIS', '')
+        source = stem.title() if stem else 'Unknown'
+
+        sections: list = []
+        current_section: dict | None = None
+        current_group: dict | None = None
+        _buf = ''  # accumulate sub-bullet validation comments
+
+        for line in path.read_text(encoding='utf-8').splitlines():
+            hdr2 = re.match(r'^## (.+)', line)
+            if hdr2:
+                _flush_buf(current_group, _buf); _buf = ''
+                raw = hdr2.group(1).strip()
+                m = re.match(r'^(.+?)\s*[\((](.+?)[\))]\s*$', raw)
+                version  = m.group(1).strip() if m else raw
+                subtitle = m.group(2).strip() if m else ''
+                current_group = {'label': None, 'hypotheses': []}
+                current_section = {'source': source, 'version': version,
+                                   'subtitle': subtitle, 'groups': [current_group]}
+                sections.append(current_section)
+                continue
+
+            hdr3 = re.match(r'^### (.+)', line)
+            if hdr3 and current_section is not None:
+                _flush_buf(current_group, _buf); _buf = ''
+                current_group = {'label': hdr3.group(1).strip().rstrip(':'), 'hypotheses': []}
+                current_section['groups'].append(current_group)
+                continue
+
+            hm = re.match(r'^\s*-\s*\*\*([A-Za-z]?H\d+)\*\*:\s*(.+)', line)
+            if hm and current_group is not None:
+                _flush_buf(current_group, _buf); _buf = ''
+                hid, htext = hm.group(1), hm.group(2).strip()
+                current_group['hypotheses'].append({
+                    'id': hid,
+                    'source': source,
+                    'text': htext,
+                    'features': _HYP_FEATURE_MAP.get(hid, []),
+                })
+                continue
+
+            sub = re.match(r'^\s{2}-\s+(.+)', line)
+            if sub and current_group is not None and current_group['hypotheses']:
+                _buf += (_buf and '\n' or '') + sub.group(1).strip()
+                continue
+
             _flush_buf(current_group, _buf); _buf = ''
-            raw = hdr2.group(1).strip()
-            m = re.match(r'^(.+?)\s*[\(（](.+?)[\)）]\s*$', raw)
-            version  = m.group(1).strip() if m else raw
-            subtitle = m.group(2).strip() if m else ''
-            current_group = {'label': None, 'hypotheses': []}
-            current_section = {'version': version, 'subtitle': subtitle, 'groups': [current_group]}
-            sections.append(current_section)
-            continue
 
-        hdr3 = re.match(r'^### (.+)', line)
-        if hdr3 and current_section is not None:
-            _flush_buf(current_group, _buf); _buf = ''
-            current_group = {'label': hdr3.group(1).strip().rstrip(':'), 'hypotheses': []}
-            current_section['groups'].append(current_group)
-            continue
+        _flush_buf(current_group, _buf)
 
-        hm = re.match(r'^\s*-\s*\*\*(H\d+)\*\*:\s*(.+)', line)
-        if hm and current_group is not None:
-            _flush_buf(current_group, _buf); _buf = ''
-            hid, htext = hm.group(1), hm.group(2).strip()
-            current_group['hypotheses'].append({
-                'id': hid,
-                'text': htext,
-                'features': _HYP_FEATURE_MAP.get(hid, []),
-            })
-            continue
-
-        sub = re.match(r'^\s{2}-\s+(.+)', line)
-        if sub and current_group is not None and current_group['hypotheses']:
-            _buf += (_buf and '\n' or '') + sub.group(1).strip()
-            continue
-
-        _flush_buf(current_group, _buf); _buf = ''
-
-    _flush_buf(current_group, _buf)
-
-    for sec in sections:
-        sec['groups'] = [g for g in sec['groups'] if g['hypotheses']]
-    return [s for s in sections if s['groups']]
+        for sec in sections:
+            sec['groups'] = [g for g in sec['groups'] if g['hypotheses']]
+        all_sections.extend([s for s in sections if s['groups']])
+    return all_sections
 
 
 def _flush_buf(group, buf):
@@ -625,17 +651,21 @@ async def list_models_endpoint(auth = Depends(verify_token)):
     for cfg in configs:
         summary = cfg.pop('_summary', {})
         out.append({
-            "name":          cfg.get("name"),
-            "description":   cfg.get("description", ""),
-            "strategy_type": cfg.get("strategy_type", "xgb_walkforward"),
-            "version":       cfg.get("version", ""),
-            "parent":        cfg.get("parent"),
-            "notes":         cfg.get("notes", ""),
-            "active":        cfg.get("active", False),
-            "created":       cfg.get("created", ""),
-            "bet_max_odds":  cfg.get("bet_max_odds"),
-            "stale":         _staleness(cfg.get("name", "")),
-            "summary":       summary,
+            "name":            cfg.get("name"),
+            "name_en":         cfg.get("name_en") or cfg.get("name"),
+            "description":     cfg.get("description", ""),
+            "description_en":  cfg.get("description_en", ""),
+            "strategy_type":   cfg.get("strategy_type", "xgb_walkforward"),
+            "version":         cfg.get("version", ""),
+            "parent":          cfg.get("parent"),
+            "parent_en":       cfg.get("parent_en"),
+            "notes":           cfg.get("notes", ""),
+            "notes_en":        cfg.get("notes_en", ""),
+            "active":          cfg.get("active", False),
+            "created":         cfg.get("created", ""),
+            "bet_max_odds":    cfg.get("bet_max_odds"),
+            "stale":           _staleness(cfg.get("name", "")),
+            "summary":         summary,
         })
     return {"models": out}
 
@@ -647,12 +677,12 @@ async def get_model_config(name: str, auth = Depends(verify_token)):
         cfg = load_config(name)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
-    # Merge Chinese name into each feature; collect referenced hypotheses
+    # FEATURES already carry name_en / name_zh inline; just collect hypothesis ids.
     used_ids: set[str] = set()
     features_out = []
     for f in FEATURES:
         used_ids.update(f.get('hypotheses') or [])
-        features_out.append({**f, 'name_zh': FEATURE_NAME_ZH.get(f['name'], f['name'])})
+        features_out.append(dict(f))
     hyp_catalogue = {hid: _ERIC_HYPS[hid] for hid in used_ids if hid in _ERIC_HYPS}
 
     return {
@@ -721,22 +751,29 @@ async def get_model_stats(name: str, auth = Depends(verify_token)):
             pass
 
     stale_info = _staleness(name)
+    features_disabled = cfg.get("features_disabled", [])
 
     return {
-        "name":               cfg.get("name"),
-        "description":        cfg.get("description", ""),
-        "strategy_type":      cfg.get("strategy_type", "xgb_walkforward"),
-        "version":            cfg.get("version", ""),
-        "parent":             cfg.get("parent"),
-        "notes":              cfg.get("notes", ""),
-        "active":             cfg.get("active", False),
-        "created":            cfg.get("created", ""),
-        "bet_edge_threshold": cfg.get("bet_edge_threshold", 1.0),
-        "bet_max_odds":       cfg.get("bet_max_odds"),
-        "bet_min_odds":       cfg.get("bet_min_odds"),
-        "features_disabled":  cfg.get("features_disabled", []),
-        "stale":              stale_info,
-        "summary":            summary,
+        "name":                 cfg.get("name"),
+        "name_en":              cfg.get("name_en") or cfg.get("name"),
+        "description":          cfg.get("description", ""),
+        "description_en":       cfg.get("description_en", ""),
+        "strategy_type":        cfg.get("strategy_type", "xgb_walkforward"),
+        "version":              cfg.get("version", ""),
+        "parent":               cfg.get("parent"),
+        "parent_en":            cfg.get("parent_en"),
+        "notes":                cfg.get("notes", ""),
+        "notes_en":             cfg.get("notes_en", ""),
+        "active":               cfg.get("active", False),
+        "created":              cfg.get("created", ""),
+        "bet_edge_threshold":   cfg.get("bet_edge_threshold", 1.0),
+        "bet_max_odds":         cfg.get("bet_max_odds"),
+        "bet_min_odds":         cfg.get("bet_min_odds"),
+        "features_disabled":    features_disabled,
+        "features_disabled_zh": [FEATURE_NAME_ZH.get(f, f) for f in features_disabled],
+        "features_disabled_en": [FEATURE_NAME_EN.get(f, f) for f in features_disabled],
+        "stale":                stale_info,
+        "summary":              summary,
     }
 
 
@@ -1036,7 +1073,13 @@ async def save_feature_note(name: str, req: ValidationNoteRequest, auth = Depend
 
 @app.get("/api/eric-hypotheses")
 async def get_eric_hypotheses(auth = Depends(verify_token)):
-    return {'sections': _parse_eric_sections()}
+    """Return all hypothesis sections from every *_HYPOTHESIS.md file.
+
+    The endpoint name is legacy (originally only Eric's hypotheses existed);
+    the response now contains sections from every contributor, each tagged
+    with `source` so the UI can attribute without hardcoding author names.
+    """
+    return {'sections': _parse_hypothesis_sections()}
 
 
 @app.post("/api/models/{name}/activate")

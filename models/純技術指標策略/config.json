@@ -1,10 +1,14 @@
 {
   "name": "\u7d14\u6280\u8853\u6307\u6a19\u7b56\u7565",
+  "name_en": "Pure Technical",
   "description": "\u7d14\u6280\u8853\u6307\u6a19\u7b56\u7565\uff1a\u505c\u7528\u914d\u5c0d\u7279\u5fb5\uff0c\u53ea\u7528\u5ba2\u89c0\u6280\u8853\u6307\u6a19",
+  "description_en": "Pure Technical: disables pair features; uses only objective technical indicators.",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
   "parent": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "parent_en": "Balanced Baseline",
   "notes": "\u505c\u7528\u9a0e\u5e2b\u00d7\u99ac\u5339\u914d\u5c0d\u3001\u9a0e\u5e2b\u00d7\u7df4\u99ac\u5e2b\u914d\u5c0d\u53ca\u9a0e\u5e2b\u52dd\u7387\u4e09\u500b\u7279\u5fb5\uff0c\u50c5\u4fdd\u7559\u5ba2\u89c0\u6280\u8853\u6307\u6a19\uff0c\u6e2c\u8a66\u6a21\u578b\u5c0d\u9a0e\u5e2b\u7279\u5fb5\u7684\u4f9d\u8cf4\u7a0b\u5ea6",
+  "notes_en": "Disables jockey \u00d7 horse pair, jockey \u00d7 trainer pair, and jockey WR features; keeps only objective technical indicators to test the model's dependence on jockey features.",
   "created": "2026-05-25",
   "active": false,
   "xgb": {

@@ -1,10 +1,14 @@
 {
   "name": "\u6df1\u5ea6\u63a8\u7b97\u7b56\u7565",
+  "name_en": "Deep Inference",
   "description": "\u6df1\u5ea6\u63a8\u7b97\u7b56\u7565\uff1a\u6df1\u6a39+\u591a\u8f2a\u8a13\u7df4\uff0c\u6355\u6349\u7d30\u5fae\u4e92\u52d5\uff0c\u6ce8\u91cd\u547d\u4e2d\u7387",
+  "description_en": "Deep Inference: deeper trees + more rounds, captures subtle interactions, prioritises hit rate.",
   "strategy_type": "xgb_walkforward",
   "version": "1.0",
   "parent": "\u5747\u8861\u57fa\u790e\u7b56\u7565",
+  "parent_en": "Balanced Baseline",
   "notes": "\u6a39\u6df1\u75315\u5c64\u63d0\u9ad8\u81f37\u5c64\uff0c\u8a13\u7df4\u8f2a\u6578100\u2192150\uff0c\u5b78\u7fd2\u73870.03\u21920.05\uff0c\u6b63\u5247\u5316\u7a0d\u5fae\u653e\u5bec\uff0c\u5e73\u6ed1\u5f37\u5ea6\u7565\u964d",
+  "notes_en": "Tree depth 5 \u2192 7, training rounds 100 \u2192 150, learning rate 0.03 \u2192 0.05, regularization slightly relaxed, shrinkage slightly reduced.",
   "created": "2026-05-25",
   "active": false,
   "xgb": {
