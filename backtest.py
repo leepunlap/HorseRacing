@@ -239,19 +239,44 @@ ODDS_CALIBRATION = {
 
 def calibrate_prob(raw_prob: float, win_odds: float) -> float:
     """Apply odds-bucket calibration factor with linear interpolation."""
-    odds = float(win_odds or 0)
+    return _apply_calibration(raw_prob, win_odds, ODDS_CALIBRATION)
+
+
+# ── PLACE-probability calibration ──────────────────────────────────────────────
+# Harville place probabilities are also biased by odds — the Harville formula
+# transforms win-prob conservatism into place-prob conservatism at low odds,
+# and overconfidence into overconfidence at high odds. These factors correct
+# the Harville-derived place probs per odds bucket.
+PLACE_CALIBRATION = {
+    0:  1.0000,   # odds  0- 3x: actual 69.9% harville 42.2% (conservative, no up-correct)
+    3:  1.0000,   # odds  3- 5x: actual 56.3% harville 32.8%
+    5:  1.0000,   # odds  5- 7x: actual 43.4% harville 29.3%
+    7:  1.0000,   # odds  7-10x: actual 34.9% harville 29.1%
+    10: 0.9112,   # odds 10-15x: actual 22.9% harville 25.1%
+    15: 0.6817,   # odds 15-25x: actual 16.0% harville 23.4%
+    25: 0.4542,   # odds 25-100x: actual  8.4% harville 18.4%
+}
+
+def calibrate_place_prob(harville_place_prob: float, win_odds: float) -> float:
+    """Calibrate a Harville-derived place probability by odds bucket."""
+    return _apply_calibration(harville_place_prob, win_odds, PLACE_CALIBRATION)
+
+
+def _apply_calibration(raw_prob: float, odds_val: float, table: dict) -> float:
+    odds = float(odds_val or 0)
     if odds <= 1.0:
         return raw_prob
-    breaks = sorted(ODDS_CALIBRATION.keys())
+    breaks = sorted(table.keys())
+    lo, hi = 0, 100.0
     for i, b in enumerate(breaks):
         if odds < b:
             lo = breaks[i-1] if i > 0 else 0
             hi = b
             break
     else:
-        lo, hi = breaks[-1], 100.0
-    flo = ODDS_CALIBRATION.get(lo, 1.0)
-    fhi = ODDS_CALIBRATION.get(hi, 0.15)
+        lo = breaks[-1]
+    flo = table.get(lo, 1.0)
+    fhi = table.get(hi, 0.15)
     factor = flo if hi == lo else flo + (fhi - flo) * (odds - lo) / (hi - lo)
     return raw_prob * factor
 
@@ -1378,6 +1403,8 @@ def retally(model_name: str, verbose: bool = False) -> dict:
 
             # ── Harville probs for this race ─────────────────────
             n = len(horses)
+            # Use raw win probs for Harville (calibration factors are in-sample;
+            # walk-forward calibration would use out-of-sample factors per date)
             win_probs = np.array([float(h.get('win_prob') or 0) for h in horses])
             hv = compute_race_harville_probs(win_probs) if n >= 2 else None
 
@@ -1385,7 +1412,6 @@ def retally(model_name: str, verbose: bool = False) -> dict:
             if hv is not None and place_edge > 0:
                 for idx, h in enumerate(horses):
                     place_prob = float(hv['place_probs'][idx])
-                    # Look up place dividend for this brand
                     brand = h.get('brand', '')
                     div_key = (course_for_date, int(rn), 'PLACE', brand)
                     place_div = div_lookup.get(div_key, 0.0)
