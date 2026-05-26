@@ -338,15 +338,20 @@
                        text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
                        border-top: 1px solid var(--border); padding-top: 14px; }
   .chart-svg { display: block; width: 100%; max-height: 280px; }
-  /* Strategy feature-pill panel */
-  .feat-pill-cat { margin-bottom: 14px; }
-  .feat-pill-cathdr { font-size: 11px; color: var(--text); font-weight: 600;
-                      text-transform: uppercase; letter-spacing: 0.4px;
-                      margin-bottom: 6px; display: flex; gap: 10px;
-                      align-items: baseline; }
-  .feat-pill-cathdr .muted { font-family: var(--mono); font-weight: 400;
-                              text-transform: none; letter-spacing: 0; }
-  .feat-pill-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  /* Strategy feature-pill panel — single dense wrapping row; category
+     headers sit inline between groups of pills, no line breaks anywhere. */
+  .feat-pill-grid { display: flex; flex-wrap: wrap; gap: 4px;
+                    align-items: baseline; }
+  .feat-pill-cathdr-inline { font-size: 11px; color: var(--text);
+                              font-weight: 600; text-transform: uppercase;
+                              letter-spacing: 0.4px; white-space: nowrap;
+                              padding: 2px 8px 2px 6px;
+                              border-left: 2px solid var(--accent);
+                              margin-left: 4px; }
+  .feat-pill-cathdr-inline:first-child { margin-left: 0; }
+  .feat-pill-cathdr-inline .muted { font-family: var(--mono); font-weight: 400;
+                                     text-transform: none; letter-spacing: 0;
+                                     margin-left: 4px; }
   .feat-pill { display: inline-flex; align-items: center; gap: 4px;
                padding: 2px 8px; border-radius: 10px; font-size: 11px;
                white-space: nowrap; user-select: none; cursor: default; }
@@ -939,32 +944,32 @@ function renderStrategyFeaturePanel(strategy) {
   } catch (e) { overrides = {}; }
   const lang = state.lang;
 
+  // Pack everything (category-headers + pills) into ONE wrapping flex row so
+  // there are no line breaks before/after each category title — categories
+  // act as inline separators inside a single dense grid.
   let totalEnabled = 0, totalCount = 0;
-  const sections = (state.features.categories || []).map(cat => {
+  const items = [];
+  (state.features.categories || []).forEach(cat => {
     let catEnabled = 0;
-    const pills = cat.features.map(f => {
+    const catPills = [];
+    cat.features.forEach(f => {
       const enabled = (f.id in overrides) ? !!overrides[f.id] : !!f.enabled_default;
       if (enabled) { catEnabled++; totalEnabled++; }
       totalCount++;
       const nm = f[`name_${lang}`] || f.name_en;
       const desc = f[`description_${lang}`] || f.description_en || '';
       const titleText = `${f.id} · ${nm}\n${desc}`;
-      return `<span class="feat-pill ${enabled ? 'on' : 'off'}"
-                    title="${escapeHtml(titleText)}">
-        <span class="feat-pill-id">${f.id}</span>${escapeHtml(nm)}
-      </span>`;
-    }).join('');
+      catPills.push(
+        `<span class="feat-pill ${enabled ? 'on' : 'off'}" title="${escapeHtml(titleText)}">` +
+        `<span class="feat-pill-id">${f.id}</span>${escapeHtml(nm)}</span>`
+      );
+    });
     const catName = cat[`name_${lang}`];
-    return `
-      <div class="feat-pill-cat">
-        <div class="feat-pill-cathdr">
-          ${escapeHtml(catName)}
-          <span class="muted">${catEnabled}/${cat.features.length}</span>
-        </div>
-        <div class="feat-pill-row">${pills}</div>
-      </div>
-    `;
-  }).join('');
+    items.push(
+      `<span class="feat-pill-cathdr-inline">${escapeHtml(catName)} <span class="muted">${catEnabled}/${cat.features.length}</span></span>`
+    );
+    items.push(...catPills);
+  });
 
   return `
     <div class="panel">
@@ -973,7 +978,7 @@ function renderStrategyFeaturePanel(strategy) {
           · ${totalEnabled} / ${totalCount} ${t('已啟用', 'enabled')}
         </span>
       </h2>
-      ${sections}
+      <div class="feat-pill-grid">${items.join('')}</div>
     </div>
   `;
 }
