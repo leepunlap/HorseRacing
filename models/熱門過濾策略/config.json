@@ -11,7 +11,7 @@
   "notes_en": "Edge threshold lowered to 1.05 (lenient), bet odds limited to 1.5–6.5×; trades stake size for steady cashflow via more frequent bets.",
   "created": "2026-05-25",
   "active": false,
-  "enabled": true,
+  "enabled": false,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",

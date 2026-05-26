@@ -1,0 +1,66 @@
+[Unit]
+Description=Horse Racing Prediction API
+Documentation=file:///var/www/horseracing/README.md
+After=network-online.target
+Wants=network-online.target
+
+# Crash-loop guard: tolerate 5 restarts within 60 s, then give up and require
+# manual `systemctl reset-failed racing.service` to clear the state. Avoids
+# pegging the box if app.py is fundamentally broken.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/www/horseracing
+
+Environment="DEEPSEEK_API_KEY=sk-b1950b929b034da9be789a946335740d"
+Environment="PYTHONUNBUFFERED=1"
+# Make stdout/stderr go to journald with a clear tag — `journalctl -u racing`
+# stays readable, and `journalctl -t horseracing` filters across reboots.
+SyslogIdentifier=horseracing
+StandardOutput=journal
+StandardError=journal
+
+ExecStart=/usr/bin/python3 /var/www/horseracing/app.py --port 8005
+
+# Reload: send SIGHUP. The Python signal handler in app.py re-parses the
+# hypothesis catalogue from disk. Doesn't restart the process — useful when
+# you drop a new *_HYPOTHESIS.md file into the repo and want it picked up.
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Shutdown sequence:
+#   1. systemd sends SIGTERM to the main process (KillMode=mixed → main only).
+#   2. The asyncio SIGTERM handler in app.py flips SHUTTING_DOWN, terminates
+#      any in-flight backtest subprocess, and lets uvicorn drain HTTP/WS.
+#   3. If the main process is still alive after TimeoutStopSec, systemd
+#      SIGKILLs the whole cgroup (catches any orphaned children).
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Auto-restart on any non-zero exit (crash) or signal kill. RestartSec gives
+# the listening socket time to release before the next attempt.
+Restart=on-failure
+RestartSec=5
+
+# Filesystem hardening. Backtests write to data/, models/, predictions/, logs/
+# — all under /var/www/horseracing — so ReadWritePaths covers them.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/www/horseracing
+
+# Resource ceilings — XGBoost training can briefly spike RAM. Generous cap
+# avoids OOMing the box if a runaway job leaks.
+LimitNOFILE=8192
+MemoryMax=4G
+
+[Install]
+WantedBy=multi-user.target

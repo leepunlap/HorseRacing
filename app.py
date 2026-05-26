@@ -203,7 +203,20 @@ MAX_CHAT_HISTORY = 50
 
 # Tracks the one in-flight job (single-job server). Subsequent /api/run
 # calls receive 409 until the current job ends.
-current_run: dict = {"active": False, "model": None, "date": None, "started_at": None}
+# `_proc` (when present) is the asyncio.subprocess.Process running the
+# backtest — the signal handler uses it to terminate gracefully on shutdown.
+current_run: dict = {"active": False, "model": None, "date": None, "started_at": None, "_proc": None}
+
+# Set when systemd sends SIGTERM. /api/run and /api/batch refuse new work
+# while shutting down so we don't fire off a fresh backtest that systemd
+# will immediately SIGKILL once TimeoutStopSec elapses.
+SHUTTING_DOWN: bool = False
+
+# A unique identifier minted at process start. Browsers poll /api/health on a
+# timer; when STARTUP_ID changes the page reloads itself to pick up new
+# frontend code shipped by the restart. PID alone almost works but two
+# successive PIDs could collide on a busy box, so we add wallclock entropy.
+STARTUP_ID: str = f"{os.getpid()}-{int(datetime.now().timestamp())}"
 
 # Batch backtest queue job state
 batch_job: dict = {
@@ -240,14 +253,83 @@ async def periodic_scrape_odds():
         await asyncio.sleep(60)
 
 # ─── App Lifecycle ─────────────────────────────────────────
+import signal as _signal
+
+
+def _install_signal_handlers(loop: asyncio.AbstractEventLoop) -> None:
+    """Install our SIGHUP handler — hot-reload the hypothesis catalogue.
+
+    SIGTERM / SIGINT are intentionally NOT intercepted: uvicorn installs its
+    own handlers that flip should_exit, drain HTTP/WS connections, and then
+    trigger the lifespan shutdown block — which is where we kill the
+    in-flight backtest subprocess. Overwriting uvicorn's handlers would skip
+    the drain step and lead to systemd SIGKILL after TimeoutStopSec.
+    """
+    def _on_hup() -> None:
+        # Reload the hypothesis catalogue from disk so adding a new
+        # *_HYPOTHESIS.md file doesn't require a full restart.
+        global _ERIC_HYPS, _HYP_FEATURE_MAP
+        _ERIC_HYPS = _parse_hypotheses()
+        _HYP_FEATURE_MAP = {}
+        for _f in FEATURES:
+            for _hid in (_f.get('hypotheses') or []):
+                _HYP_FEATURE_MAP.setdefault(_hid, []).append({
+                    'name':         _f['name'],
+                    'name_zh':      _f.get('name_zh') or _f['name'],
+                    'name_en':      _f.get('name_en') or _f['name'],
+                    'category':     _f['category'],
+                    'category_zh':  FEATURE_CATEGORY_ZH.get(_f['category'], _f['category']),
+                })
+        print("[signal] SIGHUP received — hypothesis catalogue reloaded", flush=True)
+
+    try:
+        loop.add_signal_handler(_signal.SIGHUP, _on_hup)
+    except NotImplementedError:
+        # Windows or constrained environments: skip silently.
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    _install_signal_handlers(asyncio.get_running_loop())
     asyncio.create_task(periodic_scrape_odds())
+    print(f"[startup] horseracing app ready (PID {os.getpid()})", flush=True)
     yield
-    # Shutdown
+    # Shutdown — final chance to clean up. SHUTTING_DOWN was already set by
+    # the signal handler if this came from SIGTERM; set it here too for the
+    # rare cases where shutdown is triggered some other way.
+    global SHUTTING_DOWN
+    SHUTTING_DOWN = True
+    proc = current_run.get("_proc")
+    if proc is not None and proc.returncode is None:
+        try:
+            proc.terminate()
+            # Give the child a beat to exit before uvicorn closes its event loop.
+            await asyncio.wait_for(proc.wait(), timeout=5.0)
+        except (ProcessLookupError, asyncio.TimeoutError):
+            try: proc.kill()
+            except ProcessLookupError: pass
+    print("[shutdown] graceful shutdown complete", flush=True)
 
 app = FastAPI(title="馬場分析", lifespan=lifespan)
+
+
+# ─── Health endpoint ──────────────────────────────────────
+# Lightweight liveness probe for systemd `ExecStartPost` checks, monitoring,
+# or external load balancers. No auth required so it's safe to hit anonymously.
+@app.get("/api/health")
+async def health():
+    return {
+        "status":         "shutting_down" if SHUTTING_DOWN else "ok",
+        "pid":            os.getpid(),
+        # Browsers poll this and reload when startup_id changes — that's how
+        # the page picks up new frontend code after a `systemctl restart`.
+        "startup_id":     STARTUP_ID,
+        "active_run":     bool(current_run.get("active")),
+        "batch_active":   bool(batch_job.get("active")),
+        "scraper_active": bool(scraper_job.get("active")),
+    }
 
 # ─── Auth Routes ───────────────────────────────────────────
 @app.post("/api/auth/login")
@@ -1180,13 +1262,14 @@ async def _stream_subprocess_to_progress(model: str, date: str):
             cwd=str(BASE_DIR),
             env={**os.environ, "PYTHONUNBUFFERED": "1"},
         )
+        current_run["_proc"] = proc
         async for raw_line in proc.stdout:
             line = raw_line.decode("utf-8", errors="replace").rstrip()
             if line:
                 await progress_broadcast.broadcast({"type": "log", "text": line})
         await proc.wait()
         exit_code = proc.returncode
-        if exit_code == 0:
+        if exit_code == 0 and not SHUTTING_DOWN:
             retally_proc = await asyncio.create_subprocess_exec(
                 sys.executable, "-u", str(BASE_DIR / "backtest.py"),
                 "--model", model, "--retally",
@@ -1195,6 +1278,7 @@ async def _stream_subprocess_to_progress(model: str, date: str):
                 cwd=str(BASE_DIR),
                 env={**os.environ, "PYTHONUNBUFFERED": "1"},
             )
+            current_run["_proc"] = retally_proc
             async for raw_line in retally_proc.stdout:
                 line = raw_line.decode("utf-8", errors="replace").rstrip()
                 if line:
@@ -1209,7 +1293,7 @@ async def _stream_subprocess_to_progress(model: str, date: str):
         await progress_broadcast.broadcast({"type": "error", "text": str(e)})
     finally:
         current_run.update({"active": False, "model": None, "date": None,
-                            "started_at": None})
+                            "started_at": None, "_proc": None})
 
 
 async def _run_batch_backtest(model: str, dates: list):
@@ -1419,8 +1503,14 @@ async def run_strategy(request: Request, auth = Depends(verify_token)):
 
     Body: { "model": "<name>", "date": "YYYY-MM-DD" }
     Returns immediately; progress streams over /ws/progress.
-    Rejects with 409 if another job is already running.
+    Rejects with 409 if another job is already running or if the server is
+    shutting down (a fresh backtest would be SIGKILLed by systemd in seconds).
     """
+    if SHUTTING_DOWN:
+        return JSONResponse(status_code=503, content={
+            "error": "service_shutting_down",
+            "message": "Server is shutting down; please retry after it restarts."
+        })
     if current_run["active"]:
         raise HTTPException(status_code=409, detail={
             "message": "Another run is in progress",

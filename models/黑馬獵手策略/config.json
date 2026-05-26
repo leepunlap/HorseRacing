@@ -11,7 +11,7 @@
   "notes_en": "Edge threshold raised to 1.4, bets only on 6–15× odds horses, hunts for severely mispriced longshots, shrinkage kept at baseline.",
   "created": "2026-05-25",
   "active": false,
-  "enabled": true,
+  "enabled": false,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",

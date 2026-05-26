@@ -11,7 +11,7 @@
   "notes_en": "Shrinkage strength halved across the board; observed win rates of known horses/jockeys are adopted by the model faster, reducing pull toward the global average.",
   "created": "2026-05-25",
   "active": false,
-  "enabled": true,
+  "enabled": false,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",

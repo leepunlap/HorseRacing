@@ -11,7 +11,7 @@
   "notes_en": "Tree depth 5 → 3, regularisation coefficients doubled, min child weight raised to 20, edge ≥ 1.2 required to bet — few bets but precise.",
   "created": "2026-05-25",
   "active": false,
-  "enabled": true,
+  "enabled": false,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",

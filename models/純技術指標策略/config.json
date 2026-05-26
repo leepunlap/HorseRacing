@@ -11,7 +11,7 @@
   "notes_en": "Disables jockey × horse pair, jockey × trainer pair, and jockey WR features; keeps only objective technical indicators to test the model's dependence on jockey features.",
   "created": "2026-05-25",
   "active": false,
-  "enabled": true,
+  "enabled": false,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",

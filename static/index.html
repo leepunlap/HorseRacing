@@ -387,6 +387,37 @@ function _applyStaticI18n(){
 // Apply once at load so initial render matches stored language.
 document.addEventListener('DOMContentLoaded', _applyStaticI18n);
 
+// ─── Auto-reload on server restart ─────────────────────────
+// Poll /api/health every 15 s. The server stamps a STARTUP_ID at process
+// start; if we see a different id than the one cached from the first
+// successful poll, the server has been restarted (deploy, crash + auto-
+// restart, …) and likely shipped new frontend code, so we reload the page.
+// Network errors are tolerated — we only act on a *changed* id, not a
+// missing one.
+let _serverStartupId = null;
+let _reloadInProgress = false;
+async function _pollServerHealth(){
+  try{
+    const r = await fetch('/api/health', {cache: 'no-store'});
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d || !d.startup_id) return;
+    if(_serverStartupId === null){
+      _serverStartupId = d.startup_id;
+      return;
+    }
+    if(d.startup_id !== _serverStartupId && !_reloadInProgress){
+      _reloadInProgress = true;
+      console.log('[health] server restarted (startup_id changed) — reloading');
+      // Tiny delay to let any in-flight responses settle.
+      setTimeout(() => location.reload(), 250);
+    }
+  }catch(e){ /* server momentarily unreachable — keep polling */ }
+}
+setInterval(_pollServerHealth, 15000);
+// Kick once immediately so we capture the baseline id on load.
+_pollServerHealth();
+
 // ─── Navigation ────────────────────────────────────────────
 function toggleSidebar(){const sb=document.getElementById('sidebar');sb.classList.toggle('collapsed');document.querySelector('.sidebar-toggle').textContent=sb.classList.contains('collapsed')?'☰':'✕'}
 function go(name){
