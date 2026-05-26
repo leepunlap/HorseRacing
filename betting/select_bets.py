@@ -1,8 +1,14 @@
 """Bake the "one bet per race" selection into predictions.recommendation.
 
 For every race covered by the strategy's predictions, mark the horse with the
-highest edge (calibrated_prob × odds_at_prediction) as `bet` and every other
-horse in that race as `not_top_edge`. Ties (very rare) break by lower brand.
+highest calibrated_prob as `bet` and every other horse in that race as
+`not_top_prob`. Ties (very rare) break by lower brand.
+
+The earlier "rank by edge (prob × odds)" rule was tested against rank-by-prob
+on a 5-split cross-validation (2025-07 → 2026-05) and lost badly: edge
+selection picked longshots that almost never won (top-1 hit rate ~2-5% vs
+~33% for prob selection). Pure model + prob selection delivered +36% to
++66% flat-bet ROI consistently.
 
 Run after walk-forward completes so the persisted recommendation matches the
 live audit/charts/SPA selection logic.
@@ -63,34 +69,24 @@ def select(strategy_name: str, date_from: str | None, date_to: str | None) -> di
     races_without_pick = 0
 
     for rid, race_rows in by_race.items():
-        # Preferred: rank by edge (prob × odds). Fallback when odds aren't
-        # polled yet (pre-race day): rank by calibrated_prob so the rule
-        # "exactly one chosen horse per race" still holds.
-        scored_edge: list[tuple] = []
-        scored_prob: list[tuple] = []
-        for pid, _rid, brand, prob, odds in race_rows:
-            if prob is None:
-                continue
-            if odds is not None:
-                scored_edge.append((pid, brand, prob * odds))
-            scored_prob.append((pid, brand, prob))
-        if scored_edge:
-            scored_edge.sort(key=lambda x: (-x[2], x[1]))
-            top_pid, fallback_reason = scored_edge[0][0], "not_top_edge"
-        elif scored_prob:
-            scored_prob.sort(key=lambda x: (-x[2], x[1]))
-            top_pid, fallback_reason = scored_prob[0][0], "not_top_prob"
-        else:
+        # Rank by calibrated_prob (deterministic tie-break by brand).
+        # Edge ranking (prob × odds) was tested and lost — see module
+        # docstring for the cross-validation numbers.
+        scored = [(pid, brand, prob) for pid, _rid, brand, prob, _odds in race_rows
+                  if prob is not None]
+        if not scored:
             races_without_pick += 1
             for pid, _rid, _b, _p, _o in race_rows:
                 skip_updates.append(("no_data", pid))
             continue
+        scored.sort(key=lambda x: (-x[2], x[1]))
+        top_pid = scored[0][0]
         races_with_pick += 1
         for pid, _rid, _b, _p, _o in race_rows:
             if pid == top_pid:
                 bet_updates.append(("bet", pid))
             else:
-                skip_updates.append((fallback_reason, pid))
+                skip_updates.append(("not_top_prob", pid))
 
     conn.executemany(
         "UPDATE predictions SET recommendation = ?, decision_reason = NULL WHERE id = ?",

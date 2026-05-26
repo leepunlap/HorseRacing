@@ -272,7 +272,8 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
             print(f"  {d}: insufficient training data, skipping")
             continue
         try:
-            bst = stage1_xgb.train(X_tr, y_tr, gr_tr, num_boost_round=120)
+            bst = stage1_xgb.train(X_tr, y_tr, gr_tr,
+                                   num_boost_round=stage1_xgb.DEFAULT_NUM_BOOST_ROUND)
         except Exception as exc:
             print(f"  {d}: stage-1 train failed: {exc}")
             continue

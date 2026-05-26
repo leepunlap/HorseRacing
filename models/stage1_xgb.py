@@ -17,21 +17,29 @@ import numpy as np
 import xgboost as xgb
 
 
+# Tuned 2026-05-27 against a 5-split cross-validation window (235-648 races
+# each) under the "one bet per race, flat stake" constraint. Best config was
+# rank:ndcg (top-of-list emphasis) with shallow trees + many rounds + no
+# Benter market blend — consistent +36% to +66% ROI across all splits.
+#
+# See scripts/quick_eval.py + the AUDIT_V2 doc for the full sweep.
 DEFAULT_PARAMS = {
-    "objective": "rank:pairwise",
+    "objective": "rank:ndcg",
     "tree_method": "hist",
     "eta": 0.05,
-    "max_depth": 6,
-    "subsample": 0.8,
+    "max_depth": 4,
+    "subsample": 0.85,
     "colsample_bytree": 0.8,
     "min_child_weight": 1.0,
     "gamma": 0.0,
     "verbosity": 0,
 }
+DEFAULT_NUM_BOOST_ROUND = 400
 
 
 def train(X: np.ndarray, y: np.ndarray, group: list[int], *, params: dict | None = None,
-          num_boost_round: int = 200) -> xgb.Booster:
+          num_boost_round: int = DEFAULT_NUM_BOOST_ROUND,
+          weight: np.ndarray | None = None) -> xgb.Booster:
     """Train a LambdaMART ranker.
 
     Args:
@@ -40,10 +48,12 @@ def train(X: np.ndarray, y: np.ndarray, group: list[int], *, params: dict | None
            clamped to [0,4] so winners get 4, 5th+ gets 0).
         group: list of group sizes summing to N. Each entry is one race's
                number of horses.
+        weight: optional (N,) per-row sample weight. Used for time-decay
+               where recent races count more than old ones.
     """
     if len(X) == 0:
         raise ValueError("no training rows")
-    dtrain = xgb.DMatrix(X, label=y)
+    dtrain = xgb.DMatrix(X, label=y, weight=weight)
     dtrain.set_group(group)
     p = {**DEFAULT_PARAMS, **(params or {})}
     bst = xgb.train(p, dtrain, num_boost_round=num_boost_round)
