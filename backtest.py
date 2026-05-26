@@ -237,6 +237,58 @@ ODDS_CALIBRATION = {
     25: 0.3006,   # odds 25-100x: actual  1.7% model  5.5%
 }
 
+ODDS_BUCKETS = [0, 3, 5, 7, 10, 15, 25]
+
+class WalkForwardCalibration:
+    """Running calibration accumulators by odds bucket, updated per date.
+
+    Accumulates (pred_sum, actual_sum) per pool per bucket as dates are
+    processed in order. compute_factors() uses only dates processed so far —
+    no look-ahead. Before processing date N, the accumulator has dates 0..N-1.
+    """
+
+    def __init__(self):
+        self.buckets = ODDS_BUCKETS
+        self.acc = {pool: [(0.0, 0.0) for _ in range(len(self.buckets))]
+                    for pool in ('WIN', 'PLACE', 'Q', 'QP')}
+
+    def _bucket_idx(self, odds):
+        for i, b in enumerate(self.buckets):
+            if odds < b:
+                return i
+        return len(self.buckets) - 1
+
+    def update(self, pool: str, odds, pred_prob, actual: int):
+        idx = self._bucket_idx(odds)
+        p, a = self.acc[pool][idx]
+        self.acc[pool][idx] = (p + pred_prob, a + actual)
+
+    def compute_factors(self, pool: str) -> dict:
+        factors = {}
+        for i, b in enumerate(self.buckets):
+            p, a = self.acc[pool][i]
+            factors[b] = min(1.0, a / p) if p > 0 and a > 0 else 1.0
+        return factors
+
+    def apply(self, pool: str, odds, raw_prob) -> float:
+        if odds <= 1.0:
+            return raw_prob
+        factors = self.compute_factors(pool)
+        breaks = sorted(factors.keys())
+        lo, hi = 0, 100.0
+        for i, b in enumerate(breaks):
+            if odds < b:
+                lo = breaks[i-1] if i > 0 else 0
+                hi = b
+                break
+        else:
+            lo, hi = breaks[-1], 100.0
+        flo = factors.get(lo, 1.0)
+        fhi = factors.get(hi, 1.0)
+        factor = flo if hi == lo else flo + (fhi - flo) * (odds - lo) / (hi - lo)
+        return raw_prob * factor
+
+
 def calibrate_prob(raw_prob: float, win_odds: float) -> float:
     """Apply odds-bucket calibration factor with linear interpolation."""
     return _apply_calibration(raw_prob, win_odds, ODDS_CALIBRATION)
@@ -1300,6 +1352,8 @@ def retally(model_name: str, verbose: bool = False) -> dict:
         'per_date': [],
     }
 
+    wf = WalkForwardCalibration()
+
     date_dirs = sorted(
         d for d in out_dir.iterdir()
         if d.is_dir() and re.match(r'\d{4}-\d{2}-\d{2}$', d.name)
@@ -1386,16 +1440,20 @@ def retally(model_name: str, verbose: bool = False) -> dict:
             # ── WIN bets ──────────────────────────────────────────
             for h in horses:
                 odds = float(h.get('win_odds') or 0)
+                raw_prob = float(h.get('win_prob') or 0)
+                if odds > 1.0:
+                    won = h.get('brand') in win_set
+                    # Feed all horses into calibration accumulator
+                    wf.update('WIN', odds, raw_prob, 1 if won else 0)
                 if odds <= 1.0 or odds < bet_min or odds > bet_max:
                     continue
-                raw_prob = float(h.get('win_prob') or 0)
-                cal_prob = calibrate_prob(raw_prob, odds)
+                cal_prob = wf.apply('WIN', odds, raw_prob)
                 edge = cal_prob * odds
                 if edge <= bet_edge:
                     continue
                 day['bets_placed']  += 1
                 day['units_staked'] += 1.0
-                if h.get('brand') in win_set:
+                if won:
                     day['bets_won']  += 1
                     day['units_net'] += odds - 1.0
                 else:
@@ -1411,13 +1469,19 @@ def retally(model_name: str, verbose: bool = False) -> dict:
             # ── PLACE bets (via Harville) ────────────────────────
             if hv is not None and place_edge > 0:
                 for idx, h in enumerate(horses):
-                    place_prob = float(hv['place_probs'][idx])
+                    odds_val = float(h.get('win_odds') or 0)
                     brand = h.get('brand', '')
                     div_key = (course_for_date, int(rn), 'PLACE', brand)
                     place_div = div_lookup.get(div_key, 0.0)
+                    if odds_val > 1.0:
+                        # Feed into calibration
+                        raw_place_prob = float(hv['place_probs'][idx])
+                        placed = brand in plc_set
+                        wf.update('PLACE', odds_val, raw_place_prob, 1 if placed else 0)
                     if place_div <= 1.0:
                         continue
-                    place_edge_val = place_prob * place_div
+                    cal_place_prob = wf.apply('PLACE', odds_val, float(hv['place_probs'][idx]))
+                    place_edge_val = cal_place_prob * place_div
                     if place_edge_val <= place_edge:
                         continue
                     day['place_bets_placed']  += 1
@@ -1443,11 +1507,16 @@ def retally(model_name: str, verbose: bool = False) -> dict:
                     if q_edge > 0:
                         q_div_key = (course_for_date, int(rn), 'QIN', comb)
                         q_div = div_lookup.get(q_div_key, 0.0)
-                        q_edge_val = qp * q_div
+                        avg_odds = (float(horses[a].get('win_odds') or 0) + float(horses[b].get('win_odds') or 0)) / 2
+                        q_won = brands[0] in top2_set and brands[1] in top2_set
+                        if avg_odds > 1.0:
+                            wf.update('Q', avg_odds, qp, 1 if q_won else 0)
+                        cal_qp = wf.apply('Q', avg_odds, qp)
+                        q_edge_val = cal_qp * q_div
                         if q_div > 1.0 and q_edge_val > q_edge:
                             day['q_bets_placed']  += 1
                             day['q_units_staked'] += 1.0
-                            if brands[0] in top2_set and brands[1] in top2_set:
+                            if q_won:
                                 day['q_bets_won']  += 1
                                 day['q_units_net'] += q_div - 1.0
                             else:
@@ -1456,7 +1525,12 @@ def retally(model_name: str, verbose: bool = False) -> dict:
                     if qp_edge > 0:
                         qp_div_key = (course_for_date, int(rn), 'QPL', comb)
                         qp_div = div_lookup.get(qp_div_key, 0.0)
-                        qp_edge_val = qpp * qp_div
+                        avg_odds_qp = (float(horses[a].get('win_odds') or 0) + float(horses[b].get('win_odds') or 0)) / 2
+                        qpp_won = brands[0] in plc_set and brands[1] in plc_set
+                        if avg_odds_qp > 1.0:
+                            wf.update('QP', avg_odds_qp, qpp, 1 if qpp_won else 0)
+                        cal_qpp = wf.apply('QP', avg_odds_qp, qpp)
+                        qp_edge_val = cal_qpp * qp_div
                         if qp_div > 1.0 and qp_edge_val > qp_edge:
                             day['qp_bets_placed']  += 1
                             day['qp_units_staked'] += 1.0
