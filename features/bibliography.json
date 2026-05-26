@@ -1,0 +1,479 @@
+{
+  "B1": {
+    "id": "B1",
+    "compact": "Benter 1994",
+    "author": "Benter, W",
+    "year": 1994,
+    "title": "Computer Based Horse Race Handicapping and Wagering Systems: A Report",
+    "url": "https://gwern.net/doc/statistics/decision/1994-benter.pdf",
+    "raw": "Benter, W. (1994). *Computer Based Horse Race Handicapping and Wagering Systems: A Report*. In Hausch et al., Efficiency of Racetrack Betting Markets. https://gwern.net/doc/statistics/decision/1994-benter.pdf"
+  },
+  "B2": {
+    "id": "B2",
+    "compact": "Brisnet",
+    "author": "Brisnet",
+    "year": null,
+    "title": "Ultimate Past Performances & Trainer Stats",
+    "url": "https://www.brisnet.com/library/uwc.pdf",
+    "raw": "Brisnet. *Ultimate Past Performances & Trainer Stats*. https://www.brisnet.com/library/uwc.pdf ; https://www.brisnet.com/racing/news/trainer-stats/"
+  },
+  "B3": {
+    "id": "B3",
+    "compact": "Timeform",
+    "author": "Timeform",
+    "year": null,
+    "title": "Master Ratings & How Ratings for a Race are Calculated",
+    "url": "https://www.timeform.com/horse-racing/features/timeform-ratings/how_the_ratings_for_a_race_are_calculated",
+    "raw": "Timeform. *Master Ratings & How Ratings for a Race are Calculated*. https://www.timeform.com/horse-racing/features/timeform-ratings/how_the_ratings_for_a_race_are_calculated"
+  },
+  "B4": {
+    "id": "B4",
+    "compact": "Daily Racing Form",
+    "author": "Daily Racing Form",
+    "year": null,
+    "title": "Beyer Speed Figures",
+    "url": "https://promos.drf.com/Beyer",
+    "raw": "Daily Racing Form. *Beyer Speed Figures*. https://promos.drf.com/Beyer ; https://promos.drf.com/beyerarchive"
+  },
+  "B5": {
+    "id": "B5",
+    "compact": "BloodHorse",
+    "author": "BloodHorse",
+    "year": null,
+    "title": "Sire Lists & Turf/Dirt breakdown",
+    "url": "https://www.bloodhorse.com/horse-racing/thoroughbred-breeding/sire-lists/",
+    "raw": "BloodHorse. *Sire Lists & Turf/Dirt breakdown*. https://www.bloodhorse.com/horse-racing/thoroughbred-breeding/sire-lists/"
+  },
+  "B6": {
+    "id": "B6",
+    "compact": "EquinEdge",
+    "author": "EquinEdge",
+    "year": null,
+    "title": "Class Drop, Class Rise, Layoff & Pace handicapping glossaries",
+    "url": "https://equinedge.com/glossary/handicapping/what-is-a-class-drop",
+    "raw": "EquinEdge. *Class Drop, Class Rise, Layoff & Pace handicapping glossaries*. https://equinedge.com/glossary/handicapping/what-is-a-class-drop ; https://equinedge.com/glossary/handicapping/layoff"
+  },
+  "B7": {
+    "id": "B7",
+    "compact": "PaddyPower",
+    "author": "PaddyPower",
+    "year": null,
+    "title": "What advantages do apprentice jockeys get",
+    "url": "https://news.paddypower.com/guides/2023/02/01/apprentice-jockeys-advantages-allowance-conditions-professionals-horse-racing-betting/",
+    "raw": "PaddyPower. *What advantages do apprentice jockeys get*. https://news.paddypower.com/guides/2023/02/01/apprentice-jockeys-advantages-allowance-conditions-professionals-horse-racing-betting/"
+  },
+  "B8": {
+    "id": "B8",
+    "compact": "Mash",
+    "author": "Mash, Stuart",
+    "year": null,
+    "title": "HorsePackage – Harville model implementation",
+    "url": "https://github.com/stumash/HorsePackage",
+    "raw": "Mash, Stuart. *HorsePackage – Harville model implementation*. https://github.com/stumash/HorsePackage ; PaceAdvantage forum on Discounted Harville. http://www.paceadvantage.com/forum/archive/index.php/t-35264.html"
+  },
+  "B9": {
+    "id": "B9",
+    "compact": "Lo",
+    "author": "Lo, V., Bacon-Shone, J",
+    "year": null,
+    "title": "Approximating the ordering probabilities of multi-entry competitions",
+    "url": "https://www.worldscientific.com/doi/pdf/10.1142/9789812819192_bmatter",
+    "raw": "Lo, V., Bacon-Shone, J. *Approximating the ordering probabilities of multi-entry competitions* (Henery / Plackett-Luce review). World Scientific compendium back matter. https://www.worldscientific.com/doi/pdf/10.1142/9789812819192_bmatter"
+  },
+  "B10": {
+    "id": "B10",
+    "compact": "Timeform / Rowlands",
+    "author": "Timeform / Rowlands, S",
+    "year": null,
+    "title": "Finishing Speed Percentage",
+    "url": "https://raceiq.com/par-sectionals-fsp/",
+    "raw": "Timeform / Rowlands, S. *Finishing Speed Percentage*. https://raceiq.com/par-sectionals-fsp/ ; https://www.attheraces.com/sectionalsinfo"
+  },
+  "B11": {
+    "id": "B11",
+    "compact": "EquinEdge",
+    "author": "EquinEdge",
+    "year": null,
+    "title": "Running Style, Pace Map, First-time Blinkers, Second-time Lasix",
+    "url": "https://equinedge.com/glossary/key-factors/running-style",
+    "raw": "EquinEdge. *Running Style, Pace Map, First-time Blinkers, Second-time Lasix*. https://equinedge.com/glossary/key-factors/running-style ; https://equinedge.com/glossary/key-factors/second-time-blinkers-or-lasix"
+  },
+  "B12": {
+    "id": "B12",
+    "compact": "Betting Gods",
+    "author": "Betting Gods",
+    "year": null,
+    "title": "Pace Makes the Race – pacesetters vs closers",
+    "url": "https://bettinggods.com/horse-racing/pace-makes-the-race-an-advanced-guide-to-predicting-race-tempo/",
+    "raw": "Betting Gods. *Pace Makes the Race – pacesetters vs closers*. https://bettinggods.com/horse-racing/pace-makes-the-race-an-advanced-guide-to-predicting-race-tempo/"
+  },
+  "B13": {
+    "id": "B13",
+    "compact": "Punter2Pro",
+    "author": "Punter2Pro",
+    "year": null,
+    "title": "Beating the Closing Line (CLV) – the key to successful sports betting",
+    "url": "https://punter2pro.com/punters-guide-beating-the-sp/",
+    "raw": "Punter2Pro. *Beating the Closing Line (CLV) – the key to successful sports betting*. https://punter2pro.com/punters-guide-beating-the-sp/"
+  },
+  "B14": {
+    "id": "B14",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Race Card, Handicapping Policy, Trainer & Jockey Rankings",
+    "url": "https://racing.hkjc.com/racing/english/learn-racing/learn-question.aspx",
+    "raw": "HKJC. *Race Card, Handicapping Policy, Trainer & Jockey Rankings*. https://racing.hkjc.com/racing/english/learn-racing/learn-question.aspx ; https://racing.hkjc.com/racing/english/racing-info/handicap_policy.asp"
+  },
+  "B15": {
+    "id": "B15",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Trainer Ranking",
+    "url": "https://racing.hkjc.com/racing/information/English/Trainers/TrainerRanking.aspx",
+    "raw": "HKJC. *Trainer Ranking*. https://racing.hkjc.com/racing/information/English/Trainers/TrainerRanking.aspx"
+  },
+  "B16": {
+    "id": "B16",
+    "compact": "TwinSpires",
+    "author": "TwinSpires",
+    "year": null,
+    "title": "Brisnet Speed and Pace ratings, Pick 4 strategy",
+    "url": "https://www.twinspires.com/edge/racing/what-are-brisnet-speed-and-pace-ratings/",
+    "raw": "TwinSpires. *Brisnet Speed and Pace ratings, Pick 4 strategy*. https://www.twinspires.com/edge/racing/what-are-brisnet-speed-and-pace-ratings/ ; https://www.twinspires.com/betting-guides/how-to-bet-pick-4-horse-racing/"
+  },
+  "B17": {
+    "id": "B17",
+    "compact": "EquinEdge",
+    "author": "EquinEdge",
+    "year": null,
+    "title": "Layoff & Race Spacing",
+    "url": "https://equinedge.com/glossary/key-factors/race-spacing",
+    "raw": "EquinEdge. *Layoff & Race Spacing*. https://equinedge.com/glossary/key-factors/race-spacing"
+  },
+  "B18": {
+    "id": "B18",
+    "compact": "Wikipedia",
+    "author": "Wikipedia",
+    "year": null,
+    "title": "Graded stakes race & Group races (purse thresholds)",
+    "url": "https://en.wikipedia.org/wiki/Graded_stakes_race",
+    "raw": "Wikipedia. *Graded stakes race & Group races (purse thresholds)*. https://en.wikipedia.org/wiki/Graded_stakes_race ; https://en.wikipedia.org/wiki/Group_races"
+  },
+  "B19": {
+    "id": "B19",
+    "compact": "RacingBet",
+    "author": "RacingBet",
+    "year": null,
+    "title": "Hong Kong racing: understanding the class system & Griffins",
+    "url": "https://www.racingbet.com.au/hong-kong-racing-understanding-the-class-system/",
+    "raw": "RacingBet. *Hong Kong racing: understanding the class system & Griffins*. https://www.racingbet.com.au/hong-kong-racing-understanding-the-class-system/"
+  },
+  "B20": {
+    "id": "B20",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Barrier Trials",
+    "url": "https://racing.hkjc.com/racing/information/english/Horse/Btresult.aspx",
+    "raw": "HKJC. *Barrier Trials*. https://racing.hkjc.com/racing/information/english/Horse/Btresult.aspx"
+  },
+  "B21": {
+    "id": "B21",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Trackwork",
+    "url": "https://racing.hkjc.com/en-us/local/information/localtrackwork",
+    "raw": "HKJC. *Trackwork*. https://racing.hkjc.com/en-us/local/information/localtrackwork"
+  },
+  "B22": {
+    "id": "B22",
+    "compact": "EquinEdge",
+    "author": "EquinEdge",
+    "year": null,
+    "title": "Impact Value, A/E, Pool Impact Value, Value Bet",
+    "url": "https://www.flatstats.co.uk/blog/impact-values.html",
+    "raw": "EquinEdge. *Impact Value, A/E, Pool Impact Value, Value Bet*. https://www.flatstats.co.uk/blog/impact-values.html ; https://equinedge.com/glossary/handicapping/value-bet"
+  },
+  "B23": {
+    "id": "B23",
+    "compact": "Aldous",
+    "author": "Aldous, D. (Berkeley)",
+    "year": null,
+    "title": "Order statistics of horse racing and the randomly broken stick",
+    "url": "https://arxiv.org/pdf/1612.02567",
+    "raw": "Aldous, D. (Berkeley). *Order statistics of horse racing and the randomly broken stick*. https://arxiv.org/pdf/1612.02567"
+  },
+  "B24": {
+    "id": "B24",
+    "compact": "Pubmed",
+    "author": "Pubmed",
+    "year": null,
+    "title": "Review of furosemide (Lasix) in horse racing",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/9673965/",
+    "raw": "Pubmed. *Review of furosemide (Lasix) in horse racing*. https://pubmed.ncbi.nlm.nih.gov/9673965/"
+  },
+  "B25": {
+    "id": "B25",
+    "compact": "Journal of Prediction Markets",
+    "author": "Journal of Prediction Markets",
+    "year": null,
+    "title": "A Hierarchical Bayesian Analysis of Horse Racing",
+    "url": "https://www.ubplj.org/index.php/jpm/article/view/590",
+    "raw": "Journal of Prediction Markets. *A Hierarchical Bayesian Analysis of Horse Racing*. https://www.ubplj.org/index.php/jpm/article/view/590"
+  },
+  "B26": {
+    "id": "B26",
+    "compact": "Wikipedia / Pedigree Online",
+    "author": "Wikipedia / Pedigree Online",
+    "year": null,
+    "title": "Dosage Index, Dosage Profile, Centre of Distribution",
+    "url": "https://en.wikipedia.org/wiki/Dosage_Index",
+    "raw": "Wikipedia / Pedigree Online. *Dosage Index, Dosage Profile, Centre of Distribution*. https://en.wikipedia.org/wiki/Dosage_Index ; https://www.pedigreeonline.com/knowledgebase/reports/dosage-profile-chef-de-race"
+  },
+  "B27": {
+    "id": "B27",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "How To Use This Report – Exceptional Factors (weight indicators)",
+    "url": "https://www.hkjc.com/English/help/ExceptionHelp_eng.htm",
+    "raw": "HKJC. *How To Use This Report – Exceptional Factors (weight indicators)*. https://www.hkjc.com/English/help/ExceptionHelp_eng.htm"
+  },
+  "B28": {
+    "id": "B28",
+    "compact": "Punter2Pro",
+    "author": "Punter2Pro",
+    "year": null,
+    "title": "Impact of Weather on Horse Racing & Racecourses",
+    "url": "https://punter2pro.com/impact-weather-horse-racing-betting/",
+    "raw": "Punter2Pro. *Impact of Weather on Horse Racing & Racecourses*. https://punter2pro.com/impact-weather-horse-racing-betting/"
+  },
+  "B29": {
+    "id": "B29",
+    "compact": "Arioneo",
+    "author": "Arioneo",
+    "year": null,
+    "title": "Weather conditions: performance of racehorses",
+    "url": "https://training.arioneo.com/en/weather-conditions-how-do-they-affect-the-performance-of-racehorses/",
+    "raw": "Arioneo. *Weather conditions: performance of racehorses*. https://training.arioneo.com/en/weather-conditions-how-do-they-affect-the-performance-of-racehorses/"
+  },
+  "B30": {
+    "id": "B30",
+    "compact": "FlatStats",
+    "author": "FlatStats",
+    "year": null,
+    "title": "Impact Values & A/E in betting markets",
+    "url": "https://www.flatstats.co.uk/blog/impact-values.html",
+    "raw": "FlatStats. *Impact Values & A/E in betting markets*. https://www.flatstats.co.uk/blog/impact-values.html"
+  },
+  "B31": {
+    "id": "B31",
+    "compact": "arXiv",
+    "author": "arXiv",
+    "year": null,
+    "title": "Learning-to-Rank with Partitioned Preference: Fast Estimation for the Plackett-Luce Model",
+    "url": "https://arxiv.org/pdf/2006.05067",
+    "raw": "arXiv. *Learning-to-Rank with Partitioned Preference: Fast Estimation for the Plackett-Luce Model*. https://arxiv.org/pdf/2006.05067"
+  },
+  "B32": {
+    "id": "B32",
+    "compact": "EquianalytiX",
+    "author": "EquianalytiX",
+    "year": null,
+    "title": "Market Movers Horse Racing – Odds Movements Guide",
+    "url": "https://www.equianalytix.com/hubs/odds-movements-market-movers",
+    "raw": "EquianalytiX. *Market Movers Horse Racing – Odds Movements Guide*. https://www.equianalytix.com/hubs/odds-movements-market-movers"
+  },
+  "B33": {
+    "id": "B33",
+    "compact": "PaddyPower",
+    "author": "PaddyPower",
+    "year": null,
+    "title": "Colt, filly, gelding, stallion, mare – sex allowance",
+    "url": "https://news.paddypower.com/guides/2024/02/02/difference-between-colt-filly-gelding-stallion-mare-horse-racing/",
+    "raw": "PaddyPower. *Colt, filly, gelding, stallion, mare – sex allowance*. https://news.paddypower.com/guides/2024/02/02/difference-between-colt-filly-gelding-stallion-mare-horse-racing/"
+  },
+  "B34": {
+    "id": "B34",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Form Guide tutorial – Horse Wt. (Declaration) & Wt.+/-",
+    "url": "https://www.hkjc.com/english/formguide/tutorial.html",
+    "raw": "HKJC. *Form Guide tutorial – Horse Wt. (Declaration) & Wt.+/-*. https://www.hkjc.com/english/formguide/tutorial.html"
+  },
+  "B35": {
+    "id": "B35",
+    "compact": "Precision Tipsters",
+    "author": "Precision Tipsters",
+    "year": null,
+    "title": "Understanding Market Moves – Drifters & Steamers",
+    "url": "https://precisiontipsters.co.uk/2025/10/21/understanding-horse-racing-market-moves/",
+    "raw": "Precision Tipsters. *Understanding Market Moves – Drifters & Steamers*. https://precisiontipsters.co.uk/2025/10/21/understanding-horse-racing-market-moves/"
+  },
+  "B36": {
+    "id": "B36",
+    "compact": "PuntLab",
+    "author": "PuntLab",
+    "year": null,
+    "title": "Barrier Draws & Track Bias – Australian Racing analysis style applied to HK",
+    "url": "https://thepuntlab.com/barrier-draws-track-bias/",
+    "raw": "PuntLab. *Barrier Draws & Track Bias – Australian Racing analysis style applied to HK*. https://thepuntlab.com/barrier-draws-track-bias/"
+  },
+  "B37": {
+    "id": "B37",
+    "compact": "Wikipedia",
+    "author": "Wikipedia",
+    "year": null,
+    "title": "Pick 6 (horse racing)",
+    "url": "https://en.wikipedia.org/wiki/Pick_6_(horse_racing",
+    "raw": "Wikipedia. *Pick 6 (horse racing)*. https://en.wikipedia.org/wiki/Pick_6_(horse_racing)"
+  },
+  "B38": {
+    "id": "B38",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Veterinary Records Database",
+    "url": "https://racing.hkjc.com/racing/information/english/veterinaryrecords/ovedatabase.aspx",
+    "raw": "HKJC. *Veterinary Records Database*. https://racing.hkjc.com/racing/information/english/veterinaryrecords/ovedatabase.aspx"
+  },
+  "B39": {
+    "id": "B39",
+    "compact": "HKJC",
+    "author": "HKJC",
+    "year": null,
+    "title": "Roarers Database",
+    "url": "https://racing.hkjc.com/racing/information/english/VeterinaryRecords/OVERoar.aspx",
+    "raw": "HKJC. *Roarers Database*. https://racing.hkjc.com/racing/information/english/VeterinaryRecords/OVERoar.aspx"
+  },
+  "B40": {
+    "id": "B40",
+    "compact": "CDC Gaming",
+    "author": "CDC Gaming",
+    "year": null,
+    "title": "Syndicates, algorithms, and beating the horses in Hong Kong – Benter, Ranogajec / Marantelli context",
+    "url": "https://cdcgaming.com/commentary/syndicates-algorithms-and-beating-the-horses-in-hong-kong/",
+    "raw": "CDC Gaming. *Syndicates, algorithms, and beating the horses in Hong Kong – Benter, Ranogajec / Marantelli context*. https://cdcgaming.com/commentary/syndicates-algorithms-and-beating-the-horses-in-hong-kong/"
+  },
+  "B41": {
+    "id": "B41",
+    "compact": "RaceHP.ai",
+    "author": "RaceHP.ai",
+    "year": null,
+    "title": "Track Bias in Horse Racing – identification & use",
+    "url": "https://racehp.ai/glossary/track-bias/",
+    "raw": "RaceHP.ai. *Track Bias in Horse Racing – identification & use*. https://racehp.ai/glossary/track-bias/"
+  },
+  "B42": {
+    "id": "B42",
+    "compact": "EquinEdge / Cheltenham",
+    "author": "EquinEdge / Cheltenham",
+    "year": null,
+    "title": "Liquidity & Overround in Exchange Betting",
+    "url": "https://www.cheltenhambettingoffers.com/news/what-is-liquidity-in-exchange-betting-and-why-does-it-matter-for-betting-on-horse-racing/",
+    "raw": "EquinEdge / Cheltenham. *Liquidity & Overround in Exchange Betting*. https://www.cheltenhambettingoffers.com/news/what-is-liquidity-in-exchange-betting-and-why-does-it-matter-for-betting-on-horse-racing/ ; https://equinedge.com/glossary/racing-data-and-statistics/what-is-overround-in-horse-racing-betting-pools"
+  },
+  "B43": {
+    "id": "B43",
+    "compact": "RaceiQ",
+    "author": "RaceiQ",
+    "year": null,
+    "title": "Stride Data – wearable GPS analysis",
+    "url": "https://raceiq.com/stride-data/",
+    "raw": "RaceiQ. *Stride Data – wearable GPS analysis*. https://raceiq.com/stride-data/"
+  },
+  "B44": {
+    "id": "B44",
+    "compact": "BEVA Equine Veterinary Education",
+    "author": "BEVA Equine Veterinary Education",
+    "year": null,
+    "title": "Wearable commercially available biometric-monitoring devices in gallop racing",
+    "url": "https://beva.onlinelibrary.wiley.com/doi/full/10.1111/eve.13800",
+    "raw": "BEVA Equine Veterinary Education. *Wearable commercially available biometric-monitoring devices in gallop racing* (Kee, 2023). https://beva.onlinelibrary.wiley.com/doi/full/10.1111/eve.13800"
+  },
+  "B45": {
+    "id": "B45",
+    "compact": "PMC",
+    "author": "PMC",
+    "year": null,
+    "title": "Locomotory Profiles in Thoroughbreds: Peak Stride Length and Frequency",
+    "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9741461/",
+    "raw": "PMC. *Locomotory Profiles in Thoroughbreds: Peak Stride Length and Frequency*. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9741461/"
+  },
+  "B46": {
+    "id": "B46",
+    "compact": "Korea Science",
+    "author": "Korea Science",
+    "year": null,
+    "title": "Horse race rank prediction using learning-to-rank approaches",
+    "url": "https://koreascience.kr/article/JAKO202414143309228.page",
+    "raw": "Korea Science. *Horse race rank prediction using learning-to-rank approaches* (Korean Journal of Applied Statistics, 2024). https://koreascience.kr/article/JAKO202414143309228.page"
+  },
+  "B47": {
+    "id": "B47",
+    "compact": "Korean Society of Computer & Information",
+    "author": "Korean Society of Computer & Information",
+    "year": null,
+    "title": "Machine Learning-based LTR for Horse Race Prediction",
+    "url": "https://journal.kci.go.kr/jksci/archive/articleView?artiId=ART003266151",
+    "raw": "Korean Society of Computer & Information. *Machine Learning-based LTR for Horse Race Prediction* (2024-2025 dataset, CatBoost / XGBoost / LightGBM). https://journal.kci.go.kr/jksci/archive/articleView?artiId=ART003266151"
+  },
+  "B48": {
+    "id": "B48",
+    "compact": "Snowberg 2010",
+    "author": "Snowberg, E. & Wolfers, J",
+    "year": 2010,
+    "title": "Explaining the Favorite-Longshot Bias: Is it Risk-Love or Misperceptions?",
+    "url": "https://eriksnowberg.com/papers/Snowberg-Wolfers%20Risk%20Love%20or%20Decision%20Weights3.pdf",
+    "raw": "Snowberg, E. & Wolfers, J. (2010). *Explaining the Favorite-Longshot Bias: Is it Risk-Love or Misperceptions?* Journal of Political Economy 118(4). https://eriksnowberg.com/papers/Snowberg-Wolfers%20Risk%20Love%20or%20Decision%20Weights3.pdf"
+  },
+  "B49": {
+    "id": "B49",
+    "compact": "Veitch",
+    "author": "Veitch, P",
+    "year": null,
+    "title": "Enemy Number One",
+    "url": "https://thedarkroom.co.uk/patrick-veitch-the-mathematical-genius-of-professional-horse-racing-gambling/",
+    "raw": "Veitch, P. *Enemy Number One* (80-factor handicapping methodology). https://thedarkroom.co.uk/patrick-veitch-the-mathematical-genius-of-professional-horse-racing-gambling/"
+  },
+  "B50": {
+    "id": "B50",
+    "compact": "pbovard63",
+    "author": "pbovard63",
+    "year": null,
+    "title": "Predicting_Hong_Kong_Horse_Racing_Finishes",
+    "url": "https://github.com/pbovard63/Predicting_Hong_Kong_Horse_Racing_Finishes",
+    "raw": "pbovard63. *Predicting_Hong_Kong_Horse_Racing_Finishes* – Kaggle HK feature engineering reference. https://github.com/pbovard63/Predicting_Hong_Kong_Horse_Racing_Finishes"
+  },
+  "B51": {
+    "id": "B51",
+    "compact": "cullensun (Kaggle)",
+    "author": "cullensun (Kaggle)",
+    "year": null,
+    "title": "Deep Learning Model for Hong Kong Horse Racing",
+    "url": "https://www.kaggle.com/code/cullensun/deep-learning-model-for-hong-kong-horse-racing",
+    "raw": "cullensun (Kaggle). *Deep Learning Model for Hong Kong Horse Racing*. https://www.kaggle.com/code/cullensun/deep-learning-model-for-hong-kong-horse-racing"
+  },
+  "B52": {
+    "id": "B52",
+    "compact": "Equibase",
+    "author": "Equibase",
+    "year": null,
+    "title": "Using Speed and Pace Figures and Class Ratings – ITV / DTV / Pace Style Figures",
+    "url": "https://www.equibase.com/products/speedpace.pdf",
+    "raw": "Equibase. *Using Speed and Pace Figures and Class Ratings – ITV / DTV / Pace Style Figures*. https://www.equibase.com/products/speedpace.pdf"
+  },
+  "B53": {
+    "id": "B53",
+    "compact": "Lady & The Track",
+    "author": "Lady & The Track",
+    "year": null,
+    "title": "Explaining DRF, BRIS and TimeformUS Past Performances",
+    "url": "https://ladyandthetrack.com/ladys-guide-horse-racing/explaining-drf-bris-timeformus-past-performances",
+    "raw": "Lady & The Track. *Explaining DRF, BRIS and TimeformUS Past Performances*. https://ladyandthetrack.com/ladys-guide-horse-racing/explaining-drf-bris-timeformus-past-performances"
+  }
+}

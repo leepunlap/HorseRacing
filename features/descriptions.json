@@ -1,0 +1,3263 @@
+{
+  "H001": {
+    "id": "H001",
+    "category": 1,
+    "name_zh": "馬齡",
+    "name_en": "Age",
+    "display_name_zh": "馬齡（Benter 1994）",
+    "display_name_en": "Age (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1"
+    ],
+    "description_zh": "馬匹年齡（年），香港賽馬以 3-5 歲為主流區間，是 Bolton-Chapman 1986 以來最基礎的賽馬特徵之一。",
+    "description_en": "Horse age in years. Hong Kong racing is dominated by 3-5 year olds; age serves as a coarse proxy for physical maturity and stamina ceiling.",
+    "notes_zh": "技術層面：年齡是 multinomial logit 條件特徵之一，捕捉成熟度曲線。3 歲馬於短途 (≤1200m) 表現接近高峰，4-5 歲於中長途 (≥1600m) 漸入高峰。香港賽事年齡上限約 11 歲，老馬普遍受年齡-評分曲線壓制。\n通俗層面：就像運動員一樣，馬匹有黃金期。三歲馬還年輕貪玩，七歲後體能下滑，最強的多是四到五歲。",
+    "notes_en": "Technical: age is a baseline conditioning variable in every serious racing logit since Bolton-Chapman 1986 [B1]. Three-year-olds peak in sprints (≤1200m); four- and five-year-olds dominate middle and long distances. The HK rating system implicitly penalises older horses through the handicap curve.\nLayman: like athletes, horses have a prime — usually 4 to 5 years old. Three-year-olds are physically immature; once past 7, performance falls off.",
+    "enabled_default": true,
+    "compute_fn_name": "h001_age"
+  },
+  "H002": {
+    "id": "H002",
+    "category": 1,
+    "name_zh": "騸馬標記",
+    "name_en": "Gelding flag",
+    "display_name_zh": "騸馬標記（PaddyPower）",
+    "display_name_en": "Gelding flag (PaddyPower)",
+    "primary_source": "B33",
+    "all_sources": [
+      "B33"
+    ],
+    "description_zh": "騸馬標記。香港賽馬約 85% 為閹馬 (gelding)，閹割後性情穩定、訓練易於管控，是 HKJC 主流類別。",
+    "description_en": "Binary flag for geldings. Roughly 85% of HK runners are gelded — castration steadies temperament and simplifies handling, making gelding the dominant HKJC class.",
+    "notes_zh": "技術層面：性別 → 行為穩定性 → 表現一致性。閹割消除睪固酮波動，減少賽前焦躁。HK 因競爭環境、馬廄空間有限，繁殖價值低，閹割比例極高。\n通俗層面：就是公馬被去勢，脾氣較好、跑得專心。香港跑馬大部分都是閹馬，純種公馬反而少見。",
+    "notes_en": "Technical: gelding eliminates testosterone-driven temperament variance, improving consistency from race to race. HK has limited stallion-quality breeding demand and very high stable competition, so gelding is the default.\nLayman: a gelding is a castrated male horse. They're calmer and easier to train, which is why nearly all HK runners are geldings.",
+    "enabled_default": true,
+    "compute_fn_name": "h002_gelding"
+  },
+  "H003": {
+    "id": "H003",
+    "category": 1,
+    "name_zh": "性別",
+    "name_en": "Sex",
+    "display_name_zh": "性別（PaddyPower）",
+    "display_name_en": "Sex (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7",
+      "B33"
+    ],
+    "description_zh": "colt（雄駒）/filly（雌駒）/gelding（騸馬）/mare（雌馬）；雌馬於高班次（Group 1）有 3 lb 性別讓磅",
+    "description_en": "colt/filly/gelding/mare encoded 0-3",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h003_sex"
+  },
+  "H004": {
+    "id": "H004",
+    "category": 1,
+    "name_zh": "馬色",
+    "name_en": "Colour",
+    "display_name_zh": "馬色（BloodHorse）",
+    "display_name_en": "Colour (BloodHorse)",
+    "primary_source": "B5",
+    "all_sources": [
+      "B5"
+    ],
+    "description_zh": "bay/chestnut/grey 等；雖弱訊號，但與部分基因標記相關",
+    "description_en": "Coat colour encoded",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h004_colour"
+  },
+  "H005": {
+    "id": "H005",
+    "category": 1,
+    "name_zh": "出生月份",
+    "name_en": "Birth month",
+    "display_name_zh": "出生月份（Benter 1994）",
+    "display_name_en": "Birth month (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1",
+      "B23"
+    ],
+    "description_zh": "北半球三歲馬中，1-2 月出生者比 6-7 月出生者平均勝率高約 8%；用於 cohort 比較",
+    "description_en": "Cohort proxy; northern 1-2 favoured",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H006": {
+    "id": "H006",
+    "category": 1,
+    "name_zh": "南北半球",
+    "name_en": "Hemisphere",
+    "display_name_zh": "南北半球（HKJC）",
+    "display_name_en": "Hemisphere (HKJC)",
+    "primary_source": "B27",
+    "all_sources": [
+      "B27",
+      "B33"
+    ],
+    "description_zh": "港地賽季與南半球（澳/紐）出生馬之相對「年齡漂移」差距",
+    "description_en": "Birth hemisphere N/S",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H007": {
+    "id": "H007",
+    "category": 1,
+    "name_zh": "宣告體重",
+    "name_en": "Declaration weight (lb)",
+    "display_name_zh": "宣告體重（HKJC）",
+    "display_name_en": "Declaration weight (lb) (HKJC)",
+    "primary_source": "B34",
+    "all_sources": [
+      "B34"
+    ],
+    "description_zh": "HKJC「Horse Wt. (Declaration)」原始值",
+    "description_en": "HKJC body weight at declaration",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h007_decl_weight"
+  },
+  "H008": {
+    "id": "H008",
+    "category": 1,
+    "name_zh": "體重變動",
+    "name_en": "Body weight delta",
+    "display_name_zh": "體重變動（HKJC）",
+    "display_name_en": "Body weight delta (HKJC)",
+    "primary_source": "B34",
+    "all_sources": [
+      "B34"
+    ],
+    "description_zh": "HKJC 公布「Wt.+/- (vs Declaration)」；±10 lb 為顯著訊號",
+    "description_en": "Δ vs last declaration",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h008_weight_delta"
+  },
+  "H009": {
+    "id": "H009",
+    "category": 1,
+    "name_zh": "殘障評分",
+    "name_en": "Rating",
+    "display_name_zh": "殘障評分（HKJC）",
+    "display_name_en": "Rating (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "HKJC 公布的 0-145 殘障評分。每場賽事後由評磅員根據表現調整，是負磅分配的依據，也是馬匹班級的核心指標。",
+    "description_en": "HKJC 0-145 handicap rating, adjusted by the stewards after each run. It determines the weight a horse must carry and bounds the class of races it can enter.",
+    "notes_zh": "技術層面：評分是 HK 等級制 (Class 1-5) 的入閘門檻：例如 Class 3 要求 81-100 分。評分趨勢 (rating slope) 比靜態值更有預測力 — 上升趨勢通常配合改進中。\n通俗層面：類似於圍棋的段位。分高就要扛更多重量、跑更高班次，分低就降班跑更輕負擔。看評分升降比看絕對值更有用，能反映馬匹的當下狀態。",
+    "notes_en": "Technical: rating gates entry into class bands (e.g. Class 3 requires 81-100). The rating's slope over recent starts carries more signal than the static level — a rising trend often pre-empts an in-form win.\nLayman: think of it as a handicap golf score. Higher rating = heavier weight + tougher class; lower = drops down to easier races. Watch the direction of change more than the number itself.",
+    "enabled_default": true,
+    "compute_fn_name": "h009_rating"
+  },
+  "H010": {
+    "id": "H010",
+    "category": 1,
+    "name_zh": "出賽次數",
+    "name_en": "Career starts",
+    "display_name_zh": "出賽次數（Benter 1994）",
+    "display_name_en": "Career starts (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1"
+    ],
+    "description_zh": "累計出賽場數，用於穩定統計量",
+    "description_en": "Total starts",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h010_starts"
+  },
+  "H011": {
+    "id": "H011",
+    "category": 1,
+    "name_zh": "父系",
+    "name_en": "Sire",
+    "display_name_zh": "父系（BloodHorse）",
+    "display_name_en": "Sire (BloodHorse)",
+    "primary_source": "B5",
+    "all_sources": [
+      "B5",
+      "B26"
+    ],
+    "description_zh": "父系標籤 + 全球速度評級；用於 dosage 與場地偏好",
+    "description_en": "Sire identity hash",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H012": {
+    "id": "H012",
+    "category": 1,
+    "name_zh": "母父",
+    "name_en": "Dam sire",
+    "display_name_zh": "母父（BloodHorse）",
+    "display_name_en": "Dam sire (BloodHorse)",
+    "primary_source": "B5",
+    "all_sources": [
+      "B5",
+      "B26"
+    ],
+    "description_zh": "Dam-sire identity hash",
+    "description_en": "Dam-sire identity hash",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H013": {
+    "id": "H013",
+    "category": 1,
+    "name_zh": "Dosage Index",
+    "name_en": "Dosage Index (DI)",
+    "display_name_zh": "Dosage Index（Wikipedia / Pedigree Online）",
+    "display_name_en": "Dosage Index (DI) (Wikipedia / Pedigree Online)",
+    "primary_source": "B26",
+    "all_sources": [
+      "B26"
+    ],
+    "description_zh": "Brilliant/Intermediate/Classic/Solid/Professional 五段比值，量化速度-耐力比",
+    "description_en": "Speed-stamina ratio (HKJC-out-of-scope: needs BloodHorse/Pedigree Online)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H014": {
+    "id": "H014",
+    "category": 1,
+    "name_zh": "引進來源",
+    "name_en": "Origin country",
+    "display_name_zh": "引進來源（HKJC）",
+    "display_name_en": "Origin country (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B19"
+    ],
+    "description_zh": "AUS / NZL / GB / IRE / FR / USA / RSA 標籤；HKJC 全部進口",
+    "description_en": "AUS/NZL/GBR/IRE/USA encoded",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h014_origin"
+  },
+  "H015": {
+    "id": "H015",
+    "category": 2,
+    "name_zh": "馬匹勝率",
+    "name_en": "Horse win rate",
+    "display_name_zh": "馬匹勝率（Benter 1994）",
+    "display_name_en": "Horse win rate (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1",
+      "B25"
+    ],
+    "description_zh": "馬匹累計勝率，採用 Bayesian Beta(α,β) 先驗收縮，避免少場馬樣本方差過大；新進口馬以全場平均勝率 8.3% 為起點。",
+    "description_en": "Bayesian-shrunk career win rate. A Beta(α,β) prior pulls thinly-raced horses toward the field-mean (~8.3%); a horse with one win in two starts isn't treated as 50% likely to win again.",
+    "notes_zh": "技術層面：Beta(5, 5×0.083/0.917) ≈ Beta(5, 55) 先驗。Posterior = (wins + α) / (runs + α + β)。Hierarchical Bayesian 文獻 [B25] 推薦此法處理少樣本馬匹。\n通俗層面：就是把「打得少又剛好贏一次」的馬，拉回到正常水平再評估。新馬贏一場不代表牠厲害，可能只是運氣；先驗收縮讓我們不被小樣本騙到。",
+    "notes_en": "Technical: a Beta(α, β) prior with prior pseudo-runs ≈ 5 and prior win-rate ≈ 0.083 is added to the empirical (wins + α) / (runs + α + β). This is the standard Hierarchical Bayesian recommendation [B25] for thinly-observed entities.\nLayman: prevents the model from thinking a horse that won 1-of-2 starts is a 50% favourite. A handful of races isn't enough evidence; we pull thin-data horses toward the average until they prove themselves.",
+    "enabled_default": true,
+    "compute_fn_name": "h015_horse_wr"
+  },
+  "H016": {
+    "id": "H016",
+    "category": 2,
+    "name_zh": "騎師勝率",
+    "name_en": "Jockey win rate",
+    "display_name_zh": "騎師勝率（HKJC）",
+    "display_name_en": "Jockey win rate (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B25"
+    ],
+    "description_zh": "騎師累計勝率，亦採用 Bayesian 收縮。HKJC 騎師樣本量大 (頂級騎師 5,000+ 出賽)，收縮影響有限，但對見習生關鍵。",
+    "description_en": "Bayesian-shrunk jockey win rate. Top HK jockeys have 5,000+ starts so the prior barely shifts their estimate; for apprentice riders it dominates until they have a track record.",
+    "notes_zh": "技術層面：頂級騎師 (Purton、Bowman、Moreira、Ferraris) 平均勝率約 18-22%。優秀騎師對勝率貢獻顯著且穩定，是 syndicate 重要因子 [B14]。\n通俗層面：好騎師像好球員，能讓平凡的馬發揮出色。Purton、Bowman 騎的馬通常會壓更短賠率；新騎師則是個未知數，要看夠多場才信得過。",
+    "notes_en": "Technical: top-tier HK jockeys (Purton, Bowman, Moreira, Ferraris) sit at 18-22% career win rate — a striking gap above the mean. Jockey contribution is one of the strongest single features in any syndicate's model [B14].\nLayman: a great jockey can squeeze a win out of an ordinary horse. When Purton or Bowman gets the ride, the market reflects it immediately.",
+    "enabled_default": true,
+    "compute_fn_name": "h016_jockey_wr"
+  },
+  "H017": {
+    "id": "H017",
+    "category": 2,
+    "name_zh": "練馬師勝率",
+    "name_en": "Trainer win rate",
+    "display_name_zh": "練馬師勝率（HKJC）",
+    "display_name_en": "Trainer win rate (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B25"
+    ],
+    "description_zh": "該練馬師累計勝率",
+    "description_en": "Bayesian-shrunk",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h017_trainer_wr"
+  },
+  "H018": {
+    "id": "H018",
+    "category": 2,
+    "name_zh": "騎師×練馬師",
+    "name_en": "Jockey-trainer pair WR",
+    "display_name_zh": "騎師×練馬師（HKJC）",
+    "display_name_en": "Jockey-trainer pair WR (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "配對勝率",
+    "description_en": "Pair WR with prior",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h018_jt_pair"
+  },
+  "H019": {
+    "id": "H019",
+    "category": 2,
+    "name_zh": "騎師×馬匹",
+    "name_en": "Jockey-horse pair WR",
+    "display_name_zh": "騎師×馬匹（HKJC）",
+    "display_name_en": "Jockey-horse pair WR (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "配對勝率",
+    "description_en": "Same-pair WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h019_jh_pair"
+  },
+  "H020": {
+    "id": "H020",
+    "category": 2,
+    "name_zh": "入位率",
+    "name_en": "Place rate",
+    "display_name_zh": "入位率（Brisnet）",
+    "display_name_en": "Place rate (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B16"
+    ],
+    "description_zh": "第 2 名以內比率（位置 Q）",
+    "description_en": "Top-2 finish rate",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h020_place_rate"
+  },
+  "H021": {
+    "id": "H021",
+    "category": 2,
+    "name_zh": "三甲率",
+    "name_en": "Top-3 rate",
+    "display_name_zh": "三甲率（Brisnet）",
+    "display_name_en": "Top-3 rate (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B16"
+    ],
+    "description_zh": "進入前三名比率，HK 三重彩相關",
+    "description_en": "Top-3 finish rate",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h021_top3_rate"
+  },
+  "H022": {
+    "id": "H022",
+    "category": 2,
+    "name_zh": "ROI",
+    "name_en": "ROI per $2",
+    "display_name_zh": "ROI（Brisnet）",
+    "display_name_en": "ROI per $2 (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2"
+    ],
+    "description_zh": "平均淨報酬，Brisnet 標準呈現",
+    "description_en": "Avg payoff per unit",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h022_roi"
+  },
+  "H023": {
+    "id": "H023",
+    "category": 2,
+    "name_zh": "A/E 指標",
+    "name_en": "Actual/Expected",
+    "display_name_zh": "A/E 指標（EquinEdge）",
+    "display_name_en": "Actual/Expected (EquinEdge)",
+    "primary_source": "B22",
+    "all_sources": [
+      "B22",
+      "B30"
+    ],
+    "description_zh": "Actual/Expected：實際勝率 ÷ 賠率隱含勝率。>1.00 表示優於市場預期，<1.00 表示被市場高估。Brisnet 標準衡量指標 [B22][B30]。",
+    "description_en": "Actual / Expected: realised win rate divided by the market's implied win rate. Values above 1.00 mean the entity has beaten the market historically; below 1.00 means the market over-rates it.",
+    "notes_zh": "技術層面：A/E = win_rate / mean(1/odds)。是 longshot bias 與 favourite bias 的客觀量度。Snowberg-Wolfers [B48] 文獻顯示，favourites 通常 A/E ≈ 0.95-0.98，極端 longshots A/E ≈ 0.5-0.7。\n通俗層面：簡單來說：你預測得準不準？如果這匹馬的賠率長期低估了牠的能力，A/E 就大於 1，這就是「靚位」(value bet) 的訊號。",
+    "notes_en": "Technical: A/E = win_rate / mean(1/odds). It quantifies favourite-longshot bias [B48]: heavy favourites typically run A/E ≈ 0.95-0.98 (slightly over-bet), extreme longshots A/E ≈ 0.5-0.7 (heavily over-bet). A/E > 1.0 anywhere is a market-beating signal.\nLayman: a way to ask 'does this horse's price match its actual chances?' If A/E is above 1, the bookies have been under-pricing it — that's where the value lives.",
+    "enabled_default": true,
+    "compute_fn_name": "h023_ae"
+  },
+  "H024": {
+    "id": "H024",
+    "category": 2,
+    "name_zh": "Impact Value",
+    "name_en": "IV",
+    "display_name_zh": "Impact Value（EquinEdge）",
+    "display_name_en": "IV (EquinEdge)",
+    "primary_source": "B22",
+    "all_sources": [
+      "B22"
+    ],
+    "description_zh": "Impact Value：該組合勝率 ÷ 全體基準勝率。IV = 1.0 為中性，>1.0 表示優於平均。Brisnet 經典指標 [B22]。",
+    "description_en": "Impact Value: a group's win rate divided by the field-average win rate. IV = 1.0 is neutral; IV > 1.0 means horses sharing that attribute punch above the average.",
+    "notes_zh": "技術層面：分組可為任何 categorical 變量 (騎師、練馬師、跑法、閘號)。IV ≠ A/E：IV 用基準勝率為分母，A/E 用市場隱含為分母。Equibase 使用 IV ≥ 1.5 為強訊號標準 [B22]。\n通俗層面：用「對比平均」來看每個因素的影響力。例如某騎師 IV=1.8 表示牠騎的馬比平均高出 80% 勝率，這是隱性優勢。",
+    "notes_en": "Technical: IV = group_win_rate / field_baseline_win_rate. Distinct from A/E (which divides by market-implied): IV gauges raw frequency, A/E gauges market efficiency. Industry rule of thumb: IV ≥ 1.5 marks a strong signal [B22].\nLayman: tells you whether some attribute (a jockey, a draw, a running style) wins more than average. IV of 2.0 means twice the normal rate — a real edge worth pricing in.",
+    "enabled_default": true,
+    "compute_fn_name": "h024_iv"
+  },
+  "H025": {
+    "id": "H025",
+    "category": 2,
+    "name_zh": "騎師跑馬地",
+    "name_en": "Jockey at HV",
+    "display_name_zh": "騎師跑馬地（HKJC）",
+    "display_name_en": "Jockey at HV (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "Jockey WR at Happy Valley",
+    "description_en": "Jockey WR at Happy Valley",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h025_jockey_hv"
+  },
+  "H026": {
+    "id": "H026",
+    "category": 2,
+    "name_zh": "騎師沙田",
+    "name_en": "Jockey at ST",
+    "display_name_zh": "騎師沙田（HKJC）",
+    "display_name_en": "Jockey at ST (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "Jockey WR at Sha Tin",
+    "description_en": "Jockey WR at Sha Tin",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h026_jockey_st"
+  },
+  "H027": {
+    "id": "H027",
+    "category": 2,
+    "name_zh": "練馬師跑馬地",
+    "name_en": "Trainer at HV",
+    "display_name_zh": "練馬師跑馬地（HKJC）",
+    "display_name_en": "Trainer at HV (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "Trainer WR at HV",
+    "description_en": "Trainer WR at HV",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h027_trainer_hv"
+  },
+  "H028": {
+    "id": "H028",
+    "category": 2,
+    "name_zh": "三巨頭標記",
+    "name_en": "Big-3 jockey flag",
+    "display_name_zh": "三巨頭標記（HKJC）",
+    "display_name_en": "Big-3 jockey flag (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B40"
+    ],
+    "description_zh": "三巨頭騎師標記：Purton、Bowman、Moreira、Ferraris 旗下馬會自動取得 base-rate 加成，反映港 HKJC 最頂尖騎師的穩定優勢 [B14][B40]。",
+    "description_en": "Top-3 jockey flag: a binary marker for rides by Z Purton, H Bowman, J Moreira or L Ferraris — HK's elite tier, whose presence shifts the prior probability before any other features are considered.",
+    "notes_zh": "技術層面：base-rate boost ≈ +5-8% 勝率對相同條件下其他騎師。在 walk-forward 訓練中通常作為強烈交互特徵 (jockey × class、jockey × distance)。\n通俗層面：這四位騎師在港賽是「金字塔頂端」，光是他們騎，賠率就會自動縮短。模型必須把這種隱性優勢納入考量。",
+    "notes_en": "Technical: base-rate boost of about +5-8 percentage points over the equivalent non-top-three rider. Used as a strong interaction term with class and distance in the LambdaMART feature space.\nLayman: these four jockeys are HK's elite. Their presence alone shortens the price — the market sees the name on the card and reacts before reading anything else.",
+    "enabled_default": true,
+    "compute_fn_name": "h028_big3_jockey"
+  },
+  "H029": {
+    "id": "H029",
+    "category": 3,
+    "name_zh": "距離適性",
+    "name_en": "Distance adaptation",
+    "display_name_zh": "距離適性（Benter 1994）",
+    "display_name_en": "Distance adaptation (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1",
+      "B23"
+    ],
+    "description_zh": "Sire 後代於本距離之 Brisnet ROI",
+    "description_en": "Horse WR at this distance bucket",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h029_dist_adapt"
+  },
+  "H030": {
+    "id": "H030",
+    "category": 3,
+    "name_zh": "場地適性",
+    "name_en": "Surface adaptation",
+    "display_name_zh": "場地適性（HKJC）",
+    "display_name_en": "Surface adaptation (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "Sire 後代於 turf vs dirt 之差距",
+    "description_en": "Horse WR on turf vs AWT",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h030_going_adapt"
+  },
+  "H031": {
+    "id": "H031",
+    "category": 3,
+    "name_zh": "父系距離適性",
+    "name_en": "Sire×distance",
+    "display_name_zh": "父系距離適性（Brisnet）",
+    "display_name_en": "Sire×distance (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B26"
+    ],
+    "description_zh": "Sire 後代於本距離之 Brisnet ROI",
+    "description_en": "Sire ROI at this distance",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H032": {
+    "id": "H032",
+    "category": 3,
+    "name_zh": "父系場地適性",
+    "name_en": "Sire×surface",
+    "display_name_zh": "父系場地適性（Brisnet）",
+    "display_name_en": "Sire×surface (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B5"
+    ],
+    "description_zh": "Sire 後代於 turf vs dirt 之差距",
+    "description_en": "Sire turf-vs-dirt edge",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H033": {
+    "id": "H033",
+    "category": 3,
+    "name_zh": "馬齡×距離",
+    "name_en": "Age×distance",
+    "display_name_zh": "馬齡×距離（HKJC）",
+    "display_name_en": "Age×distance (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B23"
+    ],
+    "description_zh": "已於類別 3 列出；保留交互槽",
+    "description_en": "Age-bucket WR at distance",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h033_age_dist"
+  },
+  "H034": {
+    "id": "H034",
+    "category": 3,
+    "name_zh": "左右轉",
+    "name_en": "Track turn direction",
+    "display_name_zh": "左右轉（HKJC）",
+    "display_name_en": "Track turn direction (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "L vs R track preference",
+    "description_en": "L vs R track preference",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H035": {
+    "id": "H035",
+    "category": 3,
+    "name_zh": "季節適應",
+    "name_en": "Season WR",
+    "display_name_zh": "季節適應（HKJC）",
+    "display_name_en": "Season WR (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "香港賽季 9 月至 7 月；夏秋 vs 春冬之 going 差異",
+    "description_en": "Horse WR in current month",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h035_season"
+  },
+  "H036": {
+    "id": "H036",
+    "category": 3,
+    "name_zh": "賽事級別適應",
+    "name_en": "Class WR",
+    "display_name_zh": "賽事級別適應（HKJC）",
+    "display_name_en": "Class WR (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B19"
+    ],
+    "description_zh": "Class 1-5 + Group/Listed 之分項勝率",
+    "description_en": "Horse WR at this class",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h036_class_wr"
+  },
+  "H037": {
+    "id": "H037",
+    "category": 3,
+    "name_zh": "出閘速度",
+    "name_en": "Jump speed",
+    "display_name_zh": "出閘速度（EquinEdge）",
+    "display_name_en": "Jump speed (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "起閘 100m 平均位次，由分段時間估算",
+    "description_en": "First-200m position vs field",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H038": {
+    "id": "H038",
+    "category": 3,
+    "name_zh": "賽事間復原時間",
+    "name_en": "Recovery time",
+    "display_name_zh": "賽事間復原時間（EquinEdge）",
+    "display_name_en": "Recovery time (EquinEdge)",
+    "primary_source": "B17",
+    "all_sources": [
+      "B17",
+      "B25"
+    ],
+    "description_zh": "賽事間復原時間：上場後天數 × 上場負擔指標。配合 layoff 與訓練週期評估，避免馬匹過度疲勞或久休復賽風險 [B17][B25]。",
+    "description_en": "Recovery proxy: days since last start multiplied by an effort weight from that start (winners and placers carry heavier weight). Used to flag both over-raced and under-recovered runners.",
+    "notes_zh": "技術層面：分桶 28 (短歇)、29-60 (理想)、60-90 (邊緣)、>90 (久歇懲罰)。配合 trainer_returner_wr 識別「練馬師擅長帶歇馬出賽」者。\n通俗層面：跑完一場大賽要休多久才能再戰？休太短體能透支、休太長手感生疏。看這個欄就知道牠是不是適合的時機。",
+    "notes_en": "Technical: bucketed by gap (≤28 short-back, 29-60 ideal, 60-90 marginal, >90 long-layoff penalty). Pairs with trainer_returner_wr to spot stables that handle returners well.\nLayman: how long since the horse last raced — too short and it's tired, too long and it's rusty. The model catches both extremes.",
+    "enabled_default": true,
+    "compute_fn_name": "h038_recovery"
+  },
+  "H039": {
+    "id": "H039",
+    "category": 4,
+    "name_zh": "馬廄熱度",
+    "name_en": "Trainer hot",
+    "display_name_zh": "馬廄熱度（HKJC）",
+    "display_name_en": "Trainer hot (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "練馬師近期勝率移動平均",
+    "description_en": "Recent rolling WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h039_trainer_hot"
+  },
+  "H040": {
+    "id": "H040",
+    "category": 4,
+    "name_zh": "馬廄冷浪",
+    "name_en": "Trainer cold",
+    "display_name_zh": "馬廄冷浪（HKJC）",
+    "display_name_en": "Trainer cold (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "練馬師近期低於長期勝率之偏差",
+    "description_en": "Recent under-performance",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h040_trainer_cold"
+  },
+  "H041": {
+    "id": "H041",
+    "category": 4,
+    "name_zh": "練馬師班次強項",
+    "name_en": "Trainer×class ROI",
+    "display_name_zh": "練馬師班次強項（Brisnet）",
+    "display_name_en": "Trainer×class ROI (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B6"
+    ],
+    "description_zh": "練馬師於 Class 1-5 各班次 ROI",
+    "description_en": "Trainer ROI at class",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h041_trainer_class"
+  },
+  "H042": {
+    "id": "H042",
+    "category": 4,
+    "name_zh": "練馬師距離強項",
+    "name_en": "Trainer×distance ROI",
+    "display_name_zh": "練馬師距離強項（Brisnet）",
+    "display_name_en": "Trainer×distance ROI (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B6"
+    ],
+    "description_zh": "練馬師按距離區段 ROI（短途 vs 中長途專家）",
+    "description_en": "Trainer ROI at distance",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h042_trainer_dist"
+  },
+  "H043": {
+    "id": "H043",
+    "category": 4,
+    "name_zh": "季節熱度",
+    "name_en": "Trainer season cycle",
+    "display_name_zh": "季節熱度（Brisnet）",
+    "display_name_en": "Trainer season cycle (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B14"
+    ],
+    "description_zh": "季中早/中/末段練馬師 form cycle",
+    "description_en": "Early/mid/late season WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h043_trainer_season"
+  },
+  "H044": {
+    "id": "H044",
+    "category": 4,
+    "name_zh": "首戰勝率",
+    "name_en": "Trainer first-timer WR",
+    "display_name_zh": "首戰勝率（Brisnet）",
+    "display_name_en": "Trainer first-timer WR (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B16"
+    ],
+    "description_zh": "Trainer with debutants",
+    "description_en": "Trainer with debutants",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h044_trainer_debut"
+  },
+  "H045": {
+    "id": "H045",
+    "category": 4,
+    "name_zh": "復出馬勝率",
+    "name_en": "Trainer with returners",
+    "display_name_zh": "復出馬勝率（EquinEdge）",
+    "display_name_en": "Trainer with returners (EquinEdge)",
+    "primary_source": "B17",
+    "all_sources": [
+      "B17",
+      "B25"
+    ],
+    "description_zh": "練馬師對歇賽 45-180 日復出馬之 ROI",
+    "description_en": "Layoff 45-180d WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h045_trainer_returner"
+  },
+  "H046": {
+    "id": "H046",
+    "category": 4,
+    "name_zh": "場地適應",
+    "name_en": "Trainer×venue",
+    "display_name_zh": "場地適應（HKJC）",
+    "display_name_en": "Trainer×venue (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "練馬師跑馬地 vs 沙田勝率差",
+    "description_en": "Trainer ST vs HV WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h046_trainer_venue"
+  },
+  "H047": {
+    "id": "H047",
+    "category": 4,
+    "name_zh": "出賽密度",
+    "name_en": "Trainer runs / 30d",
+    "display_name_zh": "出賽密度（HKJC）",
+    "display_name_en": "Trainer runs / 30d (HKJC)",
+    "primary_source": "B15",
+    "all_sources": [
+      "B15",
+      "B25"
+    ],
+    "description_zh": "近 30 日入閘次數，反映 stable form pulse",
+    "description_en": "Stable activity proxy",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h047_trainer_density"
+  },
+  "H048": {
+    "id": "H048",
+    "category": 4,
+    "name_zh": "馬房規模",
+    "name_en": "Stable size",
+    "display_name_zh": "馬房規模（HKJC）",
+    "display_name_en": "Stable size (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "練馬師現役馬匹數（HKJC 約 60 匹上限）",
+    "description_en": "Active horses under trainer",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h048_stable_size"
+  },
+  "H049": {
+    "id": "H049",
+    "category": 4,
+    "name_zh": "練馬師裝備改動",
+    "name_en": "Trainer gear-change ROI",
+    "display_name_zh": "練馬師裝備改動（Brisnet）",
+    "display_name_en": "Trainer gear-change ROI (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B11"
+    ],
+    "description_zh": "該練馬師對改 gear/blinkers 之 angle ROI",
+    "description_en": "Trainer angle on gear changes",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H050": {
+    "id": "H050",
+    "category": 5,
+    "name_zh": "閘號",
+    "name_en": "Draw",
+    "display_name_zh": "閘號（HKJC）",
+    "display_name_en": "Draw (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "閘號（barrier draw）：起跑位置編號 1-N。內閘較短彎、外閘較難取位，於跑馬地與沙田短途影響顯著 [B14][B36]。",
+    "description_en": "Starting gate barrier number (1 = innermost). Inner draws save ground and reach the first turn faster; outer draws can be punished, especially at Happy Valley and over short Sha Tin trips.",
+    "notes_zh": "技術層面：track × distance × draw 三維交互效應強烈：跑馬地 1200m 內閘優勢顯著，沙田 1600m 草地內外幾乎中性，AWT 1200m 外閘反而較佳。\n通俗層面：閘位就像短跑選手的水道，內側少跑幾步路。但有些賽道、有些距離反而外閘更好，所以要看綜合條件。",
+    "notes_en": "Technical: the marginal effect interacts strongly with track and distance. Happy Valley sprints reward inner draws sharply; Sha Tin 1600m is roughly draw-neutral on turf; the AWT 1200m course actually favours wider draws.\nLayman: like lanes on a running track — the inside lane is shortest but only matters on certain courses. The model handles the per-course quirks.",
+    "enabled_default": true,
+    "compute_fn_name": "h050_draw"
+  },
+  "H051": {
+    "id": "H051",
+    "category": 5,
+    "name_zh": "內閘",
+    "name_en": "Inner draw flag",
+    "display_name_zh": "內閘（PuntLab）",
+    "display_name_en": "Inner draw flag (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36"
+    ],
+    "description_zh": "1-3 號標記",
+    "description_en": "1 if draw<=3",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h051_draw_inner"
+  },
+  "H052": {
+    "id": "H052",
+    "category": 5,
+    "name_zh": "外閘",
+    "name_en": "Outer draw flag",
+    "display_name_zh": "外閘（PuntLab）",
+    "display_name_en": "Outer draw flag (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36"
+    ],
+    "description_zh": "後 1/3 標記",
+    "description_en": "1 if draw in last third",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h052_draw_outer"
+  },
+  "H053": {
+    "id": "H053",
+    "category": 5,
+    "name_zh": "大外閘",
+    "name_en": "Wide draw flag",
+    "display_name_zh": "大外閘（PuntLab）",
+    "display_name_en": "Wide draw flag (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36"
+    ],
+    "description_zh": "末 2 個閘號標記",
+    "description_en": "1 if draw in last 2",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h053_draw_wide"
+  },
+  "H054": {
+    "id": "H054",
+    "category": 5,
+    "name_zh": "賽道×距離閘號偏差",
+    "name_en": "Track×distance draw bias",
+    "display_name_zh": "賽道×距離閘號偏差（PuntLab）",
+    "display_name_en": "Track×distance draw bias (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36",
+      "B41"
+    ],
+    "description_zh": "跑馬地 1000m 內閘強、沙田 1600m 中性",
+    "description_en": "Lookup table on draw bias",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h054_track_dist_bias"
+  },
+  "H055": {
+    "id": "H055",
+    "category": 5,
+    "name_zh": "距首彎距離",
+    "name_en": "Distance to first turn",
+    "display_name_zh": "距首彎距離（PuntLab）",
+    "display_name_en": "Distance to first turn (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36",
+      "B41"
+    ],
+    "description_zh": "跑馬地起點至第一彎距離短，外閘受罰",
+    "description_en": "Run-up length",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h055_to_first_turn"
+  },
+  "H056": {
+    "id": "H056",
+    "category": 5,
+    "name_zh": "起閘速度",
+    "name_en": "Gate break speed",
+    "display_name_zh": "起閘速度（EquinEdge）",
+    "display_name_en": "Gate break speed (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "由起後 200m 分段位次估算",
+    "description_en": "First-200m sectional vs field",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H057": {
+    "id": "H057",
+    "category": 5,
+    "name_zh": "賽道彎度",
+    "name_en": "Track curvature",
+    "display_name_zh": "賽道彎度（PuntLab）",
+    "display_name_en": "Track curvature (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36"
+    ],
+    "description_zh": "沙田 turf circumference vs Happy Valley 1450m 圍長",
+    "description_en": "ST vs HV circumference",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h057_curvature"
+  },
+  "H058": {
+    "id": "H058",
+    "category": 5,
+    "name_zh": "草地內外欄",
+    "name_en": "Rail position",
+    "display_name_zh": "草地內外欄（PuntLab）",
+    "display_name_en": "Rail position (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36",
+      "B41"
+    ],
+    "description_zh": "草地 rail position：A / B / C / C+3 等。HKJC 每周公布，影響當日草地內外側速度與用法 [B36][B41]。",
+    "description_en": "Rail configuration (A/B/C/C+3) — HKJC moves the temporary running rail to spread wear across the turf. The position changes how the inner third of the track plays on any given day.",
+    "notes_zh": "技術層面：A rail = 標準位置；B/C/C+3 偏外，讓未被踐踏的內側草皮復原。當日 rail 影響配速優勢 (closer 對 leader) 和閘號殘差。\n通俗層面：球場會定期更換球門位，馬場也會挪動跑道內欄的位置，讓草皮恢復。位置會影響哪邊草較硬、哪種跑法佔便宜。",
+    "notes_en": "Technical: 'A' = standard inner rail; B/C/C+3 push the running rail outward by a few metres to let trampled turf recover. Rail position interacts with running-style edge — closers can gain when the rail is moved out and the leaders tire on softer ground.\nLayman: the inside fence of the track is moveable. Shifting it changes which patches of grass are fresh — which favours different running styles on different days.",
+    "enabled_default": true,
+    "compute_fn_name": "h058_rail"
+  },
+  "H059": {
+    "id": "H059",
+    "category": 5,
+    "name_zh": "AWT 閘號偏差",
+    "name_en": "AWT draw bias",
+    "display_name_zh": "AWT 閘號偏差（HKJC）",
+    "display_name_en": "AWT draw bias (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "原始閘號數值",
+    "description_en": "All-weather draw effect",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h059_awt_draw"
+  },
+  "H060": {
+    "id": "H060",
+    "category": 5,
+    "name_zh": "閘號×跑法",
+    "name_en": "Draw×style booster",
+    "display_name_zh": "閘號×跑法（EquinEdge）",
+    "display_name_en": "Draw×style booster (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "原始閘號數值",
+    "description_en": "Inner-leader / outer-closer combo",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h060_draw_style"
+  },
+  "H061": {
+    "id": "H061",
+    "category": 6,
+    "name_zh": "負磅",
+    "name_en": "Weight carried (lb)",
+    "display_name_zh": "負磅（PaddyPower）",
+    "display_name_en": "Weight carried (lb) (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7"
+    ],
+    "description_zh": "騎師+鞍具總負磅（lb）。評磅員根據馬匹評分與性別讓磅分配，是 handicap 賽事的核心調節變數。",
+    "description_en": "Total weight (jockey + saddle) the horse must carry in pounds. Assigned by the handicapper from the horse's rating, plus class allowances and sex/apprentice/age adjustments.",
+    "notes_zh": "技術層面：每 1 lb 增減約對應 0.04-0.06 秒/1000m 的時間差。weight × distance 交互在長途賽 (≥1800m) 顯著放大。Benter 1994 [B1] 將 weight 列為核心 weight variable 之一。\n通俗層面：扛得越重就跑得越慢，是直觀的物理。handicap 賽用負磅讓強馬讓弱馬，理論上每匹馬都有同等機會贏。",
+    "notes_en": "Technical: every extra pound costs roughly 0.04-0.06 seconds per 1000m, with the marginal cost growing in long-distance races. Benter 1994 [B1] lists carried weight as one of the core handicapping variables.\nLayman: heavier means slower. The handicap system loads weight onto the better horses to even out the field — in theory every runner should have an equal chance at the line.",
+    "enabled_default": true,
+    "compute_fn_name": "h061_weight"
+  },
+  "H062": {
+    "id": "H062",
+    "category": 6,
+    "name_zh": "減磅優惠",
+    "name_en": "Apprentice claim",
+    "display_name_zh": "減磅優惠（PaddyPower）",
+    "display_name_en": "Apprentice claim (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7",
+      "B33"
+    ],
+    "description_zh": "見習騎師減磅標記",
+    "description_en": "lb reduction",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h062_claim"
+  },
+  "H063": {
+    "id": "H063",
+    "category": 6,
+    "name_zh": "負磅趨勢",
+    "name_en": "Weight delta vs last start",
+    "display_name_zh": "負磅趨勢（HKJC）",
+    "display_name_en": "Weight delta vs last start (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B30"
+    ],
+    "description_zh": "較上場負磅之 Δ；handicap 加減反映被市場高估/低估",
+    "description_en": "Δ weight carried",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h063_weight_trend"
+  },
+  "H064": {
+    "id": "H064",
+    "category": 6,
+    "name_zh": "宣告體重",
+    "name_en": "Body weight (decl)",
+    "display_name_zh": "宣告體重（HKJC）",
+    "display_name_en": "Body weight (decl) (HKJC)",
+    "primary_source": "B34",
+    "all_sources": [
+      "B34"
+    ],
+    "description_zh": "HKJC「Horse Wt. (Declaration)」原始值",
+    "description_en": "Same as H007",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h064_decl_weight_dup"
+  },
+  "H065": {
+    "id": "H065",
+    "category": 6,
+    "name_zh": "體重變動",
+    "name_en": "Body weight Δ",
+    "display_name_zh": "體重變動（HKJC）",
+    "display_name_en": "Body weight Δ (HKJC)",
+    "primary_source": "B34",
+    "all_sources": [
+      "B34"
+    ],
+    "description_zh": "HKJC 公布「Wt.+/- (vs Declaration)」；±10 lb 為顯著訊號",
+    "description_en": "Same as H008",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h065_weight_delta_dup"
+  },
+  "H066": {
+    "id": "H066",
+    "category": 6,
+    "name_zh": "騎師體重",
+    "name_en": "Jockey weight",
+    "display_name_zh": "騎師體重（PaddyPower）",
+    "display_name_en": "Jockey weight (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7",
+      "B33"
+    ],
+    "description_zh": "騎師本人體重，獨立於負磅",
+    "description_en": "Jockey body weight",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H067": {
+    "id": "H067",
+    "category": 6,
+    "name_zh": "鞍具重量",
+    "name_en": "Saddle weight",
+    "display_name_zh": "鞍具重量（PaddyPower）",
+    "display_name_en": "Saddle weight (PaddyPower)",
+    "primary_source": "B33",
+    "all_sources": [
+      "B33"
+    ],
+    "description_zh": "部分 jurisdictions 公布 saddle weight",
+    "description_en": "Equipment weight",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H068": {
+    "id": "H068",
+    "category": 6,
+    "name_zh": "見習等級",
+    "name_en": "Apprentice claim grade",
+    "display_name_zh": "見習等級（PaddyPower）",
+    "display_name_en": "Apprentice claim grade (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7",
+      "B33"
+    ],
+    "description_zh": "3/5/7 lb level",
+    "description_en": "3/5/7 lb level",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h068_apprentice_grade"
+  },
+  "H069": {
+    "id": "H069",
+    "category": 6,
+    "name_zh": "性別讓磅",
+    "name_en": "Sex allowance",
+    "display_name_zh": "性別讓磅（PaddyPower）",
+    "display_name_en": "Sex allowance (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7",
+      "B33"
+    ],
+    "description_zh": "雌馬 3 lb 補貼",
+    "description_en": "3 lb for fillies/mares",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h069_sex_allowance"
+  },
+  "H070": {
+    "id": "H070",
+    "category": 6,
+    "name_zh": "馬齡 WFA",
+    "name_en": "Weight-for-age",
+    "display_name_zh": "馬齡 WFA（PaddyPower）",
+    "display_name_en": "Weight-for-age (PaddyPower)",
+    "primary_source": "B7",
+    "all_sources": [
+      "B7",
+      "B14"
+    ],
+    "description_zh": "馬匹年齡（年），影響成熟度與耐力",
+    "description_en": "3yo vs 4yo allowance",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h070_wfa"
+  },
+  "H071": {
+    "id": "H071",
+    "category": 7,
+    "name_zh": "跑馬地標記",
+    "name_en": "Happy Valley flag",
+    "display_name_zh": "跑馬地標記（HKJC）",
+    "display_name_en": "Happy Valley flag (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "是否跑馬地賽事",
+    "description_en": "1 if HV",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h071_is_hv"
+  },
+  "H072": {
+    "id": "H072",
+    "category": 7,
+    "name_zh": "賽事距離",
+    "name_en": "Race distance (m)",
+    "display_name_zh": "賽事距離（Benter 1994）",
+    "display_name_en": "Race distance (m) (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1"
+    ],
+    "description_zh": "賽事距離 (公尺)。HK 主要賽程：1000、1200、1400、1600、1800、2000、2200、2400m。距離決定 stamina 比例與配速結構。",
+    "description_en": "Race distance in metres. Hong Kong stages 1000m–2400m, with 1200/1400/1600 the dominant trips. Distance drives the stamina-vs-speed mix and the optimal running-style.",
+    "notes_zh": "技術層面：短途 (≤1200) 配速 chaos 高、頂位早；中途 (1400-1800) 配速結構穩定、closer 有空間；長途 (≥2000) stamina 主導。距離 × 出生月份、距離 × Dosage 為強交互。\n通俗層面：短跑、中距、長距，這在賽馬就像 100m、800m、5000m 的差別。馬匹的體型、血統、跑法都會偏好不同距離。",
+    "notes_en": "Technical: short trips (≤1200m) have chaotic pace and an early-positional bias; middle trips (1400-1800m) reward tactical riding; longer trips (≥2000m) become stamina-driven. Distance interacts strongly with pedigree (sire stamina index) and running style.\nLayman: sprints, miles, and routes — the equine equivalent of 100m vs 800m vs 5km. Each horse has its preferred distance window.",
+    "enabled_default": true,
+    "compute_fn_name": "h072_distance"
+  },
+  "H073": {
+    "id": "H073",
+    "category": 7,
+    "name_zh": "場地編碼",
+    "name_en": "Going encoded",
+    "display_name_zh": "場地編碼（HKJC）",
+    "display_name_en": "Going encoded (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B28"
+    ],
+    "description_zh": "草地 / AWT / good / yielding 等",
+    "description_en": "Good=0..Soft=4",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h073_going"
+  },
+  "H074": {
+    "id": "H074",
+    "category": 7,
+    "name_zh": "班次",
+    "name_en": "Class encoded",
+    "display_name_zh": "班次（HKJC）",
+    "display_name_en": "Class encoded (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B19"
+    ],
+    "description_zh": "Class 1-5、Group 1-3、Listed、Griffin",
+    "description_en": "G1=1..C5=5",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h074_class"
+  },
+  "H075": {
+    "id": "H075",
+    "category": 7,
+    "name_zh": "出賽馬數",
+    "name_en": "Field size",
+    "display_name_zh": "出賽馬數（Benter 1994）",
+    "display_name_en": "Field size (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1"
+    ],
+    "description_zh": "Field size",
+    "description_en": "Number of runners",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h075_field_size"
+  },
+  "H076": {
+    "id": "H076",
+    "category": 7,
+    "name_zh": "獎金",
+    "name_en": "Prize money",
+    "display_name_zh": "獎金（HKJC）",
+    "display_name_en": "Prize money (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B18"
+    ],
+    "description_zh": "1st 獎金 HK$；HKJC 公布；強訊號",
+    "description_en": "HK$ first prize",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h076_prize"
+  },
+  "H077": {
+    "id": "H077",
+    "category": 7,
+    "name_zh": "Group/Listed",
+    "name_en": "Group/Listed flag",
+    "display_name_zh": "Group/Listed（Wikipedia）",
+    "display_name_en": "Group/Listed flag (Wikipedia)",
+    "primary_source": "B18",
+    "all_sources": [
+      "B18",
+      "B19"
+    ],
+    "description_zh": "1 if G/L stake",
+    "description_en": "1 if G/L stake",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h077_group_listed"
+  },
+  "H078": {
+    "id": "H078",
+    "category": 7,
+    "name_zh": "國際賽",
+    "name_en": "International race flag",
+    "display_name_zh": "國際賽（HKJC）",
+    "display_name_en": "International race flag (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B19"
+    ],
+    "description_zh": "Hong Kong International Races、Champions Day 等",
+    "description_en": "HKIR/Champions Day",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h078_intl_race"
+  },
+  "H079": {
+    "id": "H079",
+    "category": 7,
+    "name_zh": "賽季階段",
+    "name_en": "Season phase",
+    "display_name_zh": "賽季階段（HKJC）",
+    "display_name_en": "Season phase (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "early/mid/late season；form cycle 與訓練週期相關",
+    "description_en": "Early/mid/late",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h079_season_phase"
+  },
+  "H080": {
+    "id": "H080",
+    "category": 7,
+    "name_zh": "日夜",
+    "name_en": "Day vs night",
+    "display_name_zh": "日夜（HKJC）",
+    "display_name_en": "Day vs night (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "跑馬地夜賽 vs 沙田日賽",
+    "description_en": "HV night, ST day",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h080_day_night"
+  },
+  "H081": {
+    "id": "H081",
+    "category": 7,
+    "name_zh": "氣溫",
+    "name_en": "Temperature (°C)",
+    "display_name_zh": "氣溫（Punter2Pro）",
+    "display_name_en": "Temperature (°C) (Punter2Pro)",
+    "primary_source": "B28",
+    "all_sources": [
+      "B28",
+      "B29"
+    ],
+    "description_zh": "From weather table",
+    "description_en": "From weather table",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h081_temperature"
+  },
+  "H082": {
+    "id": "H082",
+    "category": 7,
+    "name_zh": "降雨",
+    "name_en": "Rainfall (mm)",
+    "display_name_zh": "降雨（Punter2Pro）",
+    "display_name_en": "Rainfall (mm) (Punter2Pro)",
+    "primary_source": "B28",
+    "all_sources": [
+      "B28",
+      "B29"
+    ],
+    "description_zh": "Race-day rainfall",
+    "description_en": "Race-day rainfall",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h082_rainfall"
+  },
+  "H083": {
+    "id": "H083",
+    "category": 7,
+    "name_zh": "賽事編號",
+    "name_en": "Race number",
+    "display_name_zh": "賽事編號（HKJC）",
+    "display_name_en": "Race number (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "卡序（Race 1-11）；夜賽序後段速度衰退",
+    "description_en": "Card position",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h083_race_no"
+  },
+  "H084": {
+    "id": "H084",
+    "category": 8,
+    "name_zh": "休賽天數",
+    "name_en": "Days since last",
+    "display_name_zh": "休賽天數（EquinEdge）",
+    "display_name_en": "Days since last (EquinEdge)",
+    "primary_source": "B17",
+    "all_sources": [
+      "B17",
+      "B25"
+    ],
+    "description_zh": "休賽天數（layoff length）：自上場日至本場的天數。短歇 (≤14d) 易疲勞，理想 (28-49d)，久歇 (>60d) 風險增。",
+    "description_en": "Days since last start. Short layoffs (≤14d) risk fatigue; 28-49 days is the typical 'fresh and primed' window; gaps over 60 days flag potential rust or recovery from injury.",
+    "notes_zh": "技術層面：layoff penalty 與 trainer_returner_wr [H045] 共同預測復出表現。HK 馬廄密度高，>90d 通常代表獸醫停賽。\n通俗層面：間隔幾天最有效？太密集會累，太疏會生疏。看到「久休復賽」是要小心的訊號，可能是傷後復出。",
+    "notes_en": "Technical: short layoffs (≤14d) carry fatigue risk; the 28-49 day band is the empirical sweet spot; gaps >60 days are bucketed and combined with trainer_returner_wr [H045] to estimate post-layoff form.\nLayman: rest matters. Too soon and the horse is tired; too long and it's lost match-fitness — often a sign of a recent injury, which the model treats with caution.",
+    "enabled_default": true,
+    "compute_fn_name": "h084_days_since"
+  },
+  "H085": {
+    "id": "H085",
+    "category": 8,
+    "name_zh": "久休懲罰",
+    "name_en": "Long-layoff penalty",
+    "display_name_zh": "久休懲罰（EquinEdge）",
+    "display_name_en": "Long-layoff penalty (EquinEdge)",
+    "primary_source": "B17",
+    "all_sources": [
+      "B17"
+    ],
+    "description_zh": ">60 日歇賽折扣",
+    "description_en": "Penalty if >60d",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h085_layoff_penalty"
+  },
+  "H086": {
+    "id": "H086",
+    "category": 8,
+    "name_zh": "評分趨勢",
+    "name_en": "Rating trend",
+    "display_name_zh": "評分趨勢（Benter 1994）",
+    "display_name_en": "Rating trend (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1",
+      "B6"
+    ],
+    "description_zh": "Handicap Rating 之 slope",
+    "description_en": "Recent rating slope",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h086_rating_trend"
+  },
+  "H087": {
+    "id": "H087",
+    "category": 8,
+    "name_zh": "降班",
+    "name_en": "Class drop flag",
+    "display_name_zh": "降班（EquinEdge）",
+    "display_name_en": "Class drop flag (EquinEdge)",
+    "primary_source": "B6",
+    "all_sources": [
+      "B6"
+    ],
+    "description_zh": "由高班降至低班標記",
+    "description_en": "1 if dropped class",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h087_class_drop"
+  },
+  "H088": {
+    "id": "H088",
+    "category": 8,
+    "name_zh": "連勝紀錄",
+    "name_en": "Win streak",
+    "display_name_zh": "連勝紀錄（Journal of Prediction Markets）",
+    "display_name_en": "Win streak (Journal of Prediction Markets)",
+    "primary_source": "B25",
+    "all_sources": [
+      "B25"
+    ],
+    "description_zh": "連續勝場數 streak",
+    "description_en": "Consecutive wins",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h088_win_streak"
+  },
+  "H089": {
+    "id": "H089",
+    "category": 8,
+    "name_zh": "連敗紀錄",
+    "name_en": "Loss streak",
+    "display_name_zh": "連敗紀錄（Journal of Prediction Markets）",
+    "display_name_en": "Loss streak (Journal of Prediction Markets)",
+    "primary_source": "B25",
+    "all_sources": [
+      "B25"
+    ],
+    "description_zh": "連續敗場數 streak",
+    "description_en": "Consecutive losses",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h089_loss_streak"
+  },
+  "H090": {
+    "id": "H090",
+    "category": 8,
+    "name_zh": "上場名次",
+    "name_en": "Last finish position",
+    "display_name_zh": "上場名次（EquinEdge）",
+    "display_name_en": "Last finish position (EquinEdge)",
+    "primary_source": "B6",
+    "all_sources": [
+      "B6",
+      "B22"
+    ],
+    "description_zh": "Last-start finishing position（強訊號）",
+    "description_en": "Strong signal",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h090_last_pos"
+  },
+  "H091": {
+    "id": "H091",
+    "category": 8,
+    "name_zh": "上場敗距",
+    "name_en": "Last lengths behind",
+    "display_name_zh": "上場敗距（Benter 1994）",
+    "display_name_en": "Last lengths behind (Benter 1994)",
+    "primary_source": "B1",
+    "all_sources": [
+      "B1",
+      "B6"
+    ],
+    "description_zh": "距勝出者距離；Benter 標準變數",
+    "description_en": "Benter variable",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h091_last_lbw"
+  },
+  "H092": {
+    "id": "H092",
+    "category": 8,
+    "name_zh": "上場分段殘差",
+    "name_en": "Last sectional residual",
+    "display_name_zh": "上場分段殘差（Timeform / Rowlands）",
+    "display_name_en": "Last sectional residual (Timeform / Rowlands)",
+    "primary_source": "B10",
+    "all_sources": [
+      "B10",
+      "B11"
+    ],
+    "description_zh": "vs par",
+    "description_en": "vs par",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H093": {
+    "id": "H093",
+    "category": 8,
+    "name_zh": "終段速度%",
+    "name_en": "Finishing Speed %",
+    "display_name_zh": "終段速度%（Timeform / Rowlands）",
+    "display_name_en": "Finishing Speed % (Timeform / Rowlands)",
+    "primary_source": "B10",
+    "all_sources": [
+      "B10"
+    ],
+    "description_zh": "Rowlands FSP",
+    "description_en": "Rowlands FSP",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H094": {
+    "id": "H094",
+    "category": 8,
+    "name_zh": "試閘紀錄",
+    "name_en": "Recent barrier trial",
+    "display_name_zh": "試閘紀錄（HKJC）",
+    "display_name_en": "Recent barrier trial (HKJC)",
+    "primary_source": "B20",
+    "all_sources": [
+      "B20"
+    ],
+    "description_zh": "近 60 日試閘 (barrier trial) 紀錄。HKJC 公開試閘成績，是出賽前狀態檢測的重要指標 [B20]。",
+    "description_en": "Most recent barrier-trial position within 60 days. Trials are unofficial gallops HKJC publishes to demonstrate a horse is fit and gate-safe; sharp trial position is a strong pre-race form signal.",
+    "notes_zh": "技術層面：試閘成績 ≤ 3 名 + 時間優異是強訊號，特別是首場、復出前、或近兩個月未出賽馬。配合 trackwork [H095] 一同評估。\n通俗層面：試閘就像「正賽前的彩排」，馬匹假裝比賽一次。試閘跑得好通常表示練馬師覺得牠準備好了。",
+    "notes_en": "Technical: trial finishing position within the top three combined with a fast clocking is a meaningful form signal, especially for first-time runners, horses returning from a break, or those without a public gallop in the last 14 days. Pairs with H095 trackwork.\nLayman: a trial is a dress rehearsal — the horse races for real but the result doesn't count. A sharp trial usually means the trainer thinks it's ready.",
+    "enabled_default": true,
+    "compute_fn_name": "h094_barrier_trial"
+  },
+  "H095": {
+    "id": "H095",
+    "category": 8,
+    "name_zh": "晨操工夫",
+    "name_en": "Recent trackwork",
+    "display_name_zh": "晨操工夫（HKJC）",
+    "display_name_en": "Recent trackwork (HKJC)",
+    "primary_source": "B20",
+    "all_sources": [
+      "B20",
+      "B21"
+    ],
+    "description_zh": "HKJC 公布晨操路程與速度",
+    "description_en": "Last 14d gallop distance",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h095_trackwork"
+  },
+  "H096": {
+    "id": "H096",
+    "category": 8,
+    "name_zh": "連續同騎師",
+    "name_en": "Same-jockey streak",
+    "display_name_zh": "連續同騎師（HKJC）",
+    "display_name_en": "Same-jockey streak (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B25"
+    ],
+    "description_zh": "Consecutive same-jockey starts",
+    "description_en": "Consecutive same-jockey starts",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h096_same_jockey_streak"
+  },
+  "H097": {
+    "id": "H097",
+    "category": 9,
+    "name_zh": "裝備變動",
+    "name_en": "Gear change flag",
+    "display_name_zh": "裝備變動（EquinEdge）",
+    "display_name_en": "Gear change flag (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B14"
+    ],
+    "description_zh": "任何 gear change 標記",
+    "description_en": "Any equipment change",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h097_gear_change"
+  },
+  "H098": {
+    "id": "H098",
+    "category": 9,
+    "name_zh": "首次裝備",
+    "name_en": "First-time gear",
+    "display_name_zh": "首次裝備（EquinEdge）",
+    "display_name_en": "First-time gear (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B14"
+    ],
+    "description_zh": "first-time gear",
+    "description_en": "Untested gear",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h098_first_gear"
+  },
+  "H099": {
+    "id": "H099",
+    "category": 9,
+    "name_zh": "眼罩變動",
+    "name_en": "Blinkers on/off",
+    "display_name_zh": "眼罩變動（EquinEdge）",
+    "display_name_en": "Blinkers on/off (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B14"
+    ],
+    "description_zh": "first-time blinkers 為強訊號",
+    "description_en": "First-time blinkers",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h099_blinkers"
+  },
+  "H100": {
+    "id": "H100",
+    "category": 9,
+    "name_zh": "首次馬銜",
+    "name_en": "First-time bit/tongue tie",
+    "display_name_zh": "首次馬銜（EquinEdge）",
+    "display_name_en": "First-time bit/tongue tie (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B14"
+    ],
+    "description_zh": "bit / tongue tie 改動",
+    "description_en": "Bit change marker",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H101": {
+    "id": "H101",
+    "category": 9,
+    "name_zh": "蹄鐵變動",
+    "name_en": "Shoeing change",
+    "display_name_zh": "蹄鐵變動（EquinEdge）",
+    "display_name_en": "Shoeing change (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11"
+    ],
+    "description_zh": "例如 bar shoe、glue-on",
+    "description_en": "Bar shoe / glue-on",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H102": {
+    "id": "H102",
+    "category": 9,
+    "name_zh": "馬鞍變動",
+    "name_en": "Saddle change",
+    "display_name_zh": "馬鞍變動（PaddyPower）",
+    "display_name_en": "Saddle change (PaddyPower)",
+    "primary_source": "B33",
+    "all_sources": [
+      "B33"
+    ],
+    "description_zh": "synthetic vs leather；冷僻特徵",
+    "description_en": "Synthetic vs leather",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H103": {
+    "id": "H103",
+    "category": 9,
+    "name_zh": "多重裝備變動",
+    "name_en": "Multiple gear changes",
+    "display_name_zh": "多重裝備變動（EquinEdge）",
+    "display_name_en": "Multiple gear changes (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B14"
+    ],
+    "description_zh": "任何 gear change 標記",
+    "description_en": "N items changed",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h103_multi_gear"
+  },
+  "H104": {
+    "id": "H104",
+    "category": 9,
+    "name_zh": "用藥變動",
+    "name_en": "Medication change",
+    "display_name_zh": "用藥變動（EquinEdge）",
+    "display_name_en": "Medication change (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B24"
+    ],
+    "description_zh": "US 標準強訊號；HK 禁用 Lasix 但有其他醫療標記",
+    "description_en": "HK: limited; US Lasix",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H105": {
+    "id": "H105",
+    "category": 9,
+    "name_zh": "獸醫紀錄",
+    "name_en": "Vet record flag",
+    "display_name_zh": "獸醫紀錄（HKJC）",
+    "display_name_en": "Vet record flag (HKJC)",
+    "primary_source": "B38",
+    "all_sources": [
+      "B38",
+      "B39"
+    ],
+    "description_zh": "HKJC 公布 vetrecord database；近 30 日紀錄",
+    "description_en": "Recent OVE entry",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h105_vet"
+  },
+  "H106": {
+    "id": "H106",
+    "category": 9,
+    "name_zh": "Roarer",
+    "name_en": "Roarer surgery flag",
+    "display_name_zh": "Roarer（HKJC）",
+    "display_name_en": "Roarer surgery flag (HKJC)",
+    "primary_source": "B38",
+    "all_sources": [
+      "B38"
+    ],
+    "description_zh": "HKJC 公布 OVERoar database（喉嚨手術馬匹）",
+    "description_en": "Has had wind op",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h106_roarer"
+  },
+  "H107": {
+    "id": "H107",
+    "category": 9,
+    "name_zh": "獸醫復出",
+    "name_en": "Off-vet returner",
+    "display_name_zh": "獸醫復出（HKJC）",
+    "display_name_en": "Off-vet returner (HKJC)",
+    "primary_source": "B38",
+    "all_sources": [
+      "B38",
+      "B39"
+    ],
+    "description_zh": "First start post-vet",
+    "description_en": "First start post-vet",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H108": {
+    "id": "H108",
+    "category": 10,
+    "name_zh": "賽事步速",
+    "name_en": "Race pace forecast",
+    "display_name_zh": "賽事步速（EquinEdge）",
+    "display_name_en": "Race pace forecast (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "預估賽事步速：0 慢、1 中、2 快。由場上 early-speed 馬數量推算，是 pace handicapping 的核心。",
+    "description_en": "Forecast race pace: 0 slow, 1 medium, 2 fast. Counts the number of confirmed early-speed runners in the field — many leaders means a fast scorching pace.",
+    "notes_zh": "技術層面：fast pace 通常利好 closer，slow pace 利好 leader/stalker。pace × style 交互 [H110] 是 Brisnet 經典 angle [B11][B12]。\n通俗層面：場上有幾匹搶快的馬？多匹搶快，前段會跑得太兇，最後讓追逐型反勝；少匹搶快，領跑馬就能輕鬆控速。",
+    "notes_en": "Technical: a fast forecast pace creates a 'closers' race'; a slow pace lets a lone leader steal it. The pace × running-style cross-term [H110] is one of Brisnet's classic angles [B11][B12].\nLayman: how many horses want to lead? If they all want to lead, they'll burn each other out and the closers come over the top. If only one wants to lead, it can dictate from the front.",
+    "enabled_default": true,
+    "compute_fn_name": "h108_race_pace"
+  },
+  "H109": {
+    "id": "H109",
+    "category": 10,
+    "name_zh": "跑法風格",
+    "name_en": "Running style",
+    "display_name_zh": "跑法風格（EquinEdge）",
+    "display_name_en": "Running style (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "跑法風格：0 領跑 (leader)、1 緊隨 (stalker)、2 中游 (midfield)、3 後上 (closer)。由歷史首段位置均值推算。",
+    "description_en": "Running-style class: 0 = front-runner, 1 = stalker, 2 = midfield, 3 = closer. Derived from the average first-call position across the horse's history.",
+    "notes_zh": "技術層面：style 與 pace、draw、distance 都有強交互。HK 跑法純度 [H120] 配合 style 為穩定性指標：跑法純度高的馬，模型可信度更高。\n通俗層面：每匹馬都有偏好的跑法 — 喜歡領頭跑、跟著跑、還是後段衝。看牠以前怎麼跑就大致知道。",
+    "notes_en": "Technical: running-style interacts with pace forecast, gate draw, and distance. Style purity [H120] measures how reliably a horse races to type — high purity makes the style signal more trustworthy.\nLayman: every horse has a preference — go to the front, sit just off the pace, hang in midfield, or come from the back. Knowing the preference tells you when the race conditions suit it.",
+    "enabled_default": true,
+    "compute_fn_name": "h109_style"
+  },
+  "H110": {
+    "id": "H110",
+    "category": 10,
+    "name_zh": "步速配合",
+    "name_en": "Pace-style match",
+    "display_name_zh": "步速配合（EquinEdge）",
+    "display_name_en": "Pace-style match (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "自身步速 vs 賽事步速契合度",
+    "description_en": "Bonus if style fits pace",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h110_pace_match"
+  },
+  "H111": {
+    "id": "H111",
+    "category": 10,
+    "name_zh": "閘位加成",
+    "name_en": "Draw×pace booster",
+    "display_name_zh": "閘位加成（EquinEdge）",
+    "display_name_en": "Draw×pace booster (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "閘號與步速交互",
+    "description_en": "Matrix bonus",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h111_draw_pace_bonus"
+  },
+  "H112": {
+    "id": "H112",
+    "category": 10,
+    "name_zh": "領跑指數",
+    "name_en": "Lead profile",
+    "display_name_zh": "領跑指數（EquinEdge）",
+    "display_name_en": "Lead profile (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "至第一個 call 領先頻率",
+    "description_en": "Frequency of leading at 1st call",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h112_lead_profile"
+  },
+  "H113": {
+    "id": "H113",
+    "category": 10,
+    "name_zh": "E1 早段",
+    "name_en": "E1 early speed",
+    "display_name_zh": "E1 早段（EquinEdge）",
+    "display_name_en": "E1 early speed (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B16"
+    ],
+    "description_zh": "Brisnet 短途首 2F / 中距首 4F 速度 figure",
+    "description_en": "Brisnet-style figure",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H114": {
+    "id": "H114",
+    "category": 10,
+    "name_zh": "E2 早段",
+    "name_en": "E2 early speed",
+    "display_name_zh": "E2 早段（EquinEdge）",
+    "display_name_en": "E2 early speed (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B16"
+    ],
+    "description_zh": "Brisnet 短途首 4F / 中距首 6F 速度 figure",
+    "description_en": "Brisnet-style figure",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H115": {
+    "id": "H115",
+    "category": 10,
+    "name_zh": "後段速度",
+    "name_en": "Late Pace LP",
+    "display_name_zh": "後段速度（EquinEdge）",
+    "display_name_en": "Late Pace LP (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B16"
+    ],
+    "description_zh": "Rowlands-style late split",
+    "description_en": "Rowlands-style late split",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h115_late_pace"
+  },
+  "H116": {
+    "id": "H116",
+    "category": 10,
+    "name_zh": "前段速度",
+    "name_en": "Early Pace EP",
+    "display_name_zh": "前段速度（EquinEdge）",
+    "display_name_en": "Early Pace EP (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B16"
+    ],
+    "description_zh": "Avg early ratio",
+    "description_en": "Avg early ratio",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h116_early_pace"
+  },
+  "H117": {
+    "id": "H117",
+    "category": 10,
+    "name_zh": "配速壓力",
+    "name_en": "Pace pressure",
+    "display_name_zh": "配速壓力（Betting Gods）",
+    "display_name_en": "Pace pressure (Betting Gods)",
+    "primary_source": "B12",
+    "all_sources": [
+      "B12",
+      "B16"
+    ],
+    "description_zh": "場上 early-speed 馬數量",
+    "description_en": "# early-speed runners",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h117_pace_pressure"
+  },
+  "H118": {
+    "id": "H118",
+    "category": 10,
+    "name_zh": "配速生存者",
+    "name_en": "Pace survivor",
+    "display_name_zh": "配速生存者（Betting Gods）",
+    "display_name_en": "Pace survivor (Betting Gods)",
+    "primary_source": "B12",
+    "all_sources": [
+      "B12",
+      "B16"
+    ],
+    "description_zh": "上場面對 hot pace 仍 finishing well 的馬",
+    "description_en": "Closer that withstands hot pace",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H119": {
+    "id": "H119",
+    "category": 10,
+    "name_zh": "配速受益者",
+    "name_en": "Pace beneficiary",
+    "display_name_zh": "配速受益者（Betting Gods）",
+    "display_name_en": "Pace beneficiary (Betting Gods)",
+    "primary_source": "B12",
+    "all_sources": [
+      "B12",
+      "B16"
+    ],
+    "description_zh": "closer 對應 hot pace 加成",
+    "description_en": "Closer benefits when pace fast",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h119_pace_benefit"
+  },
+  "H120": {
+    "id": "H120",
+    "category": 10,
+    "name_zh": "跑法純度",
+    "name_en": "Style purity",
+    "display_name_zh": "跑法純度（EquinEdge）",
+    "display_name_en": "Style purity (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B12"
+    ],
+    "description_zh": "同跑法佔過往出賽比例（穩定性）",
+    "description_en": "% of runs in dominant style",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h120_style_purity"
+  },
+  "H121": {
+    "id": "H121",
+    "category": 10,
+    "name_zh": "超越位次均值",
+    "name_en": "Avg overtake distance",
+    "display_name_zh": "超越位次均值（Timeform / Rowlands）",
+    "display_name_en": "Avg overtake distance (Timeform / Rowlands)",
+    "primary_source": "B10",
+    "all_sources": [
+      "B10",
+      "B11"
+    ],
+    "description_zh": "平均超越名次",
+    "description_en": "Mean positions gained",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h121_overtake"
+  },
+  "H122": {
+    "id": "H122",
+    "category": 11,
+    "name_zh": "CHRI 指數",
+    "name_en": "CHRI composite",
+    "display_name_zh": "CHRI 指數（HKJC）",
+    "display_name_en": "CHRI composite (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "CHRI 綜合指數：本系統內部 composite，混合 layoff penalty、style、distance adaptation 等多項指標 [B14]。",
+    "description_en": "CHRI: an in-house composite blending layoff penalty, running-style class, and distance adaptation. A single roll-up indicator for horses where individual factor scores conflict.",
+    "notes_zh": "技術層面：CHRI = mean(layoff_penalty, style_score, dist_adapt)。粗略 health-check 指標；當單一因子衝突時 (例如評分高但久歇) 提供總覽。\n通俗層面：把幾個重要因素合在一起的綜合分數，讓你一眼看出一匹馬整體狀態是好是壞，不用一個一個翻細項。",
+    "notes_en": "Technical: composite of layoff penalty, running-style score, and distance adaptation — a coarse health-check used when individual factors conflict (e.g. strong rating but long layoff).\nLayman: a single overall score combining several important factors, so you can sense the horse's overall condition at a glance instead of reading every cell.",
+    "enabled_default": true,
+    "compute_fn_name": "h122_chri"
+  },
+  "H123": {
+    "id": "H123",
+    "category": 11,
+    "name_zh": "Beyer",
+    "name_en": "Beyer figure",
+    "display_name_zh": "Beyer（Daily Racing Form）",
+    "display_name_en": "Beyer figure (Daily Racing Form)",
+    "primary_source": "B4",
+    "all_sources": [
+      "B4"
+    ],
+    "description_zh": "DRF 標準速度評級，已對 track variant 校正",
+    "description_en": "US figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H124": {
+    "id": "H124",
+    "category": 11,
+    "name_zh": "Timeform",
+    "name_en": "Timeform Master Rating",
+    "display_name_zh": "Timeform（Timeform）",
+    "display_name_en": "Timeform Master Rating (Timeform)",
+    "primary_source": "B3",
+    "all_sources": [
+      "B3"
+    ],
+    "description_zh": "UK/EU 主流；含 pace 與 going 調整",
+    "description_en": "UK/EU figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H125": {
+    "id": "H125",
+    "category": 11,
+    "name_zh": "RPR",
+    "name_en": "Racing Post Rating",
+    "display_name_zh": "RPR（Timeform）",
+    "display_name_en": "Racing Post Rating (Timeform)",
+    "primary_source": "B3",
+    "all_sources": [
+      "B3"
+    ],
+    "description_zh": "UK alternative；含 weight 與 form",
+    "description_en": "UK figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H126": {
+    "id": "H126",
+    "category": 11,
+    "name_zh": "Brisnet Prime",
+    "name_en": "Brisnet Prime Power",
+    "display_name_zh": "Brisnet Prime（Brisnet）",
+    "display_name_en": "Brisnet Prime Power (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B16"
+    ],
+    "description_zh": "Brisnet composite，含 speed/pace/class",
+    "description_en": "US composite (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H127": {
+    "id": "H127",
+    "category": 11,
+    "name_zh": "Class Rating",
+    "name_en": "Brisnet Class Rating",
+    "display_name_zh": "Class Rating（Brisnet）",
+    "display_name_en": "Brisnet Class Rating (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B16"
+    ],
+    "description_zh": "該馬於各場之 class figure",
+    "description_en": "US class figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H128": {
+    "id": "H128",
+    "category": 11,
+    "name_zh": "Topspeed",
+    "name_en": "Topspeed",
+    "display_name_zh": "Topspeed（Timeform）",
+    "display_name_en": "Topspeed (Timeform)",
+    "primary_source": "B3",
+    "all_sources": [
+      "B3"
+    ],
+    "description_zh": "Racing Post 純時間 figure",
+    "description_en": "Racing Post raw time (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H129": {
+    "id": "H129",
+    "category": 11,
+    "name_zh": "Equibase Speed",
+    "name_en": "Equibase Speed",
+    "display_name_zh": "Equibase Speed（TwinSpires）",
+    "display_name_en": "Equibase Speed (TwinSpires)",
+    "primary_source": "B16",
+    "all_sources": [
+      "B16",
+      "B22"
+    ],
+    "description_zh": "含 ITV / DTV 雙層校正",
+    "description_en": "US figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H130": {
+    "id": "H130",
+    "category": 11,
+    "name_zh": "Equibase Pace",
+    "name_en": "Equibase Pace",
+    "display_name_zh": "Equibase Pace（TwinSpires）",
+    "display_name_en": "Equibase Pace (TwinSpires)",
+    "primary_source": "B16",
+    "all_sources": [
+      "B16",
+      "B22"
+    ],
+    "description_zh": "早/中/晚段",
+    "description_en": "US figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H131": {
+    "id": "H131",
+    "category": 11,
+    "name_zh": "Ragozin",
+    "name_en": "Ragozin sheet",
+    "display_name_zh": "Ragozin（Daily Racing Form）",
+    "display_name_en": "Ragozin sheet (Daily Racing Form)",
+    "primary_source": "B4",
+    "all_sources": [
+      "B4",
+      "B16"
+    ],
+    "description_zh": "US figure-maker，數字越低越好",
+    "description_en": "US figure (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H132": {
+    "id": "H132",
+    "category": 11,
+    "name_zh": "AE composite",
+    "name_en": "Weighted A/E",
+    "display_name_zh": "AE composite（EquinEdge）",
+    "display_name_en": "Weighted A/E (EquinEdge)",
+    "primary_source": "B22",
+    "all_sources": [
+      "B22",
+      "B30"
+    ],
+    "description_zh": "Multi-condition A/E",
+    "description_en": "Multi-condition A/E",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h132_ae_composite"
+  },
+  "H133": {
+    "id": "H133",
+    "category": 12,
+    "name_zh": "距離×場地",
+    "name_en": "Distance×surface",
+    "display_name_zh": "距離×場地（HKJC）",
+    "display_name_en": "Distance×surface (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B16",
+      "B41"
+    ],
+    "description_zh": "turf 1600m 與 AWT 1600m 訓練不同模型",
+    "description_en": "Joint key",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h133_dist_surface"
+  },
+  "H134": {
+    "id": "H134",
+    "category": 12,
+    "name_zh": "班次×馬齡",
+    "name_en": "Class×age",
+    "display_name_zh": "班次×馬齡（EquinEdge）",
+    "display_name_en": "Class×age (EquinEdge)",
+    "primary_source": "B6",
+    "all_sources": [
+      "B6",
+      "B23"
+    ],
+    "description_zh": "3yo 升 Class 2 之 ROI",
+    "description_en": "Joint key",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h134_class_age"
+  },
+  "H135": {
+    "id": "H135",
+    "category": 12,
+    "name_zh": "騎師×場地",
+    "name_en": "Jockey×venue",
+    "display_name_zh": "騎師×場地（HKJC）",
+    "display_name_en": "Jockey×venue (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "Bowman 於跑馬地強項",
+    "description_en": "Joint WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h135_jockey_venue"
+  },
+  "H136": {
+    "id": "H136",
+    "category": 12,
+    "name_zh": "騎師×距離",
+    "name_en": "Jockey×distance",
+    "display_name_zh": "騎師×距離（HKJC）",
+    "display_name_en": "Jockey×distance (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "Moreira 短途 vs 中距 ROI 差",
+    "description_en": "Joint WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h136_jockey_dist"
+  },
+  "H137": {
+    "id": "H137",
+    "category": 12,
+    "name_zh": "練馬師×場地",
+    "name_en": "Trainer×venue",
+    "display_name_zh": "練馬師×場地（HKJC）",
+    "display_name_en": "Trainer×venue (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B36"
+    ],
+    "description_zh": "部分練馬師偏 sand",
+    "description_en": "Joint WR",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h137_trainer_venue"
+  },
+  "H138": {
+    "id": "H138",
+    "category": 12,
+    "name_zh": "練馬師×班次",
+    "name_en": "Trainer×class",
+    "display_name_zh": "練馬師×班次（Brisnet）",
+    "display_name_en": "Trainer×class (Brisnet)",
+    "primary_source": "B2",
+    "all_sources": [
+      "B2",
+      "B6"
+    ],
+    "description_zh": "同類別 Brisnet angle",
+    "description_en": "Joint angle",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h138_trainer_class"
+  },
+  "H139": {
+    "id": "H139",
+    "category": 12,
+    "name_zh": "父系×場地",
+    "name_en": "Sire×surface",
+    "display_name_zh": "父系×場地（BloodHorse）",
+    "display_name_en": "Sire×surface (BloodHorse)",
+    "primary_source": "B5",
+    "all_sources": [
+      "B5",
+      "B26"
+    ],
+    "description_zh": "Galileo 後代 turf 強",
+    "description_en": "Pedigree-derived",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H140": {
+    "id": "H140",
+    "category": 12,
+    "name_zh": "父系×距離",
+    "name_en": "Sire×distance",
+    "display_name_zh": "父系×距離（Wikipedia / Pedigree Online）",
+    "display_name_en": "Sire×distance (Wikipedia / Pedigree Online)",
+    "primary_source": "B26",
+    "all_sources": [
+      "B26"
+    ],
+    "description_zh": "Dosage 已部分編碼",
+    "description_en": "Pedigree-derived",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H141": {
+    "id": "H141",
+    "category": 12,
+    "name_zh": "季節×場地",
+    "name_en": "Season×surface",
+    "display_name_zh": "季節×場地（Punter2Pro）",
+    "display_name_en": "Season×surface (Punter2Pro)",
+    "primary_source": "B28",
+    "all_sources": [
+      "B28",
+      "B36"
+    ],
+    "description_zh": "春雨期軟地 closer 強",
+    "description_en": "Spring rain etc.",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h141_season_surface"
+  },
+  "H142": {
+    "id": "H142",
+    "category": 12,
+    "name_zh": "步速×班次",
+    "name_en": "Pace×class",
+    "display_name_zh": "步速×班次（Betting Gods）",
+    "display_name_en": "Pace×class (Betting Gods)",
+    "primary_source": "B12",
+    "all_sources": [
+      "B12",
+      "B16"
+    ],
+    "description_zh": "高班次 pace 更兇，closer 加成",
+    "description_en": "Hot pace at G1",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h142_pace_class"
+  },
+  "H143": {
+    "id": "H143",
+    "category": 12,
+    "name_zh": "用藥×場地",
+    "name_en": "Med×surface",
+    "display_name_zh": "用藥×場地（EquinEdge）",
+    "display_name_en": "Med×surface (EquinEdge)",
+    "primary_source": "B11",
+    "all_sources": [
+      "B11",
+      "B24"
+    ],
+    "description_zh": "Lasix × dirt 強訊號（US，HK 不適用）",
+    "description_en": "HK: NaN",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H144": {
+    "id": "H144",
+    "category": 12,
+    "name_zh": "馬齡×距離",
+    "name_en": "Age×distance (dup)",
+    "display_name_zh": "馬齡×距離（HKJC）",
+    "display_name_en": "Age×distance (dup) (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B23"
+    ],
+    "description_zh": "已於類別 3 列出；保留交互槽",
+    "description_en": "Mirror of H033",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h144_age_dist_dup"
+  },
+  "H145": {
+    "id": "H145",
+    "category": 12,
+    "name_zh": "天氣×場地",
+    "name_en": "Weather×surface",
+    "display_name_zh": "天氣×場地（Punter2Pro）",
+    "display_name_en": "Weather×surface (Punter2Pro)",
+    "primary_source": "B28",
+    "all_sources": [
+      "B28",
+      "B29",
+      "B41"
+    ],
+    "description_zh": "雨後 turf 漸軟",
+    "description_en": "Rain softening turf",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h145_weather_surface"
+  },
+  "H146": {
+    "id": "H146",
+    "category": 12,
+    "name_zh": "賽事編號×場地",
+    "name_en": "Race-no×surface",
+    "display_name_zh": "賽事編號×場地（HKJC）",
+    "display_name_en": "Race-no×surface (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B41"
+    ],
+    "description_zh": "後段賽事 turf 受踐踏耗損",
+    "description_en": "Late-card turf wear",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h146_raceno_surface"
+  },
+  "H147": {
+    "id": "H147",
+    "category": 13,
+    "name_zh": "Harville P(1-2)",
+    "name_en": "Harville top-2 prob",
+    "display_name_zh": "Harville P(1-2)（Mash）",
+    "display_name_en": "Harville top-2 prob (Mash)",
+    "primary_source": "B8",
+    "all_sources": [
+      "B8",
+      "B9"
+    ],
+    "description_zh": "Harville top-2 機率：由各馬 win 機率推算前二名組合機率。Harville 1973 [B8] 經典公式，是 quinella 定價基礎。",
+    "description_en": "Harville top-2 probability: derived from each horse's win probability via the closed-form Harville (1973) [B8] formula. The standard estimator behind quinella pricing.",
+    "notes_zh": "技術層面：P(j 第二 | i 勝) = p_j / (1 - p_i)。對 favourite 在 2nd/3rd 有偏差 (高估)，Henery 1981 [B9] 與 Plackett-Luce 是公認的精細化版本。\n通俗層面：知道每匹馬奪冠機率後，怎麼推算「1+2 連贏」機率？Harville 公式是最簡單的方法，業界標準。",
+    "notes_en": "Technical: P(j second | i wins) = p_j / (1 − p_i). Known to over-rate favourites in second/third position; Henery 1981 [B9] and Plackett-Luce refine this with running-time models.\nLayman: given each horse's win chance, how likely is the 1-2 combination? The Harville formula is the textbook way to roll win probabilities up into exotic-bet prices.",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H148": {
+    "id": "H148",
+    "category": 13,
+    "name_zh": "Harville P(1-2-3)",
+    "name_en": "Harville top-3 prob",
+    "display_name_zh": "Harville P(1-2-3)（Mash）",
+    "display_name_en": "Harville top-3 prob (Mash)",
+    "primary_source": "B8",
+    "all_sources": [
+      "B8",
+      "B9"
+    ],
+    "description_zh": "Harville top-3 機率：擴展至 P(1-2-3) 組合。三重彩 (trifecta) 與位置 Q (place quinella) 定價基礎 [B8][B9]。",
+    "description_en": "Harville top-3 probability for trifecta and place-quinella pricing. Extension of the same chain rule used in H147, applied to the second- and third-place transitions.",
+    "notes_zh": "技術層面：P(i, j, k) = p_i × p_j/(1-p_i) × p_k/(1-p_i-p_j)。組合爆量：n=12 時 ≈ 1320 組，需 Monte Carlo 或 listwise 近似快速求解 [B9][B31]。\n通俗層面：再加一個位置（第三名）就更複雜。三重彩有上千種組合，要全算很慢，所以實務上會用簡化的數學方法。",
+    "notes_en": "Technical: P(i, j, k) = p_i × p_j/(1-p_i) × p_k/(1-p_i-p_j). The combinatorial explosion (≈ 1320 orderings for a 12-horse field) typically requires Monte-Carlo or listwise approximations [B9][B31].\nLayman: same idea as the 1-2 but extended to picking three. Far more combinations, so we usually approximate rather than enumerate every possibility.",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H149": {
+    "id": "H149",
+    "category": 13,
+    "name_zh": "Henery 修正",
+    "name_en": "Henery refinement",
+    "display_name_zh": "Henery 修正（Mash）",
+    "display_name_en": "Henery refinement (Mash)",
+    "primary_source": "B8",
+    "all_sources": [
+      "B8",
+      "B9"
+    ],
+    "description_zh": "assume exponential running times；對 longshot 修正",
+    "description_en": "Exponential time model",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H150": {
+    "id": "H150",
+    "category": 13,
+    "name_zh": "Plackett-Luce",
+    "name_en": "Plackett-Luce likelihood",
+    "display_name_zh": "Plackett-Luce（Lo）",
+    "display_name_en": "Plackett-Luce likelihood (Lo)",
+    "primary_source": "B9",
+    "all_sources": [
+      "B9",
+      "B31"
+    ],
+    "description_zh": "listwise ranking model；訓練 LtR",
+    "description_en": "Listwise rank",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H151": {
+    "id": "H151",
+    "category": 13,
+    "name_zh": "Discounted Harville",
+    "name_en": "Discounted Harville",
+    "display_name_zh": "Discounted Harville（Mash）",
+    "display_name_en": "Discounted Harville (Mash)",
+    "primary_source": "B8",
+    "all_sources": [
+      "B8"
+    ],
+    "description_zh": "PaceAdvantage 社群對 Harville 之高賠率折扣",
+    "description_en": "Longshot discount",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H152": {
+    "id": "H152",
+    "category": 13,
+    "name_zh": "Q 互補",
+    "name_en": "Q style complement",
+    "display_name_zh": "Q 互補（HKJC）",
+    "display_name_en": "Q style complement (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "Pair-style complementarity",
+    "description_en": "Pair-style complementarity",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h152_q_compat"
+  },
+  "H153": {
+    "id": "H153",
+    "category": 13,
+    "name_zh": "Q 競爭",
+    "name_en": "Q field strength",
+    "display_name_zh": "Q 競爭（HKJC）",
+    "display_name_en": "Q field strength (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14"
+    ],
+    "description_zh": "連贏組合競爭強度",
+    "description_en": "Strong-jockey count",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h153_q_strength"
+  },
+  "H154": {
+    "id": "H154",
+    "category": 13,
+    "name_zh": "三甲組合",
+    "name_en": "Trifecta prob vector",
+    "display_name_zh": "三甲組合（Mash）",
+    "display_name_en": "Trifecta prob vector (Mash)",
+    "primary_source": "B8",
+    "all_sources": [
+      "B8",
+      "B16"
+    ],
+    "description_zh": "各 1-2-3 順序機率向量化",
+    "description_en": "Top-3 ordered probs",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H155": {
+    "id": "H155",
+    "category": 13,
+    "name_zh": "相鄰閘",
+    "name_en": "Adjacent draw correlation",
+    "display_name_zh": "相鄰閘（PuntLab）",
+    "display_name_en": "Adjacent draw correlation (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36",
+      "B41"
+    ],
+    "description_zh": "adjacent draw 之 race interference 機率",
+    "description_en": "Interference prob",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h155_adjacent_draw"
+  },
+  "H156": {
+    "id": "H156",
+    "category": 14,
+    "name_zh": "開盤賠率",
+    "name_en": "Opening odds",
+    "display_name_zh": "開盤賠率（FlatStats）",
+    "display_name_en": "Opening odds (FlatStats)",
+    "primary_source": "B30",
+    "all_sources": [
+      "B30",
+      "B35"
+    ],
+    "description_zh": "開盤賠率：當日首個 odds 快照。對比收市 SP 可量度市場資金流入方向 (drift / steamer) [B30][B35]。",
+    "description_en": "Opening odds — the first published tote price of the day. Compared against the closing price, it reveals which way the smart money has moved (drift = lengthening, steamer = shortening).",
+    "notes_zh": "技術層面：opening — closing 差距 ≥ 30% 視為 steamer 訊號。HK 純 pari-mutuel 池，opening 由開閘前小量資金決定，敏感於後續變動。\n通俗層面：早上開盤的賠率，等比賽前的賠率，看資金有沒有湧入。若有人偷偷大買，賠率會明顯縮短，這通常是「內幕資金」的訊號。",
+    "notes_en": "Technical: opening-to-closing drift of 30% or more is a recognised 'steamer' signal of late professional money. Because HK runs pure pari-mutuel pools, the opening price is set by sparse early money and is very sensitive to subsequent flow.\nLayman: the price first thing in the morning versus the price at off-time. If a horse's price drops sharply, big money has piled in — usually informed money worth respecting.",
+    "enabled_default": true,
+    "compute_fn_name": "h156_open_odds"
+  },
+  "H157": {
+    "id": "H157",
+    "category": 14,
+    "name_zh": "收市賠率",
+    "name_en": "Closing odds",
+    "display_name_zh": "收市賠率（FlatStats）",
+    "display_name_en": "Closing odds (FlatStats)",
+    "primary_source": "B30",
+    "all_sources": [
+      "B30",
+      "B35"
+    ],
+    "description_zh": "收市賠率（closing / Starting Price）：跑前最後一個 odds 快照，是市場最完整資訊的反映，也是 CLV 計算基準 [B30][B35]。",
+    "description_en": "Closing odds (HK starting price) — the final tote price as the gates open. This is the market's consensus probability at the moment of truth and the reference price for CLV calculations.",
+    "notes_zh": "技術層面：1/closing_odds = market implied prob (含 ~17.5% takeout)。Benter 1994 [B1] stage-2 logit 的 π_i 核心輸入；無此值則模型 information-starved。\n通俗層面：開閘那一刻的賠率，是最多人投注的綜合結果。市場越接近開賽，賠率就越「準」，這也是專家評估自己有沒有 edge 的關鍵基準。",
+    "notes_en": "Technical: 1 / closing_odds is the market-implied win probability (carrying ~17.5% takeout in HK). This is the π_i term in Benter 1994's stage-2 logit [B1] — without it, the blended model is information-starved.\nLayman: the price right before the gates open is the crowd's combined wisdom. It's the standard against which professional bettors measure whether they've 'beaten the market' on each bet.",
+    "enabled_default": true,
+    "compute_fn_name": "h157_close_odds"
+  },
+  "H158": {
+    "id": "H158",
+    "category": 14,
+    "name_zh": "賠率走勢",
+    "name_en": "Odds drift %",
+    "display_name_zh": "賠率走勢（EquianalytiX）",
+    "display_name_en": "Odds drift % (EquianalytiX)",
+    "primary_source": "B32",
+    "all_sources": [
+      "B32",
+      "B35"
+    ],
+    "description_zh": "賠率走勢百分比：(close − open) / open。負值為 steamer (縮短)、正值為 drift (拉長)。late move 視為 sharp money 訊號 [B32][B35]。",
+    "description_en": "Odds drift percentage: (close − open) / open. Negative = steamer (price shortened, money came in); positive = drift (price lengthened, money left). Late, large moves are sharp-money signals.",
+    "notes_zh": "技術層面：steamer ≥ -30% 通常代表大型專業資金或 syndicate 入場。drift 多由 informed bettors 棄注，或公眾從 hype 退潮。\n通俗層面：賠率有沒有動?  動的方向告訴你資金在做什麼。突然縮短表示有人押下重注，相反如果拉長則表示市場對牠失去信心。",
+    "notes_en": "Technical: a steamer ≤ −30% commonly marks syndicate or large-stake money arriving late. Drift the other way often means professional bettors abandoned the horse or the public's earlier hype faded.\nLayman: did the price move? Which direction? A sudden shortening means heavy money came in; a lengthening means people lost interest. Both carry information.",
+    "enabled_default": true,
+    "compute_fn_name": "h158_drift"
+  },
+  "H159": {
+    "id": "H159",
+    "category": 14,
+    "name_zh": "隱含概率",
+    "name_en": "Implied probability",
+    "display_name_zh": "隱含概率（FlatStats）",
+    "display_name_en": "Implied probability (FlatStats)",
+    "primary_source": "B30",
+    "all_sources": [
+      "B30",
+      "B35"
+    ],
+    "description_zh": "1 / odds，未扣 takeout",
+    "description_en": "1/odds",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h159_implied"
+  },
+  "H160": {
+    "id": "H160",
+    "category": 14,
+    "name_zh": "公眾集中度",
+    "name_en": "Public concentration",
+    "display_name_zh": "公眾集中度（HKJC）",
+    "display_name_en": "Public concentration (HKJC)",
+    "primary_source": "B14",
+    "all_sources": [
+      "B14",
+      "B22"
+    ],
+    "description_zh": "Top-3 share of pool",
+    "description_en": "Top-3 share of pool",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h160_concentration"
+  },
+  "H161": {
+    "id": "H161",
+    "category": 14,
+    "name_zh": "Overround",
+    "name_en": "Overround",
+    "display_name_zh": "Overround（FlatStats）",
+    "display_name_en": "Overround (FlatStats)",
+    "primary_source": "B30",
+    "all_sources": [
+      "B30",
+      "B42"
+    ],
+    "description_zh": "Overround：Σ(1/odds) − 1，總隱含機率超出 100% 的部分。HK 純 pari-mutuel takeout ≈ 17.5%，即 overround ≈ 0.175 [B30][B42]。",
+    "description_en": "Overround: Σ(1 / odds) − 1, the excess of total implied probability above 100%. HK pari-mutuel takeout is about 17.5%, so a healthy market sits near overround = 0.175.",
+    "notes_zh": "技術層面：overround = takeout 率的市場直接反映。若市場結構正常，overround 穩定；異常高 (e.g. 0.25+) 表示池內有偏差或大型 mispricing。\n通俗層面：把所有馬的隱含勝率加起來，超過 100% 的部分就是「莊家利潤」。HK 約 17.5% 是常態。\n",
+    "notes_en": "Technical: overround equals the realised market take-out and stays stable when the pool is well-balanced. Spikes above the norm (e.g. 0.25+) usually mean a skewed pool or a large mispricing somewhere.\nLayman: add up every horse's implied probability — the amount over 100% is the operator's margin. In HK that's about 17.5%, by design.",
+    "enabled_default": true,
+    "compute_fn_name": "h161_overround"
+  },
+  "H162": {
+    "id": "H162",
+    "category": 14,
+    "name_zh": "BSP",
+    "name_en": "Betfair SP",
+    "display_name_zh": "BSP（Punter2Pro）",
+    "display_name_en": "Betfair SP (Punter2Pro)",
+    "primary_source": "B13",
+    "all_sources": [
+      "B13",
+      "B32"
+    ],
+    "description_zh": "交易所 SP，全球 sharper benchmark",
+    "description_en": "Betfair has no HK pool (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H163": {
+    "id": "H163",
+    "category": 14,
+    "name_zh": "Internal CLV",
+    "name_en": "Internal CLV",
+    "display_name_zh": "Internal CLV（Punter2Pro）",
+    "display_name_en": "Internal CLV (Punter2Pro)",
+    "primary_source": "B13",
+    "all_sources": [
+      "B13",
+      "B32"
+    ],
+    "description_zh": "Internal CLV (Closing Line Value)：押注時隱含機率 − 收市隱含機率。正值即勝過市場，最客觀的「edge 存在」即時驗證 [B13][B32]。",
+    "description_en": "Internal CLV: implied(close) − implied(placed). Positive values mean you got a better price than the eventual close — the gold-standard real-time test that your model actually has edge.",
+    "notes_zh": "技術層面：HK 無 Betfair BSP，以 HKJC tote 為 close benchmark。專業 syndicate (Benter [B1]、Ranogajec) 視 CLV > 0 為勝利條件，無論單場輸贏。長期 CLV 為正 ↔ 模型有真實 edge。\n通俗層面：你下注時的賠率比結束時更划算嗎？若是，無論這場輸贏，你長期都會贏錢。這是「贏家思維」的核心指標。",
+    "notes_en": "Technical: with no Betfair BSP available for HK pools, we use the latest HKJC tote snapshot as the close. Professional syndicates (Benter [B1], Ranogajec) treat positive long-run CLV as proof of edge regardless of any single race's win/lose outcome.\nLayman: was your price better than the final price? If yes consistently, you'll win money in the long run even if individual races go against you. This is the most honest yardstick a bettor can use.",
+    "enabled_default": true,
+    "compute_fn_name": "h163_clv_internal"
+  },
+  "H164": {
+    "id": "H164",
+    "category": 14,
+    "name_zh": "交易所深度",
+    "name_en": "Exchange depth",
+    "display_name_zh": "交易所深度（EquinEdge / Cheltenham）",
+    "display_name_en": "Exchange depth (EquinEdge / Cheltenham)",
+    "primary_source": "B42",
+    "all_sources": [
+      "B42"
+    ],
+    "description_zh": "Lay/back depth at each price tick",
+    "description_en": "Betfair has no HK pool (HKJC-out-of-scope)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": false,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H165": {
+    "id": "H165",
+    "category": 14,
+    "name_zh": "晚段走勢",
+    "name_en": "Late steam",
+    "display_name_zh": "晚段走勢（EquianalytiX）",
+    "display_name_en": "Late steam (EquianalytiX)",
+    "primary_source": "B32",
+    "all_sources": [
+      "B32",
+      "B35"
+    ],
+    "description_zh": "最後 15-30 分鐘移動；資訊質量最高",
+    "description_en": "Last-15min move",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h165_late_steam"
+  },
+  "H166": {
+    "id": "H166",
+    "category": 14,
+    "name_zh": "多平台一致性",
+    "name_en": "Multi-platform consistency",
+    "display_name_zh": "多平台一致性（EquianalytiX）",
+    "display_name_en": "Multi-platform consistency (EquianalytiX)",
+    "primary_source": "B32",
+    "all_sources": [
+      "B32",
+      "B35"
+    ],
+    "description_zh": "多個莊家 / 池同步移動 = sharp signal",
+    "description_en": "Stub",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H167": {
+    "id": "H167",
+    "category": 15,
+    "name_zh": "當日場地偏差",
+    "name_en": "Same-day bias",
+    "display_name_zh": "當日場地偏差（RaceHP.ai）",
+    "display_name_en": "Same-day bias (RaceHP.ai)",
+    "primary_source": "B41",
+    "all_sources": [
+      "B41",
+      "B43"
+    ],
+    "description_zh": "當日場地偏差：今日領跑/內閘勝出的比率對比長期均值的殘差。識別「今日有利 leader/closer」之 day-of bias [B41][B43]。",
+    "description_en": "Same-day track bias: today's winners' running-style or inner-draw share minus the long-run baseline. A positive value flags a 'leader-friendly' day; negative flags a 'closer's day'.",
+    "notes_zh": "技術層面：基準值 = 全部歷史平均 (e.g. inner-draw winners ≈ 30%、front-runner winners ≈ 35%)。每日場地偏差透過 compute_track_bias 預計算入 track_bias_daily。\n通俗層面：今天場地適合哪種跑法？看頭幾場的勝者就大致知道。如果三場頭都是內閘領跑馬，那今天「內閘領跑」就吃香。",
+    "notes_en": "Technical: residual of today's front-runner / inner-draw winning share versus the long-run baseline (~30% inner, ~35% front-runner). Pre-computed daily into track_bias_daily by compute_track_bias.\nLayman: what kind of horse is winning today? If the first three races all went to inner-draw front-runners, the same pattern is likely to keep playing through the card.",
+    "enabled_default": true,
+    "compute_fn_name": "h167_today_bias"
+  },
+  "H168": {
+    "id": "H168",
+    "category": 15,
+    "name_zh": "par 時間殘差",
+    "name_en": "Par-time residual",
+    "display_name_zh": "par 時間殘差（Timeform / Rowlands）",
+    "display_name_en": "Par-time residual (Timeform / Rowlands)",
+    "primary_source": "B10",
+    "all_sources": [
+      "B10",
+      "B41"
+    ],
+    "description_zh": "Race vs par sectional",
+    "description_en": "Race vs par sectional",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "_nan_stub"
+  },
+  "H169": {
+    "id": "H169",
+    "category": 15,
+    "name_zh": "Rail 配置",
+    "name_en": "Rail position",
+    "display_name_zh": "Rail 配置（PuntLab）",
+    "display_name_en": "Rail position (PuntLab)",
+    "primary_source": "B36",
+    "all_sources": [
+      "B36",
+      "B41"
+    ],
+    "description_zh": "Same as H058 (joined for context)",
+    "description_en": "Same as H058 (joined for context)",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h169_rail_dup"
+  },
+  "H170": {
+    "id": "H170",
+    "category": 15,
+    "name_zh": "賽前灌溉",
+    "name_en": "Watering cm",
+    "display_name_zh": "賽前灌溉（RaceHP.ai）",
+    "display_name_en": "Watering cm (RaceHP.ai)",
+    "primary_source": "B41",
+    "all_sources": [
+      "B41"
+    ],
+    "description_zh": "Watering record",
+    "description_en": "Pre-race watering",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h170_watering"
+  },
+  "H171": {
+    "id": "H171",
+    "category": 15,
+    "name_zh": "草長",
+    "name_en": "Grass length cm",
+    "display_name_zh": "草長（Punter2Pro）",
+    "display_name_en": "Grass length cm (Punter2Pro)",
+    "primary_source": "B28",
+    "all_sources": [
+      "B28",
+      "B41"
+    ],
+    "description_zh": "Grass cutting record",
+    "description_en": "Cut record",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h171_grass_length"
+  },
+  "H172": {
+    "id": "H172",
+    "category": 15,
+    "name_zh": "內欄殘差",
+    "name_en": "Inner-draw residual",
+    "display_name_zh": "內欄殘差（RaceHP.ai）",
+    "display_name_en": "Inner-draw residual (RaceHP.ai)",
+    "primary_source": "B41",
+    "all_sources": [
+      "B41"
+    ],
+    "description_zh": "Today vs long-term inner",
+    "description_en": "Today vs long-term inner",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h172_inner_resid"
+  },
+  "H173": {
+    "id": "H173",
+    "category": 15,
+    "name_zh": "風向變化",
+    "name_en": "Wind direction shift",
+    "display_name_zh": "風向變化（Punter2Pro）",
+    "display_name_en": "Wind direction shift (Punter2Pro)",
+    "primary_source": "B28",
+    "all_sources": [
+      "B28",
+      "B29"
+    ],
+    "description_zh": "早午晚段風向；領跑馬受影響",
+    "description_en": "Headwind for leaders",
+    "notes_zh": "",
+    "notes_en": "",
+    "enabled_default": true,
+    "compute_fn_name": "h173_wind"
+  },
+  "H174": {
+    "id": "H174",
+    "category": 15,
+    "name_zh": "Closer 加成",
+    "name_en": "Same-day closer boost",
+    "display_name_zh": "Closer 加成（Betting Gods）",
+    "display_name_en": "Same-day closer boost (Betting Gods)",
+    "primary_source": "B12",
+    "all_sources": [
+      "B12",
+      "B41"
+    ],
+    "description_zh": "當日 closer 加成：1 − today_bias。當天 leader 偏差越低，closer 越受益。配合 H167 評估場地動態。",
+    "description_en": "Same-day closer boost: 1 − front-runner bias. When leaders aren't winning today, the math automatically favours horses that come from off the pace.",
+    "notes_zh": "技術層面：closer_boost = 1 − front_runner_residual。是 H167 的補集，用於 closer-style horses 的 same-day uplift。\n通俗層面：如果領跑馬今天表現差，後追馬就有機會。這個欄位就是專門給「等下班才衝」的馬的加分。",
+    "notes_en": "Technical: closer_boost = 1 − front-runner residual. Complement to H167 — when leaders are underperforming today, this term automatically lifts closer-style runners.\nLayman: if the front-runners can't win today, the back-runners can. This score gives them the credit they're due.",
+    "enabled_default": true,
+    "compute_fn_name": "h174_closer_boost"
+  }
+}

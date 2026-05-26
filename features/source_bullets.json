@@ -1,0 +1,2303 @@
+{
+  "馬齡": {
+    "name_zh": "馬齡",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "既有特徵",
+    "description_zh": "馬匹年齡（年），影響成熟度與耐力",
+    "brefs": [
+      "B1"
+    ]
+  },
+  "騸馬標記": {
+    "name_zh": "騸馬標記",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "既有特徵",
+    "description_zh": "是否為閹馬（gelding），香港主流類別",
+    "brefs": []
+  },
+  "殘障評分": {
+    "name_zh": "殘障評分",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "既有特徵",
+    "description_zh": "HKJC 公布之 0-145 Handicap Rating",
+    "brefs": []
+  },
+  "出賽次數": {
+    "name_zh": "出賽次數",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "既有特徵",
+    "description_zh": "累計出賽場數，用於穩定統計量",
+    "brefs": []
+  },
+  "性別": {
+    "name_zh": "性別",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "colt（雄駒）/filly（雌駒）/gelding（騸馬）/mare（雌馬）；雌馬於高班次（Group 1）有 3 lb 性別讓磅",
+    "brefs": [
+      "B7",
+      "B33"
+    ]
+  },
+  "馬色": {
+    "name_zh": "馬色",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "bay/chestnut/grey 等；雖弱訊號，但與部分基因標記相關",
+    "brefs": [
+      "B5"
+    ]
+  },
+  "出生月份": {
+    "name_zh": "出生月份",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "北半球三歲馬中，1-2 月出生者比 6-7 月出生者平均勝率高約 8%；用於 cohort 比較",
+    "brefs": [
+      "B1",
+      "B23"
+    ]
+  },
+  "南北半球出生": {
+    "name_zh": "南北半球出生",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "港地賽季與南半球（澳/紐）出生馬之相對「年齡漂移」差距",
+    "brefs": [
+      "B27",
+      "B33"
+    ]
+  },
+  "體重變動（vs 上場）": {
+    "name_zh": "體重變動（vs 上場）",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "HKJC 公布「Wt.+/- (vs Declaration)」；±10 lb 為顯著訊號",
+    "brefs": [
+      "B34",
+      "B27"
+    ]
+  },
+  "馬匹宣告體重（lb）": {
+    "name_zh": "馬匹宣告體重（lb）",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "HKJC「Horse Wt. (Declaration)」原始值",
+    "brefs": [
+      "B34",
+      "B27"
+    ]
+  },
+  "父系（Sire）": {
+    "name_zh": "父系（Sire）",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "父系標籤 + 全球速度評級；用於 dosage 與場地偏好",
+    "brefs": [
+      "B5",
+      "B26"
+    ]
+  },
+  "母系（Dam Sire）": {
+    "name_zh": "母系（Dam Sire）",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "外祖父對距離耐力影響大；常用於 turf/dirt 適性",
+    "brefs": [
+      "B5",
+      "B26"
+    ]
+  },
+  "Dosage Index（DI）": {
+    "name_zh": "Dosage Index（DI）",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "Brilliant/Intermediate/Classic/Solid/Professional 五段比值，量化速度-耐力比",
+    "brefs": [
+      "B26"
+    ]
+  },
+  "Centre of Distribution（CD）": {
+    "name_zh": "Centre of Distribution（CD）",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "Dosage 平衡點，標示估計理想距離",
+    "brefs": [
+      "B26"
+    ]
+  },
+  "引進來源國": {
+    "name_zh": "引進來源國",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "AUS / NZL / GB / IRE / FR / USA / RSA 標籤；HKJC 全部進口",
+    "brefs": [
+      "B14",
+      "B19"
+    ]
+  },
+  "Griffin 標記": {
+    "name_zh": "Griffin 標記",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "未在港賽過的進口馬，首場為香港首戰",
+    "brefs": [
+      "B19"
+    ]
+  },
+  "PPG 出賽密度": {
+    "name_zh": "PPG 出賽密度",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "過去 365 日出賽次數，反映馬廄使用程度",
+    "brefs": [
+      "B15"
+    ]
+  },
+  "海外賽歷年期": {
+    "name_zh": "海外賽歷年期",
+    "category_id": 1,
+    "category_name_zh": "馬匹檔案",
+    "section": "擴充建議",
+    "description_zh": "進口前所在地最高 rating 與征戰年數，用作預測 ceiling",
+    "brefs": [
+      "B19"
+    ]
+  },
+  "馬匹勝率": {
+    "name_zh": "馬匹勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "既有特徵",
+    "description_zh": "該馬累計勝率",
+    "brefs": []
+  },
+  "騎師勝率": {
+    "name_zh": "騎師勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "既有特徵",
+    "description_zh": "該騎師累計勝率",
+    "brefs": []
+  },
+  "練馬師勝率": {
+    "name_zh": "練馬師勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "既有特徵",
+    "description_zh": "該練馬師累計勝率",
+    "brefs": []
+  },
+  "騎師×練馬師配對勝率": {
+    "name_zh": "騎師×練馬師配對勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "既有特徵",
+    "description_zh": "配對勝率",
+    "brefs": []
+  },
+  "騎師×馬匹配對勝率": {
+    "name_zh": "騎師×馬匹配對勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "既有特徵",
+    "description_zh": "配對勝率",
+    "brefs": []
+  },
+  "入位率（Place Rate）": {
+    "name_zh": "入位率（Place Rate）",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "第 2 名以內比率（位置 Q）",
+    "brefs": [
+      "B2",
+      "B16"
+    ]
+  },
+  "三甲率（Top-3 Rate）": {
+    "name_zh": "三甲率（Top-3 Rate）",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "進入前三名比率，HK 三重彩相關",
+    "brefs": [
+      "B2",
+      "B16"
+    ]
+  },
+  "ROI（$2 為單位）": {
+    "name_zh": "ROI（$2 為單位）",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "平均淨報酬，Brisnet 標準呈現",
+    "brefs": [
+      "B2",
+      "B16"
+    ]
+  },
+  "A/E 指標（Actual/Expected）": {
+    "name_zh": "A/E 指標（Actual/Expected）",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "實際勝率 ÷ 賠率隱含勝率；>1.00 即優於市場",
+    "brefs": [
+      "B22",
+      "B30"
+    ]
+  },
+  "Impact Value（IV）": {
+    "name_zh": "Impact Value（IV）",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "該特徵組勝率 ÷ 全體勝率，1.00 為基準",
+    "brefs": [
+      "B22"
+    ]
+  },
+  "ITM%（In-the-Money）": {
+    "name_zh": "ITM%（In-the-Money）",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "前三名比率（含獎金線）",
+    "brefs": [
+      "B2"
+    ]
+  },
+  "條件細分勝率": {
+    "name_zh": "條件細分勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "草地/全天候、距離區段、班次區段、軟硬場地",
+    "brefs": [
+      "B2",
+      "B6"
+    ]
+  },
+  "Bayesian 收縮勝率": {
+    "name_zh": "Bayesian 收縮勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "對小樣本套用 Beta(α,β) 先驗，避免高方差",
+    "brefs": [
+      "B25"
+    ]
+  },
+  "勝率時間衰減": {
+    "name_zh": "勝率時間衰減",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "採指數衰減權重 e^(-λΔt)，近期賽事權重較高",
+    "brefs": [
+      "B25"
+    ]
+  },
+  "騎師於跑馬地勝率": {
+    "name_zh": "騎師於跑馬地勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "跑馬地與沙田分開統計（騎師慣性顯著）",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "騎師於沙田勝率": {
+    "name_zh": "騎師於沙田勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "同上",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "練馬師於跑馬地勝率": {
+    "name_zh": "練馬師於跑馬地勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "同上",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "練馬師於沙田勝率": {
+    "name_zh": "練馬師於沙田勝率",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "同上",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "三巨頭參賽標記": {
+    "name_zh": "三巨頭參賽標記",
+    "category_id": 2,
+    "category_name_zh": "勝率與報酬指標",
+    "section": "擴充建議",
+    "description_zh": "Purton / Bowman / Moreira / Ferraris 旗下馬之 base-rate boost",
+    "brefs": [
+      "B14",
+      "B40"
+    ]
+  },
+  "距離適應率": {
+    "name_zh": "距離適應率",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "既有特徵",
+    "description_zh": "該馬於同距離區段勝率",
+    "brefs": []
+  },
+  "場地適應率": {
+    "name_zh": "場地適應率",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "既有特徵",
+    "description_zh": "該馬於同類場地（turf/AWT）勝率",
+    "brefs": []
+  },
+  "父系距離適性": {
+    "name_zh": "父系距離適性",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "Sire 後代於本距離之 Brisnet ROI",
+    "brefs": [
+      "B2",
+      "B26"
+    ]
+  },
+  "父系場地適性": {
+    "name_zh": "父系場地適性",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "Sire 後代於 turf vs dirt 之差距",
+    "brefs": [
+      "B2",
+      "B5"
+    ]
+  },
+  "馬齡×距離適性": {
+    "name_zh": "馬齡×距離適性",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "3yo 對 1600m+ 通常不利",
+    "brefs": [
+      "B14",
+      "B23"
+    ]
+  },
+  "左轉/右轉適應": {
+    "name_zh": "左轉/右轉適應",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "跑馬地右轉、沙田右轉、部分海外賽道左轉",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "上下坡適應": {
+    "name_zh": "上下坡適應",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "沙田直路有微坡，部分馬偏好；歐洲賽道斜坡顯著",
+    "brefs": [
+      "B36"
+    ]
+  },
+  "季節適應": {
+    "name_zh": "季節適應",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "香港賽季 9 月至 7 月；夏秋 vs 春冬之 going 差異",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "賽事級別適應": {
+    "name_zh": "賽事級別適應",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "Class 1-5 + Group/Listed 之分項勝率",
+    "brefs": [
+      "B14",
+      "B19"
+    ]
+  },
+  "出閘速度（Jump Speed）": {
+    "name_zh": "出閘速度（Jump Speed）",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "起閘 100m 平均位次，由分段時間估算",
+    "brefs": [
+      "B11",
+      "B12"
+    ]
+  },
+  "賽事間復原時間": {
+    "name_zh": "賽事間復原時間",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "上場後恢復天數 × 上場負擔指標；用於評估再戰風險",
+    "brefs": [
+      "B17",
+      "B25"
+    ]
+  },
+  "試閘場地適性": {
+    "name_zh": "試閘場地適性",
+    "category_id": 3,
+    "category_name_zh": "適應性",
+    "section": "擴充建議",
+    "description_zh": "試閘成績在草地/全天候上差異",
+    "brefs": [
+      "B20"
+    ]
+  },
+  "馬廄熱度": {
+    "name_zh": "馬廄熱度",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "既有特徵",
+    "description_zh": "練馬師近期勝率移動平均",
+    "brefs": []
+  },
+  "馬廄冷浪": {
+    "name_zh": "馬廄冷浪",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "既有特徵",
+    "description_zh": "練馬師近期低於長期勝率之偏差",
+    "brefs": []
+  },
+  "班次強項": {
+    "name_zh": "班次強項",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "練馬師於 Class 1-5 各班次 ROI",
+    "brefs": [
+      "B2",
+      "B6"
+    ]
+  },
+  "距離強項": {
+    "name_zh": "距離強項",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "練馬師按距離區段 ROI（短途 vs 中長途專家）",
+    "brefs": [
+      "B2",
+      "B6"
+    ]
+  },
+  "季節熱度": {
+    "name_zh": "季節熱度",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "季中早/中/末段練馬師 form cycle",
+    "brefs": [
+      "B2",
+      "B14"
+    ]
+  },
+  "首次出賽勝率": {
+    "name_zh": "首次出賽勝率",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "練馬師「first time starter」勝率（debutant angle）",
+    "brefs": [
+      "B2",
+      "B16"
+    ]
+  },
+  "復出馬勝率": {
+    "name_zh": "復出馬勝率",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "練馬師對歇賽 45-180 日復出馬之 ROI",
+    "brefs": [
+      "B17",
+      "B25"
+    ]
+  },
+  "場地適應": {
+    "name_zh": "場地適應",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "練馬師跑馬地 vs 沙田勝率差",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "出賽密度": {
+    "name_zh": "出賽密度",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "近 30 日入閘次數，反映 stable form pulse",
+    "brefs": [
+      "B15",
+      "B25"
+    ]
+  },
+  "馬房規模": {
+    "name_zh": "馬房規模",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "練馬師現役馬匹數（HKJC 約 60 匹上限）",
+    "brefs": [
+      "B14"
+    ]
+  },
+  "練馬師×騎師近期勝率": {
+    "name_zh": "練馬師×騎師近期勝率",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "連續 12 場滑動視窗",
+    "brefs": [
+      "B14",
+      "B25"
+    ]
+  },
+  "練馬師裝備改動 ROI": {
+    "name_zh": "練馬師裝備改動 ROI",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "該練馬師對改 gear/blinkers 之 angle ROI",
+    "brefs": [
+      "B2",
+      "B11"
+    ]
+  },
+  "練馬師×班次×距離三維 ROI": {
+    "name_zh": "練馬師×班次×距離三維 ROI",
+    "category_id": 4,
+    "category_name_zh": "練馬師狀態",
+    "section": "擴充建議",
+    "description_zh": "Brisnet 標準三維表",
+    "brefs": [
+      "B2",
+      "B6"
+    ]
+  },
+  "閘號": {
+    "name_zh": "閘號",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "既有特徵",
+    "description_zh": "原始閘號數值",
+    "brefs": []
+  },
+  "內閘": {
+    "name_zh": "內閘",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "既有特徵",
+    "description_zh": "1-3 號標記",
+    "brefs": []
+  },
+  "外閘": {
+    "name_zh": "外閘",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "既有特徵",
+    "description_zh": "後 1/3 標記",
+    "brefs": []
+  },
+  "大外閘": {
+    "name_zh": "大外閘",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "既有特徵",
+    "description_zh": "末 2 個閘號標記",
+    "brefs": []
+  },
+  "賽道×距離閘號偏差": {
+    "name_zh": "賽道×距離閘號偏差",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "跑馬地 1000m 內閘強、沙田 1600m 中性",
+    "brefs": [
+      "B36",
+      "B41"
+    ]
+  },
+  "距首彎距離": {
+    "name_zh": "距首彎距離",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "跑馬地起點至第一彎距離短，外閘受罰",
+    "brefs": [
+      "B36",
+      "B41"
+    ]
+  },
+  "起閘速度（Gate-break）": {
+    "name_zh": "起閘速度（Gate-break）",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "由起後 200m 分段位次估算",
+    "brefs": [
+      "B11",
+      "B12"
+    ]
+  },
+  "賽道彎度": {
+    "name_zh": "賽道彎度",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "沙田 turf circumference vs Happy Valley 1450m 圍長",
+    "brefs": [
+      "B36"
+    ]
+  },
+  "草地內欄/外欄使用（Rail position）": {
+    "name_zh": "草地內欄/外欄使用（Rail position）",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "A / B / C / C+3 賽道，C+3 偏快內側",
+    "brefs": [
+      "B36",
+      "B41"
+    ]
+  },
+  "沙田全天候閘號偏差": {
+    "name_zh": "沙田全天候閘號偏差",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "AWT 1200m 外閘相對較佳",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "閘號×跑法交互強化": {
+    "name_zh": "閘號×跑法交互強化",
+    "category_id": 5,
+    "category_name_zh": "閘號",
+    "section": "擴充建議",
+    "description_zh": "內閘領跑、外閘追後 Brisnet angle",
+    "brefs": [
+      "B11",
+      "B12"
+    ]
+  },
+  "負磅": {
+    "name_zh": "負磅",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "既有特徵",
+    "description_zh": "騎師+鞍具總負重（lb）",
+    "brefs": []
+  },
+  "減磅優惠": {
+    "name_zh": "減磅優惠",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "既有特徵",
+    "description_zh": "見習騎師減磅標記",
+    "brefs": []
+  },
+  "負磅趨勢": {
+    "name_zh": "負磅趨勢",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "較上場負磅之 Δ；handicap 加減反映被市場高估/低估",
+    "brefs": [
+      "B14",
+      "B30"
+    ]
+  },
+  "馬匹宣告體重": {
+    "name_zh": "馬匹宣告體重",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "HKJC 公布；亦見類別 1",
+    "brefs": [
+      "B34",
+      "B27"
+    ]
+  },
+  "體重變動 Δ": {
+    "name_zh": "體重變動 Δ",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "HKJC「Wt.+/-」；亦見類別 1",
+    "brefs": [
+      "B34"
+    ]
+  },
+  "騎師體重（個人）": {
+    "name_zh": "騎師體重（個人）",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "騎師本人體重，獨立於負磅",
+    "brefs": [
+      "B7",
+      "B33"
+    ]
+  },
+  "鞍具重量": {
+    "name_zh": "鞍具重量",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "部分 jurisdictions 公布 saddle weight",
+    "brefs": [
+      "B33"
+    ]
+  },
+  "見習騎師 claim 等級": {
+    "name_zh": "見習騎師 claim 等級",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "3lb / 5lb / 7lb 分級依勝場數",
+    "brefs": [
+      "B7",
+      "B33"
+    ]
+  },
+  "性別讓磅": {
+    "name_zh": "性別讓磅",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "雌馬 3 lb 補貼",
+    "brefs": [
+      "B7",
+      "B33"
+    ]
+  },
+  "馬齡 weight-for-age": {
+    "name_zh": "馬齡 weight-for-age",
+    "category_id": 6,
+    "category_name_zh": "負磅",
+    "section": "擴充建議",
+    "description_zh": "WFA 表，3yo 對 4yo+ 之讓磅",
+    "brefs": [
+      "B7",
+      "B14"
+    ]
+  },
+  "跑馬地標記": {
+    "name_zh": "跑馬地標記",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "既有特徵",
+    "description_zh": "是否跑馬地賽事",
+    "brefs": []
+  },
+  "賽事距離": {
+    "name_zh": "賽事距離",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "既有特徵",
+    "description_zh": "公尺",
+    "brefs": []
+  },
+  "場地編碼": {
+    "name_zh": "場地編碼",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "既有特徵",
+    "description_zh": "草地 / AWT / good / yielding 等",
+    "brefs": []
+  },
+  "班次": {
+    "name_zh": "班次",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "既有特徵",
+    "description_zh": "Class 1-5、Group 1-3、Listed、Griffin",
+    "brefs": []
+  },
+  "出賽馬數": {
+    "name_zh": "出賽馬數",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "既有特徵",
+    "description_zh": "Field size",
+    "brefs": []
+  },
+  "獎金（Prize Money）": {
+    "name_zh": "獎金（Prize Money）",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "1st 獎金 HK$；HKJC 公布；強訊號",
+    "brefs": [
+      "B14",
+      "B18"
+    ]
+  },
+  "表列賽 / Group 標記": {
+    "name_zh": "表列賽 / Group 標記",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "Group 1/2/3、Listed 二元標記",
+    "brefs": [
+      "B18",
+      "B19"
+    ]
+  },
+  "國際賽": {
+    "name_zh": "國際賽",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "Hong Kong International Races、Champions Day 等",
+    "brefs": [
+      "B14",
+      "B19"
+    ]
+  },
+  "賽季階段": {
+    "name_zh": "賽季階段",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "early/mid/late season；form cycle 與訓練週期相關",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "日夜（D/N）": {
+    "name_zh": "日夜（D/N）",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "跑馬地夜賽 vs 沙田日賽",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "天氣預報": {
+    "name_zh": "天氣預報",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "比賽日溫度、降雨概率",
+    "brefs": [
+      "B28",
+      "B29"
+    ]
+  },
+  "風速與方向": {
+    "name_zh": "風速與方向",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "順風頭風影響領跑馬",
+    "brefs": [
+      "B28",
+      "B29"
+    ]
+  },
+  "草地高度（Grass length）": {
+    "name_zh": "草地高度（Grass length）",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "維護紀錄影響 going 解讀",
+    "brefs": [
+      "B28",
+      "B29",
+      "B41"
+    ]
+  },
+  "場地灌溉量（Watering）": {
+    "name_zh": "場地灌溉量（Watering）",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "賽前用水公分數",
+    "brefs": [
+      "B41"
+    ]
+  },
+  "賽事編號": {
+    "name_zh": "賽事編號",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "卡序（Race 1-11）；夜賽序後段速度衰退",
+    "brefs": [
+      "B14"
+    ]
+  },
+  "開賽時間": {
+    "name_zh": "開賽時間",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "Post time；早班 vs 晚班馬廄表現差",
+    "brefs": [
+      "B14"
+    ]
+  },
+  "獎金分配層級": {
+    "name_zh": "獎金分配層級",
+    "category_id": 7,
+    "category_name_zh": "賽事背景",
+    "section": "擴充建議",
+    "description_zh": "前 5 名分成比；影響參賽競爭強度",
+    "brefs": [
+      "B14",
+      "B18"
+    ]
+  },
+  "休賽天數": {
+    "name_zh": "休賽天數",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "既有特徵",
+    "description_zh": "自上場日起天數",
+    "brefs": []
+  },
+  "久休懲罰": {
+    "name_zh": "久休懲罰",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "既有特徵",
+    "description_zh": ">60 日歇賽折扣",
+    "brefs": []
+  },
+  "評分趨勢": {
+    "name_zh": "評分趨勢",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "既有特徵",
+    "description_zh": "Handicap Rating 之 slope",
+    "brefs": []
+  },
+  "降班": {
+    "name_zh": "降班",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "既有特徵",
+    "description_zh": "由高班降至低班標記",
+    "brefs": []
+  },
+  "連勝紀錄": {
+    "name_zh": "連勝紀錄",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "連續勝場數 streak",
+    "brefs": [
+      "B25"
+    ]
+  },
+  "連敗紀錄": {
+    "name_zh": "連敗紀錄",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "連續敗場數 streak",
+    "brefs": [
+      "B25"
+    ]
+  },
+  "同齡 cohort 比較": {
+    "name_zh": "同齡 cohort 比較",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "對同齡同期出賽馬之相對成績",
+    "brefs": [
+      "B6",
+      "B16"
+    ]
+  },
+  "上場名次": {
+    "name_zh": "上場名次",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "Last-start finishing position（強訊號）",
+    "brefs": [
+      "B6",
+      "B22"
+    ]
+  },
+  "上場敗距（lengths behind）": {
+    "name_zh": "上場敗距（lengths behind）",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "距勝出者距離；Benter 標準變數",
+    "brefs": [
+      "B1",
+      "B6"
+    ]
+  },
+  "上場分段時間殘差": {
+    "name_zh": "上場分段時間殘差",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "上場 sectional 對 par 的殘差",
+    "brefs": [
+      "B10",
+      "B11"
+    ]
+  },
+  "上場終段速度": {
+    "name_zh": "上場終段速度",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "Finishing Speed % (Rowlands)，量化體力分配",
+    "brefs": [
+      "B10",
+      "B11"
+    ]
+  },
+  "試閘紀錄（Barrier Trial）": {
+    "name_zh": "試閘紀錄（Barrier Trial）",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "HKJC 公布；近 60 日試閘成績與位次",
+    "brefs": [
+      "B20"
+    ]
+  },
+  "晨操工夫（Trackwork）": {
+    "name_zh": "晨操工夫（Trackwork）",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "HKJC 公布晨操路程與速度",
+    "brefs": [
+      "B20",
+      "B21"
+    ]
+  },
+  "歇賽復出標記": {
+    "name_zh": "歇賽復出標記",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "30-89 / 90-180 / >180 日分桶",
+    "brefs": [
+      "B17",
+      "B25"
+    ]
+  },
+  "連續同 jockey 標記": {
+    "name_zh": "連續同 jockey 標記",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "連續 N 場由同一騎師上陣（partnership 訊號）",
+    "brefs": [
+      "B14",
+      "B25"
+    ]
+  },
+  "連續同 trainer 標記": {
+    "name_zh": "連續同 trainer 標記",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "馬匹是否近期換廄",
+    "brefs": [
+      "B14",
+      "B25"
+    ]
+  },
+  "上場排名次序變動": {
+    "name_zh": "上場排名次序變動",
+    "category_id": 8,
+    "category_name_zh": "近期狀態",
+    "section": "擴充建議",
+    "description_zh": "Last 3 races 名次趨勢線",
+    "brefs": [
+      "B6",
+      "B25"
+    ]
+  },
+  "裝備變動": {
+    "name_zh": "裝備變動",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "既有特徵",
+    "description_zh": "任何 gear change 標記",
+    "brefs": []
+  },
+  "首次裝備": {
+    "name_zh": "首次裝備",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "既有特徵",
+    "description_zh": "first-time gear",
+    "brefs": []
+  },
+  "眼罩變動（Blinkers on/off）": {
+    "name_zh": "眼罩變動（Blinkers on/off）",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "first-time blinkers 為強訊號",
+    "brefs": [
+      "B11",
+      "B14"
+    ]
+  },
+  "首次馬銜（Bit change）": {
+    "name_zh": "首次馬銜（Bit change）",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "bit / tongue tie 改動",
+    "brefs": [
+      "B11",
+      "B14"
+    ]
+  },
+  "蹄鐵變動（Shoeing change）": {
+    "name_zh": "蹄鐵變動（Shoeing change）",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "例如 bar shoe、glue-on",
+    "brefs": [
+      "B11"
+    ]
+  },
+  "馬鞍變動": {
+    "name_zh": "馬鞍變動",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "synthetic vs leather；冷僻特徵",
+    "brefs": [
+      "B33"
+    ]
+  },
+  "首次配備一身": {
+    "name_zh": "首次配備一身",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "first time visor / cheek piece / blinker hood",
+    "brefs": [
+      "B11",
+      "B14"
+    ]
+  },
+  "多重裝備同時變動": {
+    "name_zh": "多重裝備同時變動",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "n 個 gear 同時改動標記",
+    "brefs": [
+      "B11",
+      "B14"
+    ]
+  },
+  "用藥變動（first-time Lasix）": {
+    "name_zh": "用藥變動（first-time Lasix）",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "US 標準強訊號；HK 禁用 Lasix 但有其他醫療標記",
+    "brefs": [
+      "B11",
+      "B24"
+    ]
+  },
+  "獸醫紀錄（Vet record）": {
+    "name_zh": "獸醫紀錄（Vet record）",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "HKJC 公布 vetrecord database；近 30 日紀錄",
+    "brefs": [
+      "B38",
+      "B39"
+    ]
+  },
+  "Roarer 紀錄": {
+    "name_zh": "Roarer 紀錄",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "HKJC 公布 OVERoar database（喉嚨手術馬匹）",
+    "brefs": [
+      "B38"
+    ]
+  },
+  "出閘紀錄不佳（barrier issue）": {
+    "name_zh": "出閘紀錄不佳（barrier issue）",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "上場 reluctant to load 標記",
+    "brefs": [
+      "B38"
+    ]
+  },
+  "獸醫禁賽復出標記": {
+    "name_zh": "獸醫禁賽復出標記",
+    "category_id": 9,
+    "category_name_zh": "裝備與獸醫",
+    "section": "擴充建議",
+    "description_zh": "Off vet 重新入閘首場",
+    "brefs": [
+      "B38",
+      "B39"
+    ]
+  },
+  "賽事步速": {
+    "name_zh": "賽事步速",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "預估全場步速等級",
+    "brefs": []
+  },
+  "跑法風格": {
+    "name_zh": "跑法風格",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "領跑/緊隨/中游/後上",
+    "brefs": []
+  },
+  "步速配合": {
+    "name_zh": "步速配合",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "自身步速 vs 賽事步速契合度",
+    "brefs": []
+  },
+  "步速閘位加成": {
+    "name_zh": "步速閘位加成",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "閘號與步速交互",
+    "brefs": []
+  },
+  "後段步速": {
+    "name_zh": "後段步速",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "Late pace 指標",
+    "brefs": []
+  },
+  "前段步速": {
+    "name_zh": "前段步速",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "Early pace 指標",
+    "brefs": []
+  },
+  "超越位次均值": {
+    "name_zh": "超越位次均值",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "既有特徵",
+    "description_zh": "平均超越名次",
+    "brefs": []
+  },
+  "領跑指數（Lead profile）": {
+    "name_zh": "領跑指數（Lead profile）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "至第一個 call 領先頻率",
+    "brefs": [
+      "B11",
+      "B12"
+    ]
+  },
+  "E1 早段速度指數": {
+    "name_zh": "E1 早段速度指數",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "Brisnet 短途首 2F / 中距首 4F 速度 figure",
+    "brefs": [
+      "B11",
+      "B16"
+    ]
+  },
+  "E2 早段速度指數": {
+    "name_zh": "E2 早段速度指數",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "Brisnet 短途首 4F / 中距首 6F 速度 figure",
+    "brefs": [
+      "B11",
+      "B16"
+    ]
+  },
+  "Late Pace / LP": {
+    "name_zh": "Late Pace / LP",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "Brisnet 後段 figure（補既有「後段步速」之 normalised 版）",
+    "brefs": [
+      "B11",
+      "B16"
+    ]
+  },
+  "Finishing Speed %（FSP）": {
+    "name_zh": "Finishing Speed %（FSP）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "Simon Rowlands Timeform 公式",
+    "brefs": [
+      "B10",
+      "B3"
+    ]
+  },
+  "分段時間殘差（Sectional residual）": {
+    "name_zh": "分段時間殘差（Sectional residual）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "sectional vs par sectional 之差",
+    "brefs": [
+      "B10",
+      "B11"
+    ]
+  },
+  "配速壓力指數（Pace pressure）": {
+    "name_zh": "配速壓力指數（Pace pressure）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "場上 early-speed 馬數量",
+    "brefs": [
+      "B12",
+      "B16"
+    ]
+  },
+  "配速生存者（Pace survivor）": {
+    "name_zh": "配速生存者（Pace survivor）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "上場面對 hot pace 仍 finishing well 的馬",
+    "brefs": [
+      "B12",
+      "B16"
+    ]
+  },
+  "配速受益者（Pace beneficiary）": {
+    "name_zh": "配速受益者（Pace beneficiary）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "closer 對應 hot pace 加成",
+    "brefs": [
+      "B12",
+      "B16"
+    ]
+  },
+  "跑法純度": {
+    "name_zh": "跑法純度",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "同跑法佔過往出賽比例（穩定性）",
+    "brefs": [
+      "B11",
+      "B12"
+    ]
+  },
+  "預估配速圖（Pace map）": {
+    "name_zh": "預估配速圖（Pace map）",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "Equibase / EquinEdge 視覺化排序變數",
+    "brefs": [
+      "B16",
+      "B22"
+    ]
+  },
+  "步速 × 場地": {
+    "name_zh": "步速 × 場地",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "軟地利好 closer",
+    "brefs": [
+      "B11",
+      "B28"
+    ]
+  },
+  "配速壓力 × 距離": {
+    "name_zh": "配速壓力 × 距離",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "1000m 與 2000m 壓力臨界不同",
+    "brefs": [
+      "B12",
+      "B36"
+    ]
+  },
+  "配速殘差 × 賽道": {
+    "name_zh": "配速殘差 × 賽道",
+    "category_id": 10,
+    "category_name_zh": "步速與跑法",
+    "section": "擴充建議",
+    "description_zh": "跑馬地 / 沙田分別建模",
+    "brefs": [
+      "B36",
+      "B41"
+    ]
+  },
+  "冷廄外閘交互": {
+    "name_zh": "冷廄外閘交互",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "既有特徵",
+    "description_zh": "內部指標",
+    "brefs": []
+  },
+  "CHRI 指數": {
+    "name_zh": "CHRI 指數",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "既有特徵",
+    "description_zh": "系統綜合 composite",
+    "brefs": []
+  },
+  "Beyer Speed Figure": {
+    "name_zh": "Beyer Speed Figure",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "DRF 標準速度評級，已對 track variant 校正",
+    "brefs": [
+      "B4",
+      "B22"
+    ]
+  },
+  "Timeform Master Rating": {
+    "name_zh": "Timeform Master Rating",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "UK/EU 主流；含 pace 與 going 調整",
+    "brefs": [
+      "B3"
+    ]
+  },
+  "Timeform actual rating（per race）": {
+    "name_zh": "Timeform actual rating（per race）",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "每場實際表現分；可低於 master",
+    "brefs": [
+      "B3"
+    ]
+  },
+  "Racing Post Rating（RPR）": {
+    "name_zh": "Racing Post Rating（RPR）",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "UK alternative；含 weight 與 form",
+    "brefs": [
+      "B3"
+    ]
+  },
+  "Brisnet Prime Power": {
+    "name_zh": "Brisnet Prime Power",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "Brisnet composite，含 speed/pace/class",
+    "brefs": [
+      "B2",
+      "B16"
+    ]
+  },
+  "Brisnet Class Rating（CR）": {
+    "name_zh": "Brisnet Class Rating（CR）",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "該馬於各場之 class figure",
+    "brefs": [
+      "B2",
+      "B16"
+    ]
+  },
+  "Topspeed": {
+    "name_zh": "Topspeed",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "Racing Post 純時間 figure",
+    "brefs": [
+      "B3"
+    ]
+  },
+  "Equibase Speed Figure": {
+    "name_zh": "Equibase Speed Figure",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "含 ITV / DTV 雙層校正",
+    "brefs": [
+      "B16",
+      "B22"
+    ]
+  },
+  "Equibase Pace Figure": {
+    "name_zh": "Equibase Pace Figure",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "早/中/晚段",
+    "brefs": [
+      "B16",
+      "B22"
+    ]
+  },
+  "Ragozin / Thoro-Graph sheets": {
+    "name_zh": "Ragozin / Thoro-Graph sheets",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "US figure-maker，數字越低越好",
+    "brefs": [
+      "B4",
+      "B16"
+    ]
+  },
+  "AE 指標（複合）": {
+    "name_zh": "AE 指標（複合）",
+    "category_id": 11,
+    "category_name_zh": "綜合速度與班次指標",
+    "section": "擴充建議",
+    "description_zh": "多 sub-condition 加權 A/E",
+    "brefs": [
+      "B22",
+      "B30"
+    ]
+  },
+  "內閘領跑": {
+    "name_zh": "內閘領跑",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "內閘 × 領跑 booster",
+    "brefs": []
+  },
+  "外閘追後": {
+    "name_zh": "外閘追後",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "外閘 × 後上 booster",
+    "brefs": []
+  },
+  "閘號×跑馬地": {
+    "name_zh": "閘號×跑馬地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "跑馬地特有 draw bias",
+    "brefs": []
+  },
+  "閘號×場地": {
+    "name_zh": "閘號×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "全天候 vs 草地",
+    "brefs": []
+  },
+  "內閘慢步": {
+    "name_zh": "內閘慢步",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "內閘 × 慢步 penalty",
+    "brefs": []
+  },
+  "外閘快步": {
+    "name_zh": "外閘快步",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "外閘 × 快步 booster",
+    "brefs": []
+  },
+  "後段×外閘": {
+    "name_zh": "後段×外閘",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "既有特徵",
+    "description_zh": "後上 × 外閘 booster",
+    "brefs": []
+  },
+  "距離×場地": {
+    "name_zh": "距離×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "turf 1600m 與 AWT 1600m 訓練不同模型",
+    "brefs": [
+      "B14",
+      "B16",
+      "B41"
+    ]
+  },
+  "班次×馬齡": {
+    "name_zh": "班次×馬齡",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "3yo 升 Class 2 之 ROI",
+    "brefs": [
+      "B6",
+      "B23"
+    ]
+  },
+  "騎師×場地": {
+    "name_zh": "騎師×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "Bowman 於跑馬地強項",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "騎師×距離": {
+    "name_zh": "騎師×距離",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "Moreira 短途 vs 中距 ROI 差",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "練馬師×場地": {
+    "name_zh": "練馬師×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "部分練馬師偏 sand",
+    "brefs": [
+      "B14",
+      "B36"
+    ]
+  },
+  "練馬師×班次": {
+    "name_zh": "練馬師×班次",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "同類別 Brisnet angle",
+    "brefs": [
+      "B2",
+      "B6"
+    ]
+  },
+  "父系×場地": {
+    "name_zh": "父系×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "Galileo 後代 turf 強",
+    "brefs": [
+      "B5",
+      "B26"
+    ]
+  },
+  "父系×距離": {
+    "name_zh": "父系×距離",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "Dosage 已部分編碼",
+    "brefs": [
+      "B26"
+    ]
+  },
+  "季節×場地": {
+    "name_zh": "季節×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "春雨期軟地 closer 強",
+    "brefs": [
+      "B28",
+      "B36"
+    ]
+  },
+  "步速×班次": {
+    "name_zh": "步速×班次",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "高班次 pace 更兇，closer 加成",
+    "brefs": [
+      "B12",
+      "B16"
+    ]
+  },
+  "用藥×場地": {
+    "name_zh": "用藥×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "Lasix × dirt 強訊號（US，HK 不適用）",
+    "brefs": [
+      "B11",
+      "B24"
+    ]
+  },
+  "馬齡×距離": {
+    "name_zh": "馬齡×距離",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "已於類別 3 列出；保留交互槽",
+    "brefs": [
+      "B14",
+      "B23"
+    ]
+  },
+  "天氣×場地": {
+    "name_zh": "天氣×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "雨後 turf 漸軟",
+    "brefs": [
+      "B28",
+      "B29",
+      "B41"
+    ]
+  },
+  "賽事編號×場地": {
+    "name_zh": "賽事編號×場地",
+    "category_id": 12,
+    "category_name_zh": "交互特徵",
+    "section": "擴充建議",
+    "description_zh": "後段賽事 turf 受踐踏耗損",
+    "brefs": [
+      "B14",
+      "B41"
+    ]
+  },
+  "Q 跑法互補": {
+    "name_zh": "Q 跑法互補",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "既有特徵",
+    "description_zh": "連贏組合跑法互補性",
+    "brefs": []
+  },
+  "Q 競爭強度": {
+    "name_zh": "Q 競爭強度",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "既有特徵",
+    "description_zh": "連贏組合競爭強度",
+    "brefs": []
+  },
+  "Harville 公式衍生": {
+    "name_zh": "Harville 公式衍生",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "由 P(win) 推 P(1-2) 與 P(1-2-3)",
+    "brefs": [
+      "B8",
+      "B9"
+    ]
+  },
+  "Henery 修正": {
+    "name_zh": "Henery 修正",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "assume exponential running times；對 longshot 修正",
+    "brefs": [
+      "B8",
+      "B9"
+    ]
+  },
+  "Plackett-Luce 似然": {
+    "name_zh": "Plackett-Luce 似然",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "listwise ranking model；訓練 LtR",
+    "brefs": [
+      "B9",
+      "B31"
+    ]
+  },
+  "Discounted Harville": {
+    "name_zh": "Discounted Harville",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "PaceAdvantage 社群對 Harville 之高賠率折扣",
+    "brefs": [
+      "B8"
+    ]
+  },
+  "三甲組合（Trifecta）特徵": {
+    "name_zh": "三甲組合（Trifecta）特徵",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "各 1-2-3 順序機率向量化",
+    "brefs": [
+      "B8",
+      "B16"
+    ]
+  },
+  "位置 Q（Place Quinella）": {
+    "name_zh": "位置 Q（Place Quinella）",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "HKJC 特有 PQ 池",
+    "brefs": [
+      "B14"
+    ]
+  },
+  "四連環（Superfecta）": {
+    "name_zh": "四連環（Superfecta）",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "1-2-3-4 順序機率向量",
+    "brefs": [
+      "B16"
+    ]
+  },
+  "Pick 4 / 5 / 6 共識": {
+    "name_zh": "Pick 4 / 5 / 6 共識",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "跨場 multi-leg 連帶；single + spread",
+    "brefs": [
+      "B16",
+      "B37"
+    ]
+  },
+  "相鄰閘號相關性": {
+    "name_zh": "相鄰閘號相關性",
+    "category_id": 13,
+    "category_name_zh": "連贏與序位結構",
+    "section": "擴充建議",
+    "description_zh": "adjacent draw 之 race interference 機率",
+    "brefs": [
+      "B36",
+      "B41"
+    ]
+  },
+  "開盤賠率": {
+    "name_zh": "開盤賠率",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "Opening odds；snapshot 1",
+    "brefs": [
+      "B30",
+      "B35"
+    ]
+  },
+  "收市賠率（SP）": {
+    "name_zh": "收市賠率（SP）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "Final tote / fixed-odds SP",
+    "brefs": [
+      "B30",
+      "B35"
+    ]
+  },
+  "賠率走勢（drift / steamer）": {
+    "name_zh": "賠率走勢（drift / steamer）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "Δ(open→close) 百分比；steamer = 顯著縮短",
+    "brefs": [
+      "B32",
+      "B35"
+    ]
+  },
+  "隱含概率（Implied probability）": {
+    "name_zh": "隱含概率（Implied probability）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "1 / odds，未扣 takeout",
+    "brefs": [
+      "B30",
+      "B35"
+    ]
+  },
+  "公眾資金集中度": {
+    "name_zh": "公眾資金集中度",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "Top-3 押注佔池比例",
+    "brefs": [
+      "B14",
+      "B22"
+    ]
+  },
+  "莊家空間（Overround）": {
+    "name_zh": "莊家空間（Overround）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "Σ(1/odds) − 1；HK 純 pari-mutuel takeout ≈ 17.5%",
+    "brefs": [
+      "B30",
+      "B42"
+    ]
+  },
+  "Betfair Starting Price（BSP）": {
+    "name_zh": "Betfair Starting Price（BSP）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "交易所 SP，全球 sharper benchmark",
+    "brefs": [
+      "B13",
+      "B32"
+    ]
+  },
+  "CLV（Closing Line Value）": {
+    "name_zh": "CLV（Closing Line Value）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "押注時隱含概率 − 收市隱含概率；正值即勝過市場",
+    "brefs": [
+      "B13",
+      "B32"
+    ]
+  },
+  "交易所深度": {
+    "name_zh": "交易所深度",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "Lay/back depth at each price tick",
+    "brefs": [
+      "B42"
+    ]
+  },
+  "晚段走勢（Late steam）": {
+    "name_zh": "晚段走勢（Late steam）",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "最後 15-30 分鐘移動；資訊質量最高",
+    "brefs": [
+      "B32",
+      "B35"
+    ]
+  },
+  "多平台一致性": {
+    "name_zh": "多平台一致性",
+    "category_id": 14,
+    "category_name_zh": "市場訊號",
+    "section": "擴充建議",
+    "description_zh": "多個莊家 / 池同步移動 = sharp signal",
+    "brefs": [
+      "B32",
+      "B35"
+    ]
+  },
+  "當日場地偏差": {
+    "name_zh": "當日場地偏差",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "第 1-3 場 winners 之 running style 分布",
+    "brefs": [
+      "B41",
+      "B43"
+    ]
+  },
+  "同日 par-time 殘差": {
+    "name_zh": "同日 par-time 殘差",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "本日場次時間 vs par 時間",
+    "brefs": [
+      "B10",
+      "B41"
+    ]
+  },
+  "rail position（A/B/C/C+3）": {
+    "name_zh": "rail position（A/B/C/C+3）",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "HKJC 三個 turf 配置；C+3 偏內側速度",
+    "brefs": [
+      "B36",
+      "B41"
+    ]
+  },
+  "賽前灌溉公分": {
+    "name_zh": "賽前灌溉公分",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "Watering record",
+    "brefs": [
+      "B41"
+    ]
+  },
+  "草長度公分": {
+    "name_zh": "草長度公分",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "Grass cutting record",
+    "brefs": [
+      "B28",
+      "B41"
+    ]
+  },
+  "同日內欄勝率殘差": {
+    "name_zh": "同日內欄勝率殘差",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "本日內欄表現偏離長期",
+    "brefs": [
+      "B41",
+      "B43"
+    ]
+  },
+  "賽事間風向變化": {
+    "name_zh": "賽事間風向變化",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "早午晚段風向；領跑馬受影響",
+    "brefs": [
+      "B28",
+      "B29"
+    ]
+  },
+  "同日 closer 加成": {
+    "name_zh": "同日 closer 加成",
+    "category_id": 15,
+    "category_name_zh": "場地動態",
+    "section": "擴充建議",
+    "description_zh": "後上馬於本日是否異常 winning",
+    "brefs": [
+      "B12",
+      "B41"
+    ]
+  },
+  "GPS 平均速度": {
+    "name_zh": "GPS 平均速度",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "Equimetre / Arioneo / RaceiQ devices",
+    "brefs": [
+      "B43",
+      "B44",
+      "B45"
+    ]
+  },
+  "GPS 最高速度": {
+    "name_zh": "GPS 最高速度",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "Peak velocity m/s",
+    "brefs": [
+      "B43",
+      "B44"
+    ]
+  },
+  "步幅長度（Stride length）": {
+    "name_zh": "步幅長度（Stride length）",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "Sprinter 與 stayer 顯著差異",
+    "brefs": [
+      "B43",
+      "B44",
+      "B45"
+    ]
+  },
+  "步頻（Stride frequency）": {
+    "name_zh": "步頻（Stride frequency）",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "FFT-derived；可由 GPS oscillation 求",
+    "brefs": [
+      "B43",
+      "B45"
+    ]
+  },
+  "心率峰值": {
+    "name_zh": "心率峰值",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "Equinity / Equisense；recovery time 後續推算",
+    "brefs": [
+      "B43",
+      "B44"
+    ]
+  },
+  "恢復時間": {
+    "name_zh": "恢復時間",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "Workout 後 5 min 心率回落",
+    "brefs": [
+      "B43",
+      "B44"
+    ]
+  },
+  "疲勞指數（Fatigue index）": {
+    "name_zh": "疲勞指數（Fatigue index）",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "體溫、累計負荷估算",
+    "brefs": [
+      "B43",
+      "B44"
+    ]
+  },
+  "訓練負荷（Workload）": {
+    "name_zh": "訓練負荷（Workload）",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "過去 7 日距離累計",
+    "brefs": [
+      "B43",
+      "B44"
+    ]
+  },
+  "騎師策略傾向": {
+    "name_zh": "騎師策略傾向",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "Brohamer / Asmussen 風格；領跑/守候比例",
+    "brefs": [
+      "B40"
+    ]
+  },
+  "練馬師訓練模式": {
+    "name_zh": "練馬師訓練模式",
+    "category_id": 16,
+    "category_name_zh": "生物力學",
+    "section": "擴充建議",
+    "description_zh": "high-mileage vs short-sharp，影響 layoff recovery",
+    "brefs": [
+      "B17",
+      "B25"
+    ]
+  }
+}

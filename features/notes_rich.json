@@ -1,0 +1,164 @@
+{
+  "H001": {
+    "description_zh": "馬匹年齡（年），香港賽馬以 3-5 歲為主流區間，是 Bolton-Chapman 1986 以來最基礎的賽馬特徵之一。",
+    "description_en": "Horse age in years. Hong Kong racing is dominated by 3-5 year olds; age serves as a coarse proxy for physical maturity and stamina ceiling.",
+    "notes_zh": "技術層面：年齡是 multinomial logit 條件特徵之一，捕捉成熟度曲線。3 歲馬於短途 (≤1200m) 表現接近高峰，4-5 歲於中長途 (≥1600m) 漸入高峰。香港賽事年齡上限約 11 歲，老馬普遍受年齡-評分曲線壓制。\n通俗層面：就像運動員一樣，馬匹有黃金期。三歲馬還年輕貪玩，七歲後體能下滑，最強的多是四到五歲。",
+    "notes_en": "Technical: age is a baseline conditioning variable in every serious racing logit since Bolton-Chapman 1986 [B1]. Three-year-olds peak in sprints (≤1200m); four- and five-year-olds dominate middle and long distances. The HK rating system implicitly penalises older horses through the handicap curve.\nLayman: like athletes, horses have a prime — usually 4 to 5 years old. Three-year-olds are physically immature; once past 7, performance falls off."
+  },
+  "H002": {
+    "description_zh": "騸馬標記。香港賽馬約 85% 為閹馬 (gelding)，閹割後性情穩定、訓練易於管控，是 HKJC 主流類別。",
+    "description_en": "Binary flag for geldings. Roughly 85% of HK runners are gelded — castration steadies temperament and simplifies handling, making gelding the dominant HKJC class.",
+    "notes_zh": "技術層面：性別 → 行為穩定性 → 表現一致性。閹割消除睪固酮波動，減少賽前焦躁。HK 因競爭環境、馬廄空間有限，繁殖價值低，閹割比例極高。\n通俗層面：就是公馬被去勢，脾氣較好、跑得專心。香港跑馬大部分都是閹馬，純種公馬反而少見。",
+    "notes_en": "Technical: gelding eliminates testosterone-driven temperament variance, improving consistency from race to race. HK has limited stallion-quality breeding demand and very high stable competition, so gelding is the default.\nLayman: a gelding is a castrated male horse. They're calmer and easier to train, which is why nearly all HK runners are geldings."
+  },
+  "H009": {
+    "description_zh": "HKJC 公布的 0-145 殘障評分。每場賽事後由評磅員根據表現調整，是負磅分配的依據，也是馬匹班級的核心指標。",
+    "description_en": "HKJC 0-145 handicap rating, adjusted by the stewards after each run. It determines the weight a horse must carry and bounds the class of races it can enter.",
+    "notes_zh": "技術層面：評分是 HK 等級制 (Class 1-5) 的入閘門檻：例如 Class 3 要求 81-100 分。評分趨勢 (rating slope) 比靜態值更有預測力 — 上升趨勢通常配合改進中。\n通俗層面：類似於圍棋的段位。分高就要扛更多重量、跑更高班次，分低就降班跑更輕負擔。看評分升降比看絕對值更有用，能反映馬匹的當下狀態。",
+    "notes_en": "Technical: rating gates entry into class bands (e.g. Class 3 requires 81-100). The rating's slope over recent starts carries more signal than the static level — a rising trend often pre-empts an in-form win.\nLayman: think of it as a handicap golf score. Higher rating = heavier weight + tougher class; lower = drops down to easier races. Watch the direction of change more than the number itself."
+  },
+  "H015": {
+    "description_zh": "馬匹累計勝率，採用 Bayesian Beta(α,β) 先驗收縮，避免少場馬樣本方差過大；新進口馬以全場平均勝率 8.3% 為起點。",
+    "description_en": "Bayesian-shrunk career win rate. A Beta(α,β) prior pulls thinly-raced horses toward the field-mean (~8.3%); a horse with one win in two starts isn't treated as 50% likely to win again.",
+    "notes_zh": "技術層面：Beta(5, 5×0.083/0.917) ≈ Beta(5, 55) 先驗。Posterior = (wins + α) / (runs + α + β)。Hierarchical Bayesian 文獻 [B25] 推薦此法處理少樣本馬匹。\n通俗層面：就是把「打得少又剛好贏一次」的馬，拉回到正常水平再評估。新馬贏一場不代表牠厲害，可能只是運氣；先驗收縮讓我們不被小樣本騙到。",
+    "notes_en": "Technical: a Beta(α, β) prior with prior pseudo-runs ≈ 5 and prior win-rate ≈ 0.083 is added to the empirical (wins + α) / (runs + α + β). This is the standard Hierarchical Bayesian recommendation [B25] for thinly-observed entities.\nLayman: prevents the model from thinking a horse that won 1-of-2 starts is a 50% favourite. A handful of races isn't enough evidence; we pull thin-data horses toward the average until they prove themselves."
+  },
+  "H016": {
+    "description_zh": "騎師累計勝率，亦採用 Bayesian 收縮。HKJC 騎師樣本量大 (頂級騎師 5,000+ 出賽)，收縮影響有限，但對見習生關鍵。",
+    "description_en": "Bayesian-shrunk jockey win rate. Top HK jockeys have 5,000+ starts so the prior barely shifts their estimate; for apprentice riders it dominates until they have a track record.",
+    "notes_zh": "技術層面：頂級騎師 (Purton、Bowman、Moreira、Ferraris) 平均勝率約 18-22%。優秀騎師對勝率貢獻顯著且穩定，是 syndicate 重要因子 [B14]。\n通俗層面：好騎師像好球員，能讓平凡的馬發揮出色。Purton、Bowman 騎的馬通常會壓更短賠率；新騎師則是個未知數，要看夠多場才信得過。",
+    "notes_en": "Technical: top-tier HK jockeys (Purton, Bowman, Moreira, Ferraris) sit at 18-22% career win rate — a striking gap above the mean. Jockey contribution is one of the strongest single features in any syndicate's model [B14].\nLayman: a great jockey can squeeze a win out of an ordinary horse. When Purton or Bowman gets the ride, the market reflects it immediately."
+  },
+  "H023": {
+    "description_zh": "Actual/Expected：實際勝率 ÷ 賠率隱含勝率。>1.00 表示優於市場預期，<1.00 表示被市場高估。Brisnet 標準衡量指標 [B22][B30]。",
+    "description_en": "Actual / Expected: realised win rate divided by the market's implied win rate. Values above 1.00 mean the entity has beaten the market historically; below 1.00 means the market over-rates it.",
+    "notes_zh": "技術層面：A/E = win_rate / mean(1/odds)。是 longshot bias 與 favourite bias 的客觀量度。Snowberg-Wolfers [B48] 文獻顯示，favourites 通常 A/E ≈ 0.95-0.98，極端 longshots A/E ≈ 0.5-0.7。\n通俗層面：簡單來說：你預測得準不準？如果這匹馬的賠率長期低估了牠的能力，A/E 就大於 1，這就是「靚位」(value bet) 的訊號。",
+    "notes_en": "Technical: A/E = win_rate / mean(1/odds). It quantifies favourite-longshot bias [B48]: heavy favourites typically run A/E ≈ 0.95-0.98 (slightly over-bet), extreme longshots A/E ≈ 0.5-0.7 (heavily over-bet). A/E > 1.0 anywhere is a market-beating signal.\nLayman: a way to ask 'does this horse's price match its actual chances?' If A/E is above 1, the bookies have been under-pricing it — that's where the value lives."
+  },
+  "H024": {
+    "description_zh": "Impact Value：該組合勝率 ÷ 全體基準勝率。IV = 1.0 為中性，>1.0 表示優於平均。Brisnet 經典指標 [B22]。",
+    "description_en": "Impact Value: a group's win rate divided by the field-average win rate. IV = 1.0 is neutral; IV > 1.0 means horses sharing that attribute punch above the average.",
+    "notes_zh": "技術層面：分組可為任何 categorical 變量 (騎師、練馬師、跑法、閘號)。IV ≠ A/E：IV 用基準勝率為分母，A/E 用市場隱含為分母。Equibase 使用 IV ≥ 1.5 為強訊號標準 [B22]。\n通俗層面：用「對比平均」來看每個因素的影響力。例如某騎師 IV=1.8 表示牠騎的馬比平均高出 80% 勝率，這是隱性優勢。",
+    "notes_en": "Technical: IV = group_win_rate / field_baseline_win_rate. Distinct from A/E (which divides by market-implied): IV gauges raw frequency, A/E gauges market efficiency. Industry rule of thumb: IV ≥ 1.5 marks a strong signal [B22].\nLayman: tells you whether some attribute (a jockey, a draw, a running style) wins more than average. IV of 2.0 means twice the normal rate — a real edge worth pricing in."
+  },
+  "H028": {
+    "description_zh": "三巨頭騎師標記：Purton、Bowman、Moreira、Ferraris 旗下馬會自動取得 base-rate 加成，反映港 HKJC 最頂尖騎師的穩定優勢 [B14][B40]。",
+    "description_en": "Top-3 jockey flag: a binary marker for rides by Z Purton, H Bowman, J Moreira or L Ferraris — HK's elite tier, whose presence shifts the prior probability before any other features are considered.",
+    "notes_zh": "技術層面：base-rate boost ≈ +5-8% 勝率對相同條件下其他騎師。在 walk-forward 訓練中通常作為強烈交互特徵 (jockey × class、jockey × distance)。\n通俗層面：這四位騎師在港賽是「金字塔頂端」，光是他們騎，賠率就會自動縮短。模型必須把這種隱性優勢納入考量。",
+    "notes_en": "Technical: base-rate boost of about +5-8 percentage points over the equivalent non-top-three rider. Used as a strong interaction term with class and distance in the LambdaMART feature space.\nLayman: these four jockeys are HK's elite. Their presence alone shortens the price — the market sees the name on the card and reacts before reading anything else."
+  },
+  "H038": {
+    "description_zh": "賽事間復原時間：上場後天數 × 上場負擔指標。配合 layoff 與訓練週期評估，避免馬匹過度疲勞或久休復賽風險 [B17][B25]。",
+    "description_en": "Recovery proxy: days since last start multiplied by an effort weight from that start (winners and placers carry heavier weight). Used to flag both over-raced and under-recovered runners.",
+    "notes_zh": "技術層面：分桶 28 (短歇)、29-60 (理想)、60-90 (邊緣)、>90 (久歇懲罰)。配合 trainer_returner_wr 識別「練馬師擅長帶歇馬出賽」者。\n通俗層面：跑完一場大賽要休多久才能再戰？休太短體能透支、休太長手感生疏。看這個欄就知道牠是不是適合的時機。",
+    "notes_en": "Technical: bucketed by gap (≤28 short-back, 29-60 ideal, 60-90 marginal, >90 long-layoff penalty). Pairs with trainer_returner_wr to spot stables that handle returners well.\nLayman: how long since the horse last raced — too short and it's tired, too long and it's rusty. The model catches both extremes."
+  },
+  "H050": {
+    "description_zh": "閘號（barrier draw）：起跑位置編號 1-N。內閘較短彎、外閘較難取位，於跑馬地與沙田短途影響顯著 [B14][B36]。",
+    "description_en": "Starting gate barrier number (1 = innermost). Inner draws save ground and reach the first turn faster; outer draws can be punished, especially at Happy Valley and over short Sha Tin trips.",
+    "notes_zh": "技術層面：track × distance × draw 三維交互效應強烈：跑馬地 1200m 內閘優勢顯著，沙田 1600m 草地內外幾乎中性，AWT 1200m 外閘反而較佳。\n通俗層面：閘位就像短跑選手的水道，內側少跑幾步路。但有些賽道、有些距離反而外閘更好，所以要看綜合條件。",
+    "notes_en": "Technical: the marginal effect interacts strongly with track and distance. Happy Valley sprints reward inner draws sharply; Sha Tin 1600m is roughly draw-neutral on turf; the AWT 1200m course actually favours wider draws.\nLayman: like lanes on a running track — the inside lane is shortest but only matters on certain courses. The model handles the per-course quirks."
+  },
+  "H058": {
+    "description_zh": "草地 rail position：A / B / C / C+3 等。HKJC 每周公布，影響當日草地內外側速度與用法 [B36][B41]。",
+    "description_en": "Rail configuration (A/B/C/C+3) — HKJC moves the temporary running rail to spread wear across the turf. The position changes how the inner third of the track plays on any given day.",
+    "notes_zh": "技術層面：A rail = 標準位置；B/C/C+3 偏外，讓未被踐踏的內側草皮復原。當日 rail 影響配速優勢 (closer 對 leader) 和閘號殘差。\n通俗層面：球場會定期更換球門位，馬場也會挪動跑道內欄的位置，讓草皮恢復。位置會影響哪邊草較硬、哪種跑法佔便宜。",
+    "notes_en": "Technical: 'A' = standard inner rail; B/C/C+3 push the running rail outward by a few metres to let trampled turf recover. Rail position interacts with running-style edge — closers can gain when the rail is moved out and the leaders tire on softer ground.\nLayman: the inside fence of the track is moveable. Shifting it changes which patches of grass are fresh — which favours different running styles on different days."
+  },
+  "H061": {
+    "description_zh": "騎師+鞍具總負磅（lb）。評磅員根據馬匹評分與性別讓磅分配，是 handicap 賽事的核心調節變數。",
+    "description_en": "Total weight (jockey + saddle) the horse must carry in pounds. Assigned by the handicapper from the horse's rating, plus class allowances and sex/apprentice/age adjustments.",
+    "notes_zh": "技術層面：每 1 lb 增減約對應 0.04-0.06 秒/1000m 的時間差。weight × distance 交互在長途賽 (≥1800m) 顯著放大。Benter 1994 [B1] 將 weight 列為核心 weight variable 之一。\n通俗層面：扛得越重就跑得越慢，是直觀的物理。handicap 賽用負磅讓強馬讓弱馬，理論上每匹馬都有同等機會贏。",
+    "notes_en": "Technical: every extra pound costs roughly 0.04-0.06 seconds per 1000m, with the marginal cost growing in long-distance races. Benter 1994 [B1] lists carried weight as one of the core handicapping variables.\nLayman: heavier means slower. The handicap system loads weight onto the better horses to even out the field — in theory every runner should have an equal chance at the line."
+  },
+  "H072": {
+    "description_zh": "賽事距離 (公尺)。HK 主要賽程：1000、1200、1400、1600、1800、2000、2200、2400m。距離決定 stamina 比例與配速結構。",
+    "description_en": "Race distance in metres. Hong Kong stages 1000m–2400m, with 1200/1400/1600 the dominant trips. Distance drives the stamina-vs-speed mix and the optimal running-style.",
+    "notes_zh": "技術層面：短途 (≤1200) 配速 chaos 高、頂位早；中途 (1400-1800) 配速結構穩定、closer 有空間；長途 (≥2000) stamina 主導。距離 × 出生月份、距離 × Dosage 為強交互。\n通俗層面：短跑、中距、長距，這在賽馬就像 100m、800m、5000m 的差別。馬匹的體型、血統、跑法都會偏好不同距離。",
+    "notes_en": "Technical: short trips (≤1200m) have chaotic pace and an early-positional bias; middle trips (1400-1800m) reward tactical riding; longer trips (≥2000m) become stamina-driven. Distance interacts strongly with pedigree (sire stamina index) and running style.\nLayman: sprints, miles, and routes — the equine equivalent of 100m vs 800m vs 5km. Each horse has its preferred distance window."
+  },
+  "H084": {
+    "description_zh": "休賽天數（layoff length）：自上場日至本場的天數。短歇 (≤14d) 易疲勞，理想 (28-49d)，久歇 (>60d) 風險增。",
+    "description_en": "Days since last start. Short layoffs (≤14d) risk fatigue; 28-49 days is the typical 'fresh and primed' window; gaps over 60 days flag potential rust or recovery from injury.",
+    "notes_zh": "技術層面：layoff penalty 與 trainer_returner_wr [H045] 共同預測復出表現。HK 馬廄密度高，>90d 通常代表獸醫停賽。\n通俗層面：間隔幾天最有效？太密集會累，太疏會生疏。看到「久休復賽」是要小心的訊號，可能是傷後復出。",
+    "notes_en": "Technical: short layoffs (≤14d) carry fatigue risk; the 28-49 day band is the empirical sweet spot; gaps >60 days are bucketed and combined with trainer_returner_wr [H045] to estimate post-layoff form.\nLayman: rest matters. Too soon and the horse is tired; too long and it's lost match-fitness — often a sign of a recent injury, which the model treats with caution."
+  },
+  "H094": {
+    "description_zh": "近 60 日試閘 (barrier trial) 紀錄。HKJC 公開試閘成績，是出賽前狀態檢測的重要指標 [B20]。",
+    "description_en": "Most recent barrier-trial position within 60 days. Trials are unofficial gallops HKJC publishes to demonstrate a horse is fit and gate-safe; sharp trial position is a strong pre-race form signal.",
+    "notes_zh": "技術層面：試閘成績 ≤ 3 名 + 時間優異是強訊號，特別是首場、復出前、或近兩個月未出賽馬。配合 trackwork [H095] 一同評估。\n通俗層面：試閘就像「正賽前的彩排」，馬匹假裝比賽一次。試閘跑得好通常表示練馬師覺得牠準備好了。",
+    "notes_en": "Technical: trial finishing position within the top three combined with a fast clocking is a meaningful form signal, especially for first-time runners, horses returning from a break, or those without a public gallop in the last 14 days. Pairs with H095 trackwork.\nLayman: a trial is a dress rehearsal — the horse races for real but the result doesn't count. A sharp trial usually means the trainer thinks it's ready."
+  },
+  "H108": {
+    "description_zh": "預估賽事步速：0 慢、1 中、2 快。由場上 early-speed 馬數量推算，是 pace handicapping 的核心。",
+    "description_en": "Forecast race pace: 0 slow, 1 medium, 2 fast. Counts the number of confirmed early-speed runners in the field — many leaders means a fast scorching pace.",
+    "notes_zh": "技術層面：fast pace 通常利好 closer，slow pace 利好 leader/stalker。pace × style 交互 [H110] 是 Brisnet 經典 angle [B11][B12]。\n通俗層面：場上有幾匹搶快的馬？多匹搶快，前段會跑得太兇，最後讓追逐型反勝；少匹搶快，領跑馬就能輕鬆控速。",
+    "notes_en": "Technical: a fast forecast pace creates a 'closers' race'; a slow pace lets a lone leader steal it. The pace × running-style cross-term [H110] is one of Brisnet's classic angles [B11][B12].\nLayman: how many horses want to lead? If they all want to lead, they'll burn each other out and the closers come over the top. If only one wants to lead, it can dictate from the front."
+  },
+  "H109": {
+    "description_zh": "跑法風格：0 領跑 (leader)、1 緊隨 (stalker)、2 中游 (midfield)、3 後上 (closer)。由歷史首段位置均值推算。",
+    "description_en": "Running-style class: 0 = front-runner, 1 = stalker, 2 = midfield, 3 = closer. Derived from the average first-call position across the horse's history.",
+    "notes_zh": "技術層面：style 與 pace、draw、distance 都有強交互。HK 跑法純度 [H120] 配合 style 為穩定性指標：跑法純度高的馬，模型可信度更高。\n通俗層面：每匹馬都有偏好的跑法 — 喜歡領頭跑、跟著跑、還是後段衝。看牠以前怎麼跑就大致知道。",
+    "notes_en": "Technical: running-style interacts with pace forecast, gate draw, and distance. Style purity [H120] measures how reliably a horse races to type — high purity makes the style signal more trustworthy.\nLayman: every horse has a preference — go to the front, sit just off the pace, hang in midfield, or come from the back. Knowing the preference tells you when the race conditions suit it."
+  },
+  "H122": {
+    "description_zh": "CHRI 綜合指數：本系統內部 composite，混合 layoff penalty、style、distance adaptation 等多項指標 [B14]。",
+    "description_en": "CHRI: an in-house composite blending layoff penalty, running-style class, and distance adaptation. A single roll-up indicator for horses where individual factor scores conflict.",
+    "notes_zh": "技術層面：CHRI = mean(layoff_penalty, style_score, dist_adapt)。粗略 health-check 指標；當單一因子衝突時 (例如評分高但久歇) 提供總覽。\n通俗層面：把幾個重要因素合在一起的綜合分數，讓你一眼看出一匹馬整體狀態是好是壞，不用一個一個翻細項。",
+    "notes_en": "Technical: composite of layoff penalty, running-style score, and distance adaptation — a coarse health-check used when individual factors conflict (e.g. strong rating but long layoff).\nLayman: a single overall score combining several important factors, so you can sense the horse's overall condition at a glance instead of reading every cell."
+  },
+  "H147": {
+    "description_zh": "Harville top-2 機率：由各馬 win 機率推算前二名組合機率。Harville 1973 [B8] 經典公式，是 quinella 定價基礎。",
+    "description_en": "Harville top-2 probability: derived from each horse's win probability via the closed-form Harville (1973) [B8] formula. The standard estimator behind quinella pricing.",
+    "notes_zh": "技術層面：P(j 第二 | i 勝) = p_j / (1 - p_i)。對 favourite 在 2nd/3rd 有偏差 (高估)，Henery 1981 [B9] 與 Plackett-Luce 是公認的精細化版本。\n通俗層面：知道每匹馬奪冠機率後，怎麼推算「1+2 連贏」機率？Harville 公式是最簡單的方法，業界標準。",
+    "notes_en": "Technical: P(j second | i wins) = p_j / (1 − p_i). Known to over-rate favourites in second/third position; Henery 1981 [B9] and Plackett-Luce refine this with running-time models.\nLayman: given each horse's win chance, how likely is the 1-2 combination? The Harville formula is the textbook way to roll win probabilities up into exotic-bet prices."
+  },
+  "H148": {
+    "description_zh": "Harville top-3 機率：擴展至 P(1-2-3) 組合。三重彩 (trifecta) 與位置 Q (place quinella) 定價基礎 [B8][B9]。",
+    "description_en": "Harville top-3 probability for trifecta and place-quinella pricing. Extension of the same chain rule used in H147, applied to the second- and third-place transitions.",
+    "notes_zh": "技術層面：P(i, j, k) = p_i × p_j/(1-p_i) × p_k/(1-p_i-p_j)。組合爆量：n=12 時 ≈ 1320 組，需 Monte Carlo 或 listwise 近似快速求解 [B9][B31]。\n通俗層面：再加一個位置（第三名）就更複雜。三重彩有上千種組合，要全算很慢，所以實務上會用簡化的數學方法。",
+    "notes_en": "Technical: P(i, j, k) = p_i × p_j/(1-p_i) × p_k/(1-p_i-p_j). The combinatorial explosion (≈ 1320 orderings for a 12-horse field) typically requires Monte-Carlo or listwise approximations [B9][B31].\nLayman: same idea as the 1-2 but extended to picking three. Far more combinations, so we usually approximate rather than enumerate every possibility."
+  },
+  "H156": {
+    "description_zh": "開盤賠率：當日首個 odds 快照。對比收市 SP 可量度市場資金流入方向 (drift / steamer) [B30][B35]。",
+    "description_en": "Opening odds — the first published tote price of the day. Compared against the closing price, it reveals which way the smart money has moved (drift = lengthening, steamer = shortening).",
+    "notes_zh": "技術層面：opening — closing 差距 ≥ 30% 視為 steamer 訊號。HK 純 pari-mutuel 池，opening 由開閘前小量資金決定，敏感於後續變動。\n通俗層面：早上開盤的賠率，等比賽前的賠率，看資金有沒有湧入。若有人偷偷大買，賠率會明顯縮短，這通常是「內幕資金」的訊號。",
+    "notes_en": "Technical: opening-to-closing drift of 30% or more is a recognised 'steamer' signal of late professional money. Because HK runs pure pari-mutuel pools, the opening price is set by sparse early money and is very sensitive to subsequent flow.\nLayman: the price first thing in the morning versus the price at off-time. If a horse's price drops sharply, big money has piled in — usually informed money worth respecting."
+  },
+  "H157": {
+    "description_zh": "收市賠率（closing / Starting Price）：跑前最後一個 odds 快照，是市場最完整資訊的反映，也是 CLV 計算基準 [B30][B35]。",
+    "description_en": "Closing odds (HK starting price) — the final tote price as the gates open. This is the market's consensus probability at the moment of truth and the reference price for CLV calculations.",
+    "notes_zh": "技術層面：1/closing_odds = market implied prob (含 ~17.5% takeout)。Benter 1994 [B1] stage-2 logit 的 π_i 核心輸入；無此值則模型 information-starved。\n通俗層面：開閘那一刻的賠率，是最多人投注的綜合結果。市場越接近開賽，賠率就越「準」，這也是專家評估自己有沒有 edge 的關鍵基準。",
+    "notes_en": "Technical: 1 / closing_odds is the market-implied win probability (carrying ~17.5% takeout in HK). This is the π_i term in Benter 1994's stage-2 logit [B1] — without it, the blended model is information-starved.\nLayman: the price right before the gates open is the crowd's combined wisdom. It's the standard against which professional bettors measure whether they've 'beaten the market' on each bet."
+  },
+  "H158": {
+    "description_zh": "賠率走勢百分比：(close − open) / open。負值為 steamer (縮短)、正值為 drift (拉長)。late move 視為 sharp money 訊號 [B32][B35]。",
+    "description_en": "Odds drift percentage: (close − open) / open. Negative = steamer (price shortened, money came in); positive = drift (price lengthened, money left). Late, large moves are sharp-money signals.",
+    "notes_zh": "技術層面：steamer ≥ -30% 通常代表大型專業資金或 syndicate 入場。drift 多由 informed bettors 棄注，或公眾從 hype 退潮。\n通俗層面：賠率有沒有動?  動的方向告訴你資金在做什麼。突然縮短表示有人押下重注，相反如果拉長則表示市場對牠失去信心。",
+    "notes_en": "Technical: a steamer ≤ −30% commonly marks syndicate or large-stake money arriving late. Drift the other way often means professional bettors abandoned the horse or the public's earlier hype faded.\nLayman: did the price move? Which direction? A sudden shortening means heavy money came in; a lengthening means people lost interest. Both carry information."
+  },
+  "H161": {
+    "description_zh": "Overround：Σ(1/odds) − 1，總隱含機率超出 100% 的部分。HK 純 pari-mutuel takeout ≈ 17.5%，即 overround ≈ 0.175 [B30][B42]。",
+    "description_en": "Overround: Σ(1 / odds) − 1, the excess of total implied probability above 100%. HK pari-mutuel takeout is about 17.5%, so a healthy market sits near overround = 0.175.",
+    "notes_zh": "技術層面：overround = takeout 率的市場直接反映。若市場結構正常，overround 穩定；異常高 (e.g. 0.25+) 表示池內有偏差或大型 mispricing。\n通俗層面：把所有馬的隱含勝率加起來，超過 100% 的部分就是「莊家利潤」。HK 約 17.5% 是常態。\n",
+    "notes_en": "Technical: overround equals the realised market take-out and stays stable when the pool is well-balanced. Spikes above the norm (e.g. 0.25+) usually mean a skewed pool or a large mispricing somewhere.\nLayman: add up every horse's implied probability — the amount over 100% is the operator's margin. In HK that's about 17.5%, by design."
+  },
+  "H163": {
+    "description_zh": "Internal CLV (Closing Line Value)：押注時隱含機率 − 收市隱含機率。正值即勝過市場，最客觀的「edge 存在」即時驗證 [B13][B32]。",
+    "description_en": "Internal CLV: implied(close) − implied(placed). Positive values mean you got a better price than the eventual close — the gold-standard real-time test that your model actually has edge.",
+    "notes_zh": "技術層面：HK 無 Betfair BSP，以 HKJC tote 為 close benchmark。專業 syndicate (Benter [B1]、Ranogajec) 視 CLV > 0 為勝利條件，無論單場輸贏。長期 CLV 為正 ↔ 模型有真實 edge。\n通俗層面：你下注時的賠率比結束時更划算嗎？若是，無論這場輸贏，你長期都會贏錢。這是「贏家思維」的核心指標。",
+    "notes_en": "Technical: with no Betfair BSP available for HK pools, we use the latest HKJC tote snapshot as the close. Professional syndicates (Benter [B1], Ranogajec) treat positive long-run CLV as proof of edge regardless of any single race's win/lose outcome.\nLayman: was your price better than the final price? If yes consistently, you'll win money in the long run even if individual races go against you. This is the most honest yardstick a bettor can use."
+  },
+  "H167": {
+    "description_zh": "當日場地偏差：今日領跑/內閘勝出的比率對比長期均值的殘差。識別「今日有利 leader/closer」之 day-of bias [B41][B43]。",
+    "description_en": "Same-day track bias: today's winners' running-style or inner-draw share minus the long-run baseline. A positive value flags a 'leader-friendly' day; negative flags a 'closer's day'.",
+    "notes_zh": "技術層面：基準值 = 全部歷史平均 (e.g. inner-draw winners ≈ 30%、front-runner winners ≈ 35%)。每日場地偏差透過 compute_track_bias 預計算入 track_bias_daily。\n通俗層面：今天場地適合哪種跑法？看頭幾場的勝者就大致知道。如果三場頭都是內閘領跑馬，那今天「內閘領跑」就吃香。",
+    "notes_en": "Technical: residual of today's front-runner / inner-draw winning share versus the long-run baseline (~30% inner, ~35% front-runner). Pre-computed daily into track_bias_daily by compute_track_bias.\nLayman: what kind of horse is winning today? If the first three races all went to inner-draw front-runners, the same pattern is likely to keep playing through the card."
+  },
+  "H174": {
+    "description_zh": "當日 closer 加成：1 − today_bias。當天 leader 偏差越低，closer 越受益。配合 H167 評估場地動態。",
+    "description_en": "Same-day closer boost: 1 − front-runner bias. When leaders aren't winning today, the math automatically favours horses that come from off the pace.",
+    "notes_zh": "技術層面：closer_boost = 1 − front_runner_residual。是 H167 的補集，用於 closer-style horses 的 same-day uplift。\n通俗層面：如果領跑馬今天表現差，後追馬就有機會。這個欄位就是專門給「等下班才衝」的馬的加分。",
+    "notes_en": "Technical: closer_boost = 1 − front-runner residual. Complement to H167 — when leaders are underperforming today, this term automatically lifts closer-style runners.\nLayman: if the front-runners can't win today, the back-runners can. This score gives them the credit they're due."
+  }
+}

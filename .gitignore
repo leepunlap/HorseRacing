@@ -1,9 +1,15 @@
 # Data files
 data/*.csv
 data/*.db
+data/*.db-wal
+data/*.db-shm
 data/raw_results_CN/
 data/*.tar.gz
 data/*.json
+# Scraper runtime state (regenerable)
+data/checkpoints/
+data/raw/
+data/v2_checkpoints/
 
 # Python artifacts
 __pycache__/
