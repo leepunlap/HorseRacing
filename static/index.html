@@ -338,6 +338,24 @@
                        text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
                        border-top: 1px solid var(--border); padding-top: 14px; }
   .chart-svg { display: block; width: 100%; max-height: 280px; }
+  /* Strategy feature-pill panel */
+  .feat-pill-cat { margin-bottom: 14px; }
+  .feat-pill-cathdr { font-size: 11px; color: var(--text); font-weight: 600;
+                      text-transform: uppercase; letter-spacing: 0.4px;
+                      margin-bottom: 6px; display: flex; gap: 10px;
+                      align-items: baseline; }
+  .feat-pill-cathdr .muted { font-family: var(--mono); font-weight: 400;
+                              text-transform: none; letter-spacing: 0; }
+  .feat-pill-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .feat-pill { display: inline-flex; align-items: center; gap: 4px;
+               padding: 2px 8px; border-radius: 10px; font-size: 11px;
+               white-space: nowrap; user-select: none; cursor: default; }
+  .feat-pill.on  { background: rgba(77,209,122,0.14); color: var(--good);
+                   border: 1px solid rgba(77,209,122,0.30); }
+  .feat-pill.off { background: rgba(130,144,168,0.08); color: var(--muted);
+                   border: 1px solid rgba(130,144,168,0.25);
+                   text-decoration: line-through; }
+  .feat-pill-id { font-family: var(--mono); font-size: 10px; opacity: 0.7; }
   /* ApexCharts container */
   .apex-chart { width: 100%; min-height: 200px; }
   /* ApexCharts tooltip overrides — match the SPA's dark theme tokens */
@@ -562,13 +580,20 @@ async function loadStrategyDetail(id) {
   state.selectedStrategy = state.strategies.find(s => s.id === id) || null;
   state.dashStrategy = id;
   saveUi({ dashStrategy: id });
-  // Fetch the summary + charts payloads in parallel (both are cheap reads)
-  const [dash, charts] = await Promise.all([
+  // Fetch the summary + charts + (if not yet loaded) the feature catalog in
+  // parallel. The catalog feeds the bilingual feature-pill panel rendered
+  // alongside the dashboard.
+  const featuresPromise = state.features
+    ? Promise.resolve(state.features)
+    : api('/api/features').catch(() => null);
+  const [dash, charts, features] = await Promise.all([
     api(`/api/strategies/${id}/dashboard`).catch(e => ({ error: e.message })),
     api(`/api/strategies/${id}/charts`).catch(e => ({ error: e.message })),
+    featuresPromise,
   ]);
   state.dashData = dash;
   state.dashCharts = charts;
+  if (features && !state.features) state.features = features;
   state.strategyHealth = dash && !dash.error
     ? { windows: dash.calibration_trend }
     : null;
@@ -899,6 +924,60 @@ function renderStrategies() {
     ${sel ? renderStrategyDashboard(sel) : ''}
   `;
 }
+
+// ─── Strategy feature-pill panel ────────────────────────────────────────────
+// Bilingual condensed view of which features this strategy uses (green) vs
+// disables (grey), grouped by the 15 catalogue categories. Pill labels follow
+// the global language toggle (state.lang). Each pill carries a tooltip with
+// the H-id + full description so users can hover to read context.
+function renderStrategyFeaturePanel(strategy) {
+  if (!strategy || !state.features?.categories) return '';
+  let overrides = {};
+  try {
+    overrides = strategy.features_enabled_json
+      ? JSON.parse(strategy.features_enabled_json) : {};
+  } catch (e) { overrides = {}; }
+  const lang = state.lang;
+
+  let totalEnabled = 0, totalCount = 0;
+  const sections = (state.features.categories || []).map(cat => {
+    let catEnabled = 0;
+    const pills = cat.features.map(f => {
+      const enabled = (f.id in overrides) ? !!overrides[f.id] : !!f.enabled_default;
+      if (enabled) { catEnabled++; totalEnabled++; }
+      totalCount++;
+      const nm = f[`name_${lang}`] || f.name_en;
+      const desc = f[`description_${lang}`] || f.description_en || '';
+      const titleText = `${f.id} · ${nm}\n${desc}`;
+      return `<span class="feat-pill ${enabled ? 'on' : 'off'}"
+                    title="${escapeHtml(titleText)}">
+        <span class="feat-pill-id">${f.id}</span>${escapeHtml(nm)}
+      </span>`;
+    }).join('');
+    const catName = cat[`name_${lang}`];
+    return `
+      <div class="feat-pill-cat">
+        <div class="feat-pill-cathdr">
+          ${escapeHtml(catName)}
+          <span class="muted">${catEnabled}/${cat.features.length}</span>
+        </div>
+        <div class="feat-pill-row">${pills}</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="panel">
+      <h2>${t('使用中的特徵', 'Features in use')}
+        <span class="muted" style="font-weight:400;font-size:13px">
+          · ${totalEnabled} / ${totalCount} ${t('已啟用', 'enabled')}
+        </span>
+      </h2>
+      ${sections}
+    </div>
+  `;
+}
+
 
 // ─── ApexCharts performance charts ──────────────────────────────────────────
 // We render placeholder <div>s into the DOM and then asynchronously mount
@@ -1279,7 +1358,21 @@ function dailyActivityChartOpts(points) {
   const pnlData    = points.map(p => +(p.daily_pnl   || 0).toFixed(2));
   return {
     ..._baseOpts(),
-    chart: { ..._baseOpts().chart, type: 'bar', height: 320, stacked: false },
+    chart: { ..._baseOpts().chart, type: 'bar', height: 320, stacked: false,
+             // Click-through: jump to the Races tab on the date of the clicked bar
+             events: {
+               dataPointSelection: (_e, _ctx, conf) => {
+                 const date = points[conf.dataPointIndex]?.date;
+                 if (!date) return;
+                 state.raceDate = date;
+                 state.raceYear = date.slice(0, 4);
+                 state.raceMonth = date.slice(5, 7);
+                 saveUi({ raceDate: state.raceDate, raceYear: state.raceYear,
+                          raceMonth: state.raceMonth });
+                 switchTab('races');
+               },
+             },
+    },
     series: [
       { name: t('投注金額 ($)', 'Stake placed ($)'), data: stakeData },
       { name: t('盈虧 ($)',     'PnL ($)'),         data: pnlData },
@@ -1687,6 +1780,8 @@ function renderStrategyDashboard(sel) {
         </div>
       </div>
     </div>
+
+    ${renderStrategyFeaturePanel(d.strategy)}
 
     <div class="panel">
       <h2>${t('表現圖表', 'Performance charts')}</h2>
