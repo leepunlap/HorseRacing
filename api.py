@@ -642,7 +642,8 @@ def strategy_charts(strategy_id: int,
             "payout": stake * q["odds"] if q["won"] else 0.0,
         })
 
-    # ── Cumulative PnL per day (sorted chronologically)
+    # ── Cumulative PnL per day (sorted chronologically). Also track wins so the
+    #    daily-races stacked-bar chart can show wins / losses / no-bet split.
     daily: dict[str, dict] = {}
     for p in placed:
         d = daily.setdefault(p["date"], {"stake": 0.0, "payout": 0.0, "n": 0, "wins": 0})
@@ -650,6 +651,24 @@ def strategy_charts(strategy_id: int,
         d["payout"] += p["payout"]
         d["n"] += 1
         d["wins"] += p["won"]
+
+    # Total race count per meeting date (independent of whether we bet)
+    race_count_where = "WHERE 1=1"
+    rc_params: list = []
+    if date_from:
+        race_count_where += " AND date >= ?"; rc_params.append(date_from)
+    if date_to:
+        race_count_where += " AND date <= ?"; rc_params.append(date_to)
+    conn2 = _connect()
+    try:
+        rc_rows = conn2.execute(
+            f"SELECT date, COUNT(*) FROM races {race_count_where} GROUP BY date",
+            rc_params,
+        ).fetchall()
+    finally:
+        conn2.close()
+    race_counts = {d: n for d, n in rc_rows}
+
     cum_pnl = []
     s = pay = 0.0; n = 0
     for date in sorted(daily):
@@ -664,6 +683,8 @@ def strategy_charts(strategy_id: int,
             "daily_stake": round(d["stake"], 2),
             "daily_pnl": round(d["payout"] - d["stake"], 2),
             "daily_bets": d["n"],
+            "daily_wins": d["wins"],
+            "total_races": race_counts.get(date, 0),
         })
 
     # ── Win rate + ROI per odds bucket (placed bets only)

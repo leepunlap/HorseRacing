@@ -1044,6 +1044,7 @@ function renderPerformanceCharts(charts) {
     _mountApexChart('apex-reliability', reliabilityChartOpts(charts.reliability || []));
     _mountApexChart('apex-oddsbuckets', oddsBucketsChartOpts(charts.odds_buckets || []));
     _mountApexChart('apex-daily', dailyActivityChartOpts(charts.cumulative_pnl || []));
+    _mountApexChart('apex-races-stack', dailyRacesStackChartOpts(charts.cumulative_pnl || []));
     _mountApexChart('apex-kelly', kellyBucketsChartOpts(charts.kelly_scenarios || []));
     // What-if buckets
     const ts = charts.threshold_sweeps || {};
@@ -1068,7 +1069,15 @@ function renderPerformanceCharts(charts) {
       <div class="chart-card wide">
         <h3>${t('每日下注金額與盈虧', 'Daily stake placed & win/loss by race day')}</h3>
         <div id="apex-daily" class="apex-chart"></div>
-        <p class="chart-note">${t('藍柱 = 該日總投注金額；綠/紅柱 = 該日盈虧（正/負）', 'blue bars = total stake placed that day · green/red bars = daily PnL (positive/negative)')}</p>
+        <p class="chart-note">${t('藍柱 = 該日總投注金額；綠/紅柱 = 該日盈虧（正/負）。點擊任何柱可跳到該日賽事。', 'blue bars = total stake placed that day · green/red bars = daily PnL (positive/negative) · click any bar to jump to that day on the Races tab')}</p>
+      </div>
+      <div class="chart-card wide">
+        <h3>${t('每日場次與預測勝場', 'Daily races & predicted wins')}</h3>
+        <div id="apex-races-stack" class="apex-chart"></div>
+        <p class="chart-note">${t(
+          '堆疊柱顯示每日總場次拆分為：綠 = 我們的下注命中、紅 = 我們的下注落敗、灰 = 該日沒有下注的場次。點擊任何片段跳到該日賽事。',
+          'Stacked bar shows each day\\'s total races split into: green = our placed bet won, red = our placed bet lost, grey = race we did not bet on. Click any segment to jump to that day on the Races tab.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('累計盈虧', 'Cumulative PnL')}</h3>
@@ -1275,6 +1284,77 @@ function bankrollChartOpts(path, startBankroll) {
                x: { format: 'yyyy-MM-dd' },
                y: { formatter: (v, { seriesIndex }) =>
                     seriesIndex === 0 ? '$' + v.toFixed(0) : Math.abs(v).toFixed(2) + '%' } },
+    legend: { position: 'top', horizontalAlign: 'right' },
+  };
+}
+
+function dailyRacesStackChartOpts(points) {
+  // Stacked bars: per race day, how the total race count splits into
+  //   green: races where we placed a bet AND it won
+  //   red:   races where we placed a bet AND it lost
+  //   grey:  races we did NOT bet on
+  // Sum = total_races for that day. Click jumps to the Races tab on that date.
+  const categories = points.map(p => p.date);
+  const wins       = points.map(p => p.daily_wins || 0);
+  // Approximation: each placed bet is on a different race. In rare cases a
+  // strategy could fire twice in the same race; this slightly over-counts
+  // "bet-races" then, which would push the loss bar negative. Clamp to ≥0.
+  const losses     = points.map(p => Math.max(0, (p.daily_bets || 0) - (p.daily_wins || 0)));
+  const nobet      = points.map(p => Math.max(0, (p.total_races || 0) - (p.daily_bets || 0)));
+  return {
+    ..._baseOpts(),
+    chart: { ..._baseOpts().chart, type: 'bar', height: 300, stacked: true,
+             events: {
+               dataPointSelection: (_e, _ctx, conf) => {
+                 const date = points[conf.dataPointIndex]?.date;
+                 if (!date) return;
+                 state.raceDate = date;
+                 state.raceYear = date.slice(0, 4);
+                 state.raceMonth = date.slice(5, 7);
+                 saveUi({ raceDate: state.raceDate, raceYear: state.raceYear,
+                          raceMonth: state.raceMonth });
+                 switchTab('races');
+               },
+             },
+    },
+    series: [
+      { name: t('預測命中', 'Won'),         data: wins },
+      { name: t('預測落敗', 'Lost'),         data: losses },
+      { name: t('未下注', 'Not bet'),       data: nobet },
+    ],
+    colors: ['#4dd17a', '#f06262', 'rgba(130,144,168,0.45)'],
+    plotOptions: { bar: { columnWidth: '60%', borderRadius: 0 } },
+    dataLabels: { enabled: false },
+    stroke: { width: 0 },
+    xaxis: {
+      categories, type: 'category',
+      title: { text: t('賽事日期', 'Race date'), style: { color: '#8290a8' } },
+      labels: { show: true, style: { colors: '#8290a8' }, rotate: -45,
+                hideOverlappingLabels: true, trim: false },
+      axisBorder: { show: true, color: 'rgba(42,49,64,0.6)' },
+      axisTicks:  { show: true, color: 'rgba(42,49,64,0.6)' },
+    },
+    yaxis: {
+      title: { text: t('場次數', 'Number of races'), style: { color: '#8290a8' } },
+      labels: { formatter: v => v.toFixed(0), style: { colors: '#8290a8' } },
+      forceNiceScale: true,
+    },
+    tooltip: { ..._baseOpts().tooltip,
+               shared: true,
+               custom: ({ dataPointIndex }) => {
+                 const p = points[dataPointIndex];
+                 const wr = (p.daily_bets || 0) > 0
+                   ? ((p.daily_wins / p.daily_bets) * 100).toFixed(1) + '%'
+                   : '—';
+                 return `<div class="apex-tip">
+                   <div><b>${p.date}</b></div>
+                   <div>${t('總場次', 'Total races')}: <b>${p.total_races || 0}</b></div>
+                   <div style="color:#4dd17a">${t('命中', 'Won')}: ${p.daily_wins || 0}</div>
+                   <div style="color:#f06262">${t('落敗', 'Lost')}: ${Math.max(0, (p.daily_bets||0)-(p.daily_wins||0))}</div>
+                   <div class="muted">${t('未下注', 'Not bet')}: ${Math.max(0, (p.total_races||0)-(p.daily_bets||0))}</div>
+                   <div class="muted">${t('下注勝率', 'Bet win-rate')}: ${wr}</div>
+                 </div>`;
+               } },
     legend: { position: 'top', horizontalAlign: 'right' },
   };
 }
