@@ -1370,8 +1370,12 @@ function dailyRacesStackChartOpts(points) {
       labels: { formatter: v => v.toFixed(0), style: { colors: '#8290a8' } },
       forceNiceScale: true,
     },
+    // Stacked bar: ApexCharts forces tooltip.intersect=true so each segment
+    // is independently hoverable — that conflicts with shared=true. We don't
+    // need shared because the custom handler returns the full day breakdown
+    // regardless of which segment was hovered.
     tooltip: { ..._baseOpts().tooltip,
-               shared: true,
+               shared: false, intersect: true,
                custom: ({ dataPointIndex }) => {
                  const p = points[dataPointIndex];
                  const wr = (p.daily_bets || 0) > 0
