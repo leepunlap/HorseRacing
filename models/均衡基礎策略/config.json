@@ -6,7 +6,7 @@
   "parent": null,
   "notes": "v1.1\uff1a\u52a0\u5165\u8c9d\u8449\u65af\u5e73\u6ed1\uff08Bayesian shrinkage\uff09\uff0c\u4fee\u6b63\u65b0\u99ac/\u65b0\u9a0e\u5e2b/\u65b0\u7d44\u5408\u7684\u51b7\u555f\u52d5\u504f\u5dee",
   "created": "2026-05-24",
-  "active": false,
+  "active": true,
   "xgb": {
     "objective": "binary:logistic",
     "eval_metric": "logloss",
@@ -124,5 +124,12 @@
     "TT"
   ],
   "bet_max_odds": 6.5,
-  "bet_min_odds": 1.0
+  "bet_min_odds": 1.0,
+  "use_isotonic_calibration": true,
+  "kelly_fraction": 0.25,
+  "kelly_max_bet": 5.0,
+  "place_edge_threshold": 0.0,
+  "q_edge_threshold": 0.0,
+  "qp_edge_threshold": 0.0,
+  "q_top_n": 5
 }

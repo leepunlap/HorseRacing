@@ -107,8 +107,8 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 .stale-badge.rerun{background:#fce4e4;color:#a00;border:1px solid #e74c3c}
 .retally-btn{font-size:9pt;padding:4px 12px;border-radius:4px;border:1px solid #f0c040;background:#fffbe6;color:#7a5400;cursor:pointer}
 .retally-btn:hover{background:#f0c040;color:#000}
-/* Greyed prediction columns when no predictions exist for the strategy */
-.col-pred-missing td{color:#bbb !important;background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f0f0f0 6px,#f0f0f0 12px) !important}
+/* Dimmed prediction cells when no predictions exist */"}
+.cell-pred-missing{color:#bbb !important;background:#f5f5f5}
 
 /* Scrape-time pill */
 .scrape-pill{display:inline-block;background:#eef;border:1px solid #cce;border-radius:12px;padding:2px 10px;font-size:9pt;color:#456}
@@ -142,6 +142,7 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 .date-chip{font-family:monospace;font-size:8pt;padding:2px 7px;border-radius:10px;white-space:nowrap}
 .date-chip.done{background:#d4edda;color:#155724}
 .date-chip.pending{background:#f0f0f0;color:#888}
+.date-chip.stale{background:#fce4e4;color:#a00;border:1px solid #e74c3c}
 </style>
 </head>
 <body>
@@ -303,7 +304,7 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 // ─── UI display constants (frontend only) ──────────────────
-const LONGSHOT_THRESHOLD = 6.5;   // odds > this = "longshot" (greyed out; still shown if edge qualifies)
+const LONGSHOT_THRESHOLD = 15.0;   // fallback; overridden by raceCacheMeta.bet_max_odds
 const EDGE_STRONG        = 1.3;   // edge > this = strong play ($200 recommended)
 const EDGE_MILD          = 0.9;   // edge > this = light play ($100 recommended)
 const STAKE_STRONG       = 200;
@@ -517,6 +518,20 @@ async function loadRaces(dateStr){
     dateStr=getCookie('race_date')||document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
   }
 
+async function _reloadDateList(){
+  const model = getSelectedModel();
+  const sel = document.getElementById('dateSelect');
+  if(!sel) return;
+  const curDate = sel.value;
+  const dd = await api('/api/dates?model='+(model||''));
+  if(!dd||!dd.dates) return;
+  sel.innerHTML = dd.dates.map(d=>{
+    const tag = d.model_stale ? '📭' : d.has_predictions ? '📊' : '';
+    const race = d.race_count ? `R${d.race_count}` : '';
+    return `<option value="${d.date}"${d.date===curDate?' selected':''}>${d.date} ${tag} ${race} ${d.horse_count||''}匹</option>`;
+  }).join('');
+}
+
   // ── Stage 1: fetch available dates ──────────────────────────
   if(!document.getElementById('dateSelect').options.length){
     _setRaceLoadingPct(14,'載入日期列表...');
@@ -524,7 +539,11 @@ async function loadRaces(dateStr){
     if(seq!==_loadSeq)return;
     if(dd&&dd.dates){
       const sel=document.getElementById('dateSelect');
-      sel.innerHTML=dd.dates.map(d=>`<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${d.has_predictions?'📊':''} ${d.race_count?'R'+d.race_count+'場':''} ${d.horse_count?d.horse_count+'匹':''}</option>`).join('');
+      sel.innerHTML=dd.dates.map(d=>{
+        const tag = d.model_stale ? '📭' : d.has_predictions ? '📊' : '';
+        const race = d.race_count ? `R${d.race_count}` : '';
+        return `<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${tag} ${race} ${d.horse_count||''}匹</option>`;
+      }).join('');
       if(!dd.dates.find(d=>d.date===dateStr)&&dd.dates.length)dateStr=dd.dates[0].date;
     }
     _setRaceLoadingPct(25,'日期已載入');
@@ -638,7 +657,21 @@ function timeAgo(iso){
  * ─────────────────────────────────────────────────────────────────────── */
 function renderRunBanner(rc){
   const el = document.getElementById('runBanner');
-  if(!rc || rc.has_predictions){ el.innerHTML=''; return; }
+  if(!rc){ el.innerHTML=''; return; }
+
+  // Stale model: predictions invalidated, needs full re-run
+  if(rc.model_stale){
+    const model = rc.model || getSelectedModel() || '';
+    const date  = rc.date;
+    el.innerHTML = `<div class="run-banner" style="background:#f5f5f5;border:1px solid #ddd">
+      <span class="icon">📭</span>
+      <div class="msg"><b>${model} — 模型已修改，需重新回測</b><br><small>策略參數已變更，現有預測數據已失效。請重新執行回測以獲得有效數據。</small></div>
+      <button onclick="triggerRun('${model}','${date}',false)" id="runBtn">⏪ 重新回測</button>
+    </div>`;
+    return;
+  }
+
+  if(rc.has_predictions){ el.innerHTML=''; return; }
   const model = rc.model || getSelectedModel() || '';
   const date  = rc.date;
   const isFut = rc.is_future;
@@ -791,6 +824,7 @@ function connectProgressWS(){
         await _ensureModels();
         renderModelNav('modelNav',racesModel,'selectModel');
         renderModelNav('dashModelNav',dashModel,'selectDashModel');
+        _reloadDateList();
       },800);
     } else if(msg.type === 'scraper_start'){
       Object.assign(_scraperJob,{active:true,stopping:false,
@@ -812,6 +846,8 @@ function connectProgressWS(){
       Object.assign(_scraperJob,{active:false,stopping:false,current_task:null});
       _pushLog(_scraperLog,msg.type==='scraper_done'?'✓ 抓取完成':'■ 已停止');
       _renderJobsPane();
+      // Refresh date list with new data
+      if(msg.type === 'scraper_done') _reloadDateList();
     }
   };
   progressWS.onclose = ()=>{
@@ -924,6 +960,8 @@ function showRace(rn, silent){
   // columns as placeholders (greyed) so the user sees what data would appear.
   // The banner + run button (rendered by renderRunBanner) explains how to fix it.
   const missingPreds = raceCacheMeta && !raceCacheMeta.has_predictions;
+  // When model is stale, suppress prediction columns entirely (not even placeholders)
+  const modelStale = raceCacheMeta && raceCacheMeta.model_stale;
 
   // PHASE 2 — Feature min/max across the day for chart normalisation
   // (so chart heights are comparable across horses in the same day)
@@ -940,24 +978,27 @@ function showRace(rn, silent){
   }
 
   // PHASE 3 — Predicted finish order (1st, 2nd, 3rd…) by win_prob.
-  // Longshots (odds > LONGSHOT_THRESHOLD) excluded — they distort the ranking
+  // Longshots (odds > bet_max_odds) excluded — they distort the ranking
   // and the model's tail probabilities are noisy.
+  const maxOdds = (raceCacheMeta&&raceCacheMeta.bet_max_odds) ? raceCacheMeta.bet_max_odds : LONGSHOT_THRESHOLD;
   const predRank={};
   if(hasPreds){
-    const eligible=race.horses.filter(h=>parseFloat(h.win_odds)<=LONGSHOT_THRESHOLD&&h.win_prob!=null);
+    const eligible=race.horses.filter(h=>parseFloat(h.win_odds)<=maxOdds&&h.win_prob!=null);
     eligible.sort((a,b)=>b.win_prob-a.win_prob);
     eligible.forEach((h,i)=>{predRank[h.no]=i+1});
   }
 
   // PHASE 4 — Build table header
-  const showPredCols = hasPreds || missingPreds;
-  const showFeatCols = hasFeat  || missingPreds;
+  const showPredCols = (hasPreds || missingPreds) && !modelStale;
+  const showFeatCols = (hasFeat  || missingPreds) && !modelStale;
   const noPredLabel = missingPreds ? '<span style="color:#aaa;font-size:8pt">未預測</span>' : '—';
   let h=`<table class="race-tbl"><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
   if(showFeatCols)h+=`<th style="width:510px">特徵組別得分</th>`;
   if(showPredCols)h+=`<th>勝率</th><th>值博率</th>`;
-  h+=`<th>預測</th>`;
-  h+=`<th>名次</th><th>頭馬距離</th><th>沿途走位</th><th>注碼</th><th>盈虧</th></tr></thead><tbody>`;
+  if(!modelStale) h+=`<th>預測</th>`;
+  h+=`<th>名次</th><th>頭馬距離</th><th>沿途走位</th>`;
+  if(!modelStale) h+=`<th>注碼</th><th>盈虧</th>`;
+  h+=`</tr></thead><tbody>`;
 
   // PHASE 5 — Sort horses by predicted rank ascending; unranked horses to bottom
   const sortedHorses=[...race.horses];
@@ -968,7 +1009,7 @@ function showRace(rn, silent){
 
   sortedHorses.forEach(hh=>{
     const oddsVal = parseFloat(hh.win_odds)||0;
-    const isLong  = oddsVal > LONGSHOT_THRESHOLD;
+    const isLong  = oddsVal > maxOdds;
     const prob    = hh.win_prob!=null ? (hh.win_prob*100).toFixed(2)+'%' : '';
     const edge    = hh.edge!=null ? hh.edge.toFixed(1) : '';
 
@@ -993,11 +1034,10 @@ function showRace(rn, silent){
       profitStyle = won ? 'color:#27ae60;font-weight:bold' : 'color:#e74c3c';
     }
 
-    // Render row — winner gets green bg; missing-pred state adds grey-stripe class
-    const rowCls = missingPreds ? 'col-pred-missing' : '';
+    // Render row — winner gets green bg
     const rowStyle = won ? ' style="background:#e8f5e9"' : '';
-    h+=`<tr class="${rowCls}"${rowStyle}>`;
-    h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td style="${oddsStyle}">${hh.win_odds||'?'}x${hh.place_odds&&!isLong?`<br><small style="font-size:7pt;color:#888">P ${hh.place_odds}</small>`:''}</td>`;
+    h+=`<tr${rowStyle}>`;
+    h+=`<td>${hh.no}</td><td><b>${hh.name}</b></td><td>${hh.jockey}</td><td>${hh.trainer}</td><td>${hh.draw}</td><td>${hh.weight}</td><td style="${oddsStyle}">${hh.win_odds||'?'}x${!isLong&&hh.place_odds?`<br><small style="font-size:7pt;color:#888">P ${hh.place_odds}</small>`:''}</td>`;
     if(showFeatCols){
       h += hasFeat
         ? `<td style="padding:1px 3px;vertical-align:middle">${buildFeatChart(hh,featMin,featMax)}</td>`
@@ -1011,12 +1051,14 @@ function showRace(rn, silent){
         h+=`<td>${noPredLabel}</td><td>${noPredLabel}</td>`;
       }
     }
-    h+=`<td style="font-weight:bold;color:#1a3a5c">${hasPreds?(predRank[hh.no]||'-'):noPredLabel}</td>`;
+    if(!modelStale) h+=`<td style="font-weight:bold;color:#1a3a5c">${hasPreds?(predRank[hh.no]||'-'):noPredLabel}</td>`;
     h+=`<td style="font-weight:bold">${hh.position||'-'}</td>`;
     h+=`<td style="color:#888">${hh.lbw||'-'}</td>`;
     h+=`<td style="color:#888">${fmtRunning(hh.running)}</td>`;
-    h+=`<td>${hasPreds&&bet>0?'$'+bet:missingPreds?noPredLabel:''}</td>`;
-    h+=`<td style="${profitStyle}">${hasPreds?profit:missingPreds?noPredLabel:'-'}</td>`;
+    if(!modelStale){
+      h+=`<td>${hasPreds&&bet>0?'$'+bet:missingPreds?noPredLabel:''}</td>`;
+      h+=`<td style="${profitStyle}">${hasPreds?profit:missingPreds?noPredLabel:'-'}</td>`;
+    }
     h+='</tr>';
   });
   h+='</tbody></table>';
@@ -1026,7 +1068,7 @@ function showRace(rn, silent){
   // bet_edge_threshold + bet_min_odds + bet_max_odds. May be null if
   // predictions aren't available.
   const bet=race.bet;
-  if(bet){
+  if(bet && !modelStale){
     const predIcon = bet.placed ? (bet.correct ? '✅' : (race.has_results ? '❌' : '⏳')) : '—';
     const pnlStr  = bet.pnl!=null ? (bet.pnl>=0?`+${bet.pnl.toFixed(2)}`:bet.pnl.toFixed(2)) : '';
     const pnlStyle= bet.pnl!=null ? (bet.pnl>=0?'color:#27ae60':'color:#e74c3c') : '';
@@ -1054,7 +1096,7 @@ function showRace(rn, silent){
   });
   const netProfit = totalProfit - totalBet;
   const profitPct = totalBet>0 ? ((netProfit/totalBet)*100).toFixed(1) : '0';
-  if(totalBet>0)h+=`<div style="font-size:9pt;color:#666;margin-top:4px;padding:4px 8px;background:#fff;border-radius:4px">
+  if(!modelStale && totalBet>0)h+=`<div style="font-size:9pt;color:#666;margin-top:4px;padding:4px 8px;background:#fff;border-radius:4px">
     <b>注碼($): ${totalBet}</b> &ensp; 回報: ${totalProfit} &ensp;
     淨盈虧: <span style="color:${netProfit>=0?'#27ae60':'#e74c3c'};font-weight:bold">${netProfit>=0?'+':''}$${netProfit} (${netProfit>=0?'+':''}${profitPct}%)</span>
     </div>`;
@@ -1214,7 +1256,7 @@ async function loadModelPage(){
     const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
     const bg=m.active?'#1a3a5c':'#fff', fg=m.active?'#fff':'#333', sub=m.active?'rgba(255,255,255,0.65)':'#888';
     const statusBadge = needsRerun
-      ? `<span style="font-size:7pt;background:#fce4e4;color:#a00;padding:1px 6px;border-radius:8px;margin-left:4px">⚠ 結果已失效</span>`
+      ? `<span style="font-size:7pt;background:#f0f0f0;color:#999;padding:1px 6px;border-radius:8px;margin-left:4px">📭 無有效數據</span>`
       : needsRetally
       ? `<span style="font-size:7pt;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;margin-left:4px">🔄 待重新計算</span>`
       : hasRun
@@ -1224,13 +1266,13 @@ async function loadModelPage(){
     const roiVal = needsRerun ? null : s.roi_units;
     const roi = roiVal!=null ? (roiVal>=0?'+':'')+roiVal.toFixed(2)+'u'+(needsRetally?' ⚠':'') : '—';
     const roiColor = needsRerun?'#bbb':(roiVal>=0?'#27ae60':'#e74c3c');
-    return `<div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid ${needsRerun?'#e74c3c':needsRetally?'#f0c040':'#ddd'};border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
+    return `      <div style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;background:${bg};color:${fg};border:1px solid ${needsRerun?'#ddd':needsRetally?'#f0c040':'#ddd'};border-radius:8px;font-size:10pt;max-width:320px;vertical-align:top">
       <div style="font-weight:bold;font-size:11pt">${m.name}${m.active?' ✓':''}${statusBadge}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.strategy_type||''} v${m.version||'?'}</div>
       <div style="font-size:8pt;color:${sub};margin:2px 0">${m.description||''}</div>
       ${m.notes?`<div style="font-size:8pt;color:${sub};font-style:italic;margin:2px 0">📝 ${m.notes}</div>`:''}
       ${m.parent?`<div style="font-size:8pt;color:${sub};margin:2px 0">⬆ 派生自: ${m.parent}</div>`:''}
-      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${roiColor}">${roi}</b> &ensp; 下注: ${needsRerun?'—':(s.bets_placed||'—')}場</div>
+      <div style="font-size:8pt;margin-top:4px">準確率: <b>${acc}</b> &ensp; ROI: <b style="color:${roiColor}">${roi}</b> &ensp; 下注: ${needsRerun?'—':(s.bets_placed||'—')+'場'}</div>
       ${m.active?`<span style="display:inline-block;margin-top:6px;font-size:7.5pt;padding:3px 10px;background:#d4edda;color:#155724;border-radius:10px;font-weight:600;border:1px solid #c3e6cb">✓ 使用中</span>`:`<button onclick="activateModel('${m.name}')" style="margin-top:6px;font-size:8pt;padding:3px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer">設為使用中</button>`}
     </div>`;
   }).join('');
@@ -1458,29 +1500,33 @@ function renderModelInventory(inv, stale){
   const modelName=modelConfigCache?.config?.name||'';
   const st=stale||{};
   const needsRerun=st.needs_rerun, needsRetally=st.needs_retally;
-  const done=inv.backtested||[], pending=inv.not_backtested||[];
-  const pct=inv.total_available>0?Math.round(inv.total_backtested/inv.total_available*100):0;
+  const done=inv.backtested||[], staleDates=inv.stale||[], pending=inv.not_backtested||[];
+  const pct=inv.total_available>0?Math.round((inv.total_backtested)/inv.total_available*100):0;
   const barW=Math.min(pct,100);
-  const barCol=needsRerun?'#e74c3c':(pct>=80?'#27ae60':pct>=40?'#f0a030':'#e74c3c');
+  const barCol=needsRerun?'#e74c3c':needsRetally?'#d4a017':(pct>=80?'#27ae60':pct>=40?'#f0a030':'#e74c3c');
 
   const chips=(dates,cls,clickable,invalid)=>dates.map(d=>{
-    const chipStyle=invalid?'background:#fce4e4;color:#a00;border-color:#e74c3c;':needsRetally?'border-color:#f0c040;':'';
+    const chipStyle=invalid?'background:#fce4e4;color:#a00;border-color:#e74c3c;':needsRetally?'border-color:#d4a017;':'';
     return clickable
       ?`<span class="date-chip ${cls}" style="${chipStyle}cursor:pointer" onclick="_goRaceDate('${d}','${modelName}')">${d}</span>`
       :`<span class="date-chip ${cls}" style="${chipStyle}">${d}</span>`;
   }).join('');
 
   const staleNote=needsRerun
-    ?`<div style="font-size:9pt;color:#a00;background:#fce4e4;border:1px solid #e74c3c;border-radius:4px;padding:5px 10px;margin-bottom:8px">⚠ 模型參數已更改，以下回測結果均已失效，需重新執行完整回測</div>`
+    ?`<div style="font-size:9pt;color:#a00;background:#fce4e4;border:1px solid #e74c3c;border-radius:4px;padding:5px 10px;margin-bottom:8px">⚠ 模型參數已更改，以下 ${staleDates.length} 個回測日期已失效，需重新執行完整回測</div>`
     :needsRetally
-    ?`<div style="font-size:9pt;color:#856404;background:#fff3cd;border:1px solid #f0c040;border-radius:4px;padding:5px 10px;margin-bottom:8px">🔄 下注參數已更改，下注分析需重新計算（預測準確率仍有效）</div>`
+    ?`<div style="font-size:9pt;color:#856404;background:#fff3cd;border:1px solid #d4a017;border-radius:4px;padding:5px 10px;margin-bottom:8px">🔄 下注參數已更改，下注分析需重新計算（預測準確率仍有效）</div>`
     :'';
 
+  const coverageStr = needsRerun
+    ? `${inv.total_backtested} 有效 + ${inv.total_stale} 已失效 / ${inv.total_available} 日`
+    : `${inv.total_backtested} / ${inv.total_available} 日`;
+
   el.innerHTML=`
-    <div style="background:#fff;border:1px solid ${needsRerun?'#e74c3c':needsRetally?'#f0c040':'#dee2e6'};border-radius:6px;padding:14px">
+    <div style="background:#fff;border:1px solid ${needsRerun?'#e74c3c':needsRetally?'#d4a017':'#dee2e6'};border-radius:6px;padding:14px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
         <b style="font-size:11pt;color:#1a3a5c">回測覆蓋率</b>
-        <span style="font-size:10pt;color:#555">${inv.total_backtested} / ${inv.total_available} 日</span>
+        <span style="font-size:10pt;color:#555">${coverageStr}</span>
         <div style="flex:1;min-width:120px;max-width:260px;background:#eee;border-radius:6px;height:8px;overflow:hidden">
           <div style="width:${barW}%;height:100%;background:${barCol};border-radius:6px;transition:.3s"></div>
         </div>
@@ -1488,8 +1534,12 @@ function renderModelInventory(inv, stale){
       </div>
       ${staleNote}
       ${done.length?`<div class="inv-section">
-        <h6>${needsRerun?'⚠ 已失效':'✅ 已回測'} (${done.length})</h6>
-        <div class="date-chips">${chips(done,'done',true,needsRerun)}</div>
+        <h6>✅ 已回測 (${done.length})</h6>
+        <div class="date-chips">${chips(done,'done',true,false)}</div>
+      </div>`:''}
+      ${staleDates.length?`<div class="inv-section">
+        <h6>⚠ 已失效 (${staleDates.length})</h6>
+        <div class="date-chips">${chips(staleDates,'stale',true,true)}</div>
       </div>`:''}
       ${pending.length?`<div class="inv-section">
         <h6>⬜ 未回測 (${pending.length})</h6>
@@ -2154,15 +2204,15 @@ function _renderDashStatus(data){
     ?`<span style="background:#d4edda;color:#155724;padding:2px 9px;border-radius:12px;font-size:8.5pt;margin-left:6px">● 使用中</span>`
     :`<span style="background:#e2e3e5;color:#555;padding:2px 9px;border-radius:12px;font-size:8.5pt;margin-left:6px">○ 未使用</span>`;
   const st=data.stale||{};
+  const effectiveRun = st.needs_rerun ? 0 : datesRun;
   const safeId=data.name.replace(/[^a-zA-Z0-9]/g,'_');
-  const staleBar = st.stale ? `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:5px;margin-bottom:8px;background:${st.needs_rerun?'#fce4e4':'#fff3cd'};border:1px solid ${st.needs_rerun?'#e74c3c':'#f0c040'}">
-    <span style="font-size:10pt">${st.needs_rerun?'⚠️':'🔄'}</span>
-    <span style="font-size:9.5pt;flex:1">${st.reason}</span>
+  const staleBar = st.stale ? `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:5px;margin-bottom:8px;background:${st.needs_rerun?'#f5f5f5':'#fff3cd'};border:1px solid ${st.needs_rerun?'#ddd':'#f0c040'}">
+    <span style="font-size:10pt;color:${st.needs_rerun?'#999':'#856404'}">${st.needs_rerun?'📭':'🔄'}</span>
+    <span style="font-size:9.5pt;flex:1;color:${st.needs_rerun?'#999':'#856404'}">${st.needs_rerun?'回測數據已失效，請重新執行完整回測':st.reason}</span>
     ${st.needs_retally?`<button id="retallyBtn_${safeId}" class="retally-btn" onclick="runRetally('${data.name.replace(/'/g,"\\'")}')">重新計算</button>`:''}
-    ${st.needs_rerun?`<span style="font-size:8.5pt;color:#a00">請重新執行完整回測</span>`:''}
   </div>` : '';
   const meta=[
-    `已執行: <b>${datesRun}</b> 日`,
+    `已執行: <b>${effectiveRun}</b> 日${st.needs_rerun?` <span style="font-size:8pt;color:#999">(共${datesRun}日已失效)</span>`:''}`,
     lastDate?`最後執行: <b>${lastDate}</b>`:null,
     data.bet_edge_threshold!=null?`下注閾值: <b>${data.bet_edge_threshold}</b>`:null,
     data.bet_max_odds!=null?`最高賠率: <b>${data.bet_max_odds}x</b>`:null,
@@ -2192,15 +2242,15 @@ function _renderDashStatCards(data){
   const st=data.stale||{};
   if(st.needs_rerun){
     document.getElementById('dashStats').innerHTML=
-      `<div style="grid-column:1/-1;text-align:center;color:#a00;padding:20px;font-size:11pt;background:#fce4e4;border-radius:6px;border:1px solid #e74c3c">
-        ⚠ 模型參數已更改，回測結果已全部失效。請重新執行完整回測以獲得有效數據。
+      `<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px;font-size:11pt;background:#f8f8f8;border-radius:6px;border:1px solid #e0e0e0">
+        暫無有效數據 — 請重新執行完整回測
       </div>`;
     return;
   }
   if(!s.dates_run){
     document.getElementById('dashStats').innerHTML=
-      `<div style="grid-column:1/-1;text-align:center;color:#888;padding:20px;font-size:11pt">
-        尚未執行任何回測 — 請前往「賽事」頁面選擇此策略並執行回測
+      `<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:20px;font-size:11pt">
+        尚未執行任何回測
       </div>`;
     return;
   }
@@ -2253,8 +2303,8 @@ function _renderDashCharts(data){
 
   const st=data.stale||{};
   const perDate=(data.summary||{}).per_date||[];
-  const noData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10pt">暫無數據</div>';
-  const invalidData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#a00;font-size:10pt;background:#fce4e4;border-radius:4px">⚠ 結果已失效，請重新回測</div>';
+  const noData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:10pt">暫無數據</div>';
+  const invalidData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10pt">暫無有效數據</div>';
   if(st.needs_rerun){
     document.getElementById('chartPnl').innerHTML=invalidData;
     document.getElementById('chartCumPnl').innerHTML=invalidData;

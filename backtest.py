@@ -1567,6 +1567,10 @@ def main():
 
     update_summary(model_name, all_results)
 
+    if done > 0:
+        print(f"\nRe-tallying {model_name} with current bet params...")
+        retally(model_name, verbose=True)
+
     if args.publish:
         print(f"\nPublishing {done} date(s) to predictions/...")
         for result in all_results:

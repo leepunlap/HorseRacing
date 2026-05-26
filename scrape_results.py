@@ -146,10 +146,81 @@ def parse_race_results(soup, date, race_no, course):
     return results
 
 
+def parse_dividends(soup, date, race_no, course):
+    """Extract dividend/payout data from a results page.
+
+    HKJC payout table format (Chinese):
+      Pool (彩池) | Combination (勝出組合) | Payout HK$ (派彩)
+      The table uses rowspan for multi-line pools (e.g. 3 place payouts).
+
+    Returns list of dicts:
+      [{date, race_no, course, pool, combination, dividend}, ...]
+    """
+    dividends = []
+    table_pools = {'獨贏': 'WIN', '位置': 'PLACE', '連贏': 'QIN',
+                   '位置Q': 'QPL', '二重彩': 'EXA', '單T': 'TRIO',
+                   '三重彩': 'TRI', '四連環': 'F4', '四重彩': 'QTT'}
+
+    for table in soup.find_all('table'):
+        rows = table.find_all('tr')
+        payout_section = False
+        current_pool = None
+
+        for row in rows:
+            cells = row.find_all(['td', 'th'])
+            texts = [c.get_text(strip=True) for c in cells]
+
+            if not texts:
+                continue
+
+            if any('派彩' in t for t in texts):
+                payout_section = True
+                continue
+
+            if not payout_section:
+                continue
+
+            if any(t in texts for t in ['彩池', '勝出組合']):
+                continue
+
+            pool_cn = texts[0] if texts else ''
+            if pool_cn in table_pools:
+                current_pool = table_pools[pool_cn]
+                combination = texts[1] if len(texts) > 1 else ''
+                payout_str   = texts[2] if len(texts) > 2 else ''
+            elif current_pool and len(texts) >= 2:
+                combination = texts[0] if len(texts) > 0 else ''
+                payout_str   = texts[1] if len(texts) > 1 else ''
+            else:
+                continue
+
+            if not current_pool or not combination or not payout_str:
+                continue
+
+            try:
+                dividend = float(payout_str.replace(',', ''))
+            except ValueError:
+                continue
+
+            parts = re.findall(r'\d+', combination)
+            if not parts:
+                continue
+            parts_sorted = ','.join(sorted(parts, key=int))
+
+            dividends.append({
+                'date': date, 'course': course, 'race_no': race_no,
+                'pool': current_pool, 'combination': parts_sorted,
+                'dividend': dividend,
+            })
+
+    return dividends
+
+
 async def scrape_date(page, date: str, dry_run: bool = False):
     """Scrape all races for a given date. Auto-detects course (ST or HV)."""
     date_url = date.replace('-', '/')
     all_results = []
+    all_dividends = []
     race_metas  = []
     course_used = None
 
@@ -179,10 +250,9 @@ async def scrape_date(page, date: str, dry_run: bool = False):
 
             results = parse_race_results(soup, date, rn, course)
             if not results and rn == 1:
-                # No results on race 1 — likely wrong course
                 break
             if not results:
-                break  # end of races for this course
+                break
 
             found_any = True
             meta = parse_race_meta(soup)
@@ -190,8 +260,12 @@ async def scrape_date(page, date: str, dry_run: bool = False):
                          'participants': len(results)})
             race_metas.append(meta)
             all_results.extend(results)
+
+            # Parse dividends
+            divs = parse_dividends(soup, date, rn, course)
+            all_dividends.extend(divs)
             print(f'    R{rn}: {len(results)} horses  dist={meta["distance"]}  '
-                  f'class={meta["class"]}  going={meta["going"]}')
+                  f'class={meta["class"]}  going={meta["going"]}  dividends={len(divs)}')
 
             # Save raw HTML for reference
             if not dry_run:
@@ -201,9 +275,9 @@ async def scrape_date(page, date: str, dry_run: bool = False):
 
         if found_any:
             course_used = course
-            break  # don't try second course
+            break
 
-    return course_used, race_metas, all_results
+    return course_used, race_metas, all_results, all_dividends
 
 
 def upsert_race(cursor, r):
@@ -249,6 +323,22 @@ def upsert_result(cursor, r):
               r['odds'], r['finish_time'], r['lbw'], r['running_style'], r['won']))
 
 
+def upsert_dividend(cursor, d):
+    existing = cursor.execute(
+        "SELECT rowid FROM dividends WHERE date=? AND course=? AND race_no=? AND pool=? AND combination=?",
+        (d['date'], d['course'], d['race_no'], d['pool'], d['combination'])
+    ).fetchone()
+    if existing:
+        cursor.execute(
+            "UPDATE dividends SET dividend=? WHERE date=? AND course=? AND race_no=? AND pool=? AND combination=?",
+            (d['dividend'], d['date'], d['course'], d['race_no'], d['pool'], d['combination']))
+    else:
+        cursor.execute(
+            "INSERT INTO dividends (date, course, race_no, pool, combination, dividend) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (d['date'], d['course'], d['race_no'], d['pool'], d['combination'], d['dividend']))
+
+
 def ensure_prediction_stub(date: str):
     """Create a minimal racecard_parsed.json stub so the date appears in the dropdown."""
     pred_path = PRED_DIR / date / 'racecard_parsed.json'
@@ -289,7 +379,7 @@ async def main():
         for date in dates:
             print(f'\n=== {date} ===')
             try:
-                course, race_metas, results = await scrape_date(page, date, args.dry_run)
+                course, race_metas, results, dividends = await scrape_date(page, date, args.dry_run)
             except Exception as e:
                 print(f'  ERROR: {e}')
                 continue
@@ -298,7 +388,7 @@ async def main():
                 print(f'  No results found — skipping (not a race day, or results not yet available)')
                 continue
 
-            print(f'  Course: {course}  Races: {len(race_metas)}  Horses: {len(results)}')
+            print(f'  Course: {course}  Races: {len(race_metas)}  Horses: {len(results)}  Dividends: {len(dividends)}')
 
             if not args.dry_run:
                 cursor = conn.cursor()
@@ -306,6 +396,8 @@ async def main():
                     upsert_race(cursor, rm)
                 for r in results:
                     upsert_result(cursor, r)
+                for d in dividends:
+                    upsert_dividend(cursor, d)
                 conn.commit()
                 ensure_prediction_stub(date)
                 print(f'  Saved to DB.')

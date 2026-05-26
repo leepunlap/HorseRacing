@@ -352,13 +352,18 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
 
     # Predictions come from model results dir if model is specified
     if model:
-        pred_json_path = MODELS_DIR / model / "results" / date / "predictions.json"
+        # Suppress stale predictions — do not show invalidated results
+        st_info = _staleness(model)
+        if not st_info.get('needs_rerun'):
+            pred_json_path = MODELS_DIR / model / "results" / date / "predictions.json"
+        else:
+            pred_json_path = None   # stale — no valid predictions
     else:
         pred_json_path = card_dir / "predictions.json"
 
     # Load model predictions (prob/edge per horse)
     predictions = {}
-    if pred_json_path.exists():
+    if pred_json_path and pred_json_path.exists():
         await _prog(40, "讀取預測資料...")
         with open(pred_json_path, encoding='utf-8') as f:
             predictions = json.load(f)
@@ -538,6 +543,12 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
     # Whether this strategy has predictions for this date (drives the UI banner).
     # If predictions is an empty dict, the strategy hasn't run yet for this date.
     has_strategy_predictions = bool([k for k in predictions if not k.startswith('_')])
+
+    # Whether the model config is stale — suppresses prediction display entirely
+    model_stale = False
+    if model:
+        try: model_stale = _staleness(model).get('needs_rerun', False)
+        except: pass
     await _prog(86, "組裝回應數據")
 
     return {
@@ -549,6 +560,9 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         "model_version": predictions.get("_version"),
         "generated_at":  predictions.get("_generated_at"),
         "has_predictions": has_strategy_predictions,
+        "model_stale":   model_stale,
+        "bet_max_odds":  float(BET_MAX_ODDS),
+        "bet_edge_threshold": float(BET_EDGE_THRESHOLD),
         "scrape_info":   scrape_info,
         "is_future":     date >= datetime.now().strftime("%Y-%m-%d"),
     }
@@ -619,7 +633,7 @@ async def get_model_config(name: str, auth = Depends(verify_token)):
     features_out = []
     for f in FEATURES:
         used_ids.update(f.get('hypotheses') or [])
-        features_out.append({**f, 'name_zh': FEATURE_NAME_ZH.get(f['name'], '')})
+        features_out.append({**f, 'name_zh': FEATURE_NAME_ZH.get(f['name'], f['name'])})
     hyp_catalogue = {hid: _ERIC_HYPS[hid] for hid in used_ids if hid in _ERIC_HYPS}
 
     return {
@@ -788,12 +802,23 @@ async def get_model_inventory(name: str, auth = Depends(verify_token)):
                 if (d / "racecard_parsed.json").exists():
                     available.add(d.name)
 
+    # Separate stale from valid backtested
+    st_info   = _staleness(name)
+    if st_info.get('needs_rerun'):
+        stale_dates     = sorted(backtested, reverse=True)
+        valid_dates     = []
+    else:
+        stale_dates     = []
+        valid_dates     = sorted(backtested, reverse=True)
+
     return {
-        "name":             name,
-        "backtested":       sorted(backtested, reverse=True),
-        "not_backtested":   sorted(available - backtested, reverse=True),
-        "total_available":  len(available),
-        "total_backtested": len(backtested),
+        "name":               name,
+        "backtested":         valid_dates,
+        "stale":              stale_dates,
+        "not_backtested":     sorted(available - backtested, reverse=True),
+        "total_available":    len(available),
+        "total_backtested":   len(valid_dates),
+        "total_stale":        len(stale_dates),
     }
 
 
@@ -903,9 +928,24 @@ async def _stream_subprocess_to_progress(model: str, date: str):
             if line:
                 await progress_broadcast.broadcast({"type": "log", "text": line})
         await proc.wait()
+        exit_code = proc.returncode
+        if exit_code == 0:
+            retally_proc = await asyncio.create_subprocess_exec(
+                sys.executable, "-u", str(BASE_DIR / "backtest.py"),
+                "--model", model, "--retally",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                cwd=str(BASE_DIR),
+                env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            )
+            async for raw_line in retally_proc.stdout:
+                line = raw_line.decode("utf-8", errors="replace").rstrip()
+                if line:
+                    await progress_broadcast.broadcast({"type": "log", "text": line})
+            await retally_proc.wait()
         await progress_broadcast.broadcast({
             "type":  "done",
-            "code":  proc.returncode,
+            "code":  exit_code,
             "model": model, "date": date,
         })
     except Exception as e:
@@ -971,6 +1011,25 @@ async def _run_batch_backtest(model: str, dates: list):
     elapsed = int((datetime.now() - datetime.fromisoformat(batch_job["started_at"])).total_seconds())
     stopped = batch_job["stopping"]
     batch_job.update({"active": False, "stopping": False, "current": None})
+
+    if not stopped and batch_job["done"]:
+        await progress_broadcast.broadcast(
+            {"type": "batch_log", "text": f"Re-tallying {model} with current bet params...", "model": model})
+        retally_proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-u", str(BASE_DIR / "backtest.py"),
+            "--model", model, "--retally",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=str(BASE_DIR),
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        )
+        async for raw in retally_proc.stdout:
+            line = raw.decode("utf-8", errors="replace").rstrip()
+            if line:
+                await progress_broadcast.broadcast(
+                    {"type": "batch_log", "text": line, "model": model})
+        await retally_proc.wait()
+
     await progress_broadcast.broadcast({
         "type": "batch_stopped" if stopped else "batch_done",
         "done": list(batch_job["done"]), "failed": list(batch_job["failed"]),
@@ -1567,8 +1626,11 @@ async def available_dates(auth = Depends(verify_token), model: str = Query(None)
 
     if model:
         pred_dir = MODELS_DIR / model / "results"
+        st_info = _staleness(model)
+        model_stale = st_info.get('needs_rerun', False)
     else:
         pred_dir = BASE_DIR / "predictions"
+        model_stale = False
 
     dates = []
     total = len(rows)
@@ -1581,7 +1643,8 @@ async def available_dates(auth = Depends(verify_token), model: str = Query(None)
 
         dates.append({
             "date":            d,
-            "has_predictions": has_predictions,
+            "has_predictions": has_predictions and not model_stale,
+            "model_stale":     has_predictions and model_stale,
             "race_count":      r['race_count'],
             "horse_count":     r['horse_count'],
         })

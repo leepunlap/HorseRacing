@@ -138,6 +138,17 @@ CREATE TABLE IF NOT EXISTS models (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS dividends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    course TEXT NOT NULL,
+    race_no INTEGER NOT NULL,
+    pool TEXT NOT NULL,         -- WIN, PLACE, QIN, QPL, TRIO, F4, etc.
+    combination TEXT NOT NULL,  -- sorted brand numbers, e.g. '6' or '1,14'
+    dividend REAL NOT NULL,
+    UNIQUE(date, course, race_no, pool, combination)
+);
+
 CREATE INDEX IF NOT EXISTS idx_results_date ON results(date);
 CREATE INDEX IF NOT EXISTS idx_results_race ON results(race_id);
 CREATE INDEX IF NOT EXISTS idx_results_horse ON results(horse_id);
@@ -147,6 +158,7 @@ CREATE INDEX IF NOT EXISTS idx_predictions_model ON predictions(model);
 CREATE INDEX IF NOT EXISTS idx_races_date ON races(date);
 CREATE INDEX IF NOT EXISTS idx_horses_brand ON horses(brand);
 CREATE INDEX IF NOT EXISTS idx_history_brand ON race_history(brand, date);
+CREATE INDEX IF NOT EXISTS idx_dividends_race ON dividends(date, course, race_no);
 """
 
 

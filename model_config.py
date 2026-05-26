@@ -215,6 +215,16 @@ FEATURES = [
      'description_zh': "馬匹歷史後段步速比率均值（分段時間）。越高代表末段越強。",
      'hypotheses': ['H25', 'H67', 'H42'],
      'tunable': False},
+    {'name': 'early_pace_avg',  'category': 'Pace',
+     'description': "Average early-pace ratio of races the horse has run in (race-level sectional). Lower = horse runs in faster-early-pace races.",
+     'description_zh': "馬匹歷史出賽的平均前段步速比率（賽事整體分段時間）。值越低代表前段越快。",
+     'hypotheses': ['H86', 'H87'],
+     'tunable': False},
+    {'name': 'avg_overtake_dist', 'category': 'Pace',
+     'description': "Average positions gained from first running position to finish (positive = overtook runners).",
+     'description_zh': "歷史賽事從初段排位至終點的平均超越位次（正值代表追上其他馬匹）。",
+     'hypotheses': ['H86', 'H87'],
+     'tunable': False},
 
     # ── Composite / Interactions ──────────────────────────────────────────
     {'name': 'cold_stable_x_wide', 'category': 'Composite',
@@ -258,10 +268,27 @@ FEATURES = [
      'hypotheses': ['H89', 'H66'],
      'tunable': False},
     {'name': 'late_x_outer',     'category': 'Interactions',
-     'description': "late_pace_avg × outer draw. Proven closers from wide barriers.",
-     'description_zh': "後段步速均值 × 外閘。已證實末段強的外閘追後馬。",
-     'hypotheses': ['H25', 'H40', 'H42'],
-     'tunable': False},
+      'description': "late_pace_avg × outer draw. Proven closers from wide barriers.",
+      'description_zh': "後段步速均值 × 外閘。已證實末段強的外閘追後馬。",
+      'hypotheses': ['H25', 'H40', 'H42'],
+      'tunable': False},
+
+    # ── RPI (Race Pace Index, H86–H88) ─────────────────────────────────────
+    {'name': 'rpi_field_score',  'category': 'RPI',
+      'description': "Continuous race pace index (-1 slow to +1 fast) from field leader/closer composition.",
+      'description_zh': "RPI 全場步速指數（-1偏慢至+1偏快），由參賽馬領放/追後分佈推算。",
+      'hypotheses': ['H86', 'H87', 'H88'],
+      'tunable': False},
+    {'name': 'rpi_pace_deviation', 'category': 'RPI',
+      'description': "Standard deviation of horse's historical early_pace values. Higher = pace-sensitive, lower = consistent.",
+      'description_zh': "馬匹歷史前段步速的標準差。越高代表步速敏感性越高，越低代表表現穩定。",
+      'hypotheses': ['H86', 'H87'],
+      'tunable': False},
+    {'name': 'rpi_pace_ratio',  'category': 'RPI',
+      'description': "Horse's early_pace_avg / late_pace_avg ratio. Continuous from forward-runner (low) to closer (high).",
+      'description_zh': "馬匹前段/後段步速均值的比率。連續值：低=前置型，高=追後型。",
+      'hypotheses': ['H87', 'H88'],
+      'tunable': False},
 ]
 
 FEATURE_MAP   = {f['name']: f for f in FEATURES}
@@ -321,8 +348,10 @@ FEATURE_NAME_ZH = {
     'horse_style':       '跑法風格',
     'pace_style_match':  '步速配合',
     'pace_draw_bonus':   '步速閘位加成',
-    'late_pace_avg':     '後段步速',
-    'cold_stable_x_wide':'冷廄外閘交互',
+    'late_pace_avg':      '後段步速',
+    'early_pace_avg':     '前段步速',
+    'avg_overtake_dist':  '超越位次均值',
+    'cold_stable_x_wide': '冷廄外閘交互',
     'chri_score':        'CHRI 指數',
     'inner_x_leader':    '內閘領跑',
     'outer_x_closer':    '外閘追後',
@@ -330,7 +359,10 @@ FEATURE_NAME_ZH = {
     'draw_x_going':      '閘號場地',
     'inner_x_pace':      '內閘慢步',
     'outer_x_fast':      '外閘快步',
-    'late_x_outer':      '後段外閘',
+    'late_x_outer':      '後段×外閘',
+    'rpi_field_score':   'RPI 全場步速',
+    'rpi_pace_deviation':'RPI 步速波動',
+    'rpi_pace_ratio':    'RPI 前後比率',
 }
 
 
@@ -428,7 +460,9 @@ BET_EDGE_THRESHOLD    = _get('bet_edge_threshold', 1.0)
 
 # ── Config-staleness helpers ──────────────────────────────────────────────────
 # Parameters that change only which bets are placed — re-tally suffices.
-_BET_KEYS  = frozenset({'bet_edge_threshold', 'bet_min_odds', 'bet_max_odds'})
+_BET_KEYS  = frozenset({'bet_edge_threshold', 'bet_min_odds', 'bet_max_odds',
+                         'place_edge_threshold', 'q_edge_threshold', 'qp_edge_threshold',
+                         'q_top_n', 'kelly_fraction', 'kelly_max_bet'})
 # Fields that carry no model semantics (identity / deployment metadata).
 _META_KEYS = frozenset({'name', 'description', 'strategy_type', 'version',
                         'parent', 'notes', 'created', 'active'})

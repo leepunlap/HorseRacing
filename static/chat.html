@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Eric AI</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#1a1a2e;--text:#e0e0e0;--text-dim:#8892a4;--accent:#4fc3f7;--border:#2a2a4a;--input-bg:#0d1b36;font-family:"Microsoft JhengHei","Segoe UI","Inter",sans-serif}
+body{background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+header h1{font-size:13pt;font-weight:600;color:var(--accent)}
+header .sub{font-size:8pt;color:var(--text-dim);margin-left:auto}
+.messages{flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:18px}
+.msg{line-height:1.65;font-size:10.5pt;word-break:break-word}
+.msg.user{color:var(--text-dim)}
+.msg.assistant{position:relative}
+.msg .save-btn{position:absolute;top:0;right:-4px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:10px;padding:2px 6px;opacity:0;transition:opacity .15s}
+.msg.assistant:hover .save-btn,.msg .save-btn.saved{opacity:1}
+.msg .save-btn:hover{color:var(--accent)}
+.msg .save-btn.saved{color:#4caf50}
+.msg p{margin:0 0 6px}
+.msg p:last-child{margin-bottom:0}
+.msg code{background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;font-size:9pt}
+.msg pre{background:rgba(0,0,0,0.3);padding:8px 10px;border-radius:5px;overflow-x:auto;font-size:9pt;margin:6px 0}
+.msg ul,.msg ol{padding-left:18px;margin:4px 0}
+.msg li{margin:2px 0}
+.msg table{width:100%;border-collapse:collapse;margin:6px 0;font-size:9pt}
+.msg th,.msg td{padding:4px 8px;border:1px solid var(--border);text-align:left}
+.msg th{background:rgba(255,255,255,0.06);font-weight:600}
+.msg h1,.msg h2,.msg h3,.msg h4{font-size:11pt;margin:8px 0 4px;color:var(--accent)}
+.msg hr{border:none;border-top:1px solid var(--border);margin:8px 0}
+.msg blockquote{border-left:2px solid var(--accent);padding-left:10px;margin:4px 0;color:var(--text-dim)}
+.msg a{color:var(--accent)}
+.typing::after{content:'▊';animation:blink 1s infinite;color:var(--accent)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+footer{padding:8px 12px 12px;background:var(--bg);border-top:1px solid var(--border);flex-shrink:0}
+.input-row{display:flex;gap:6px;align-items:flex-end;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:4px 6px}
+.input-row textarea{flex:1;background:none;border:none;color:var(--text);font-size:10.5pt;font-family:inherit;resize:none;outline:none;max-height:120px;line-height:1.5;padding:4px}
+.input-row button{background:var(--accent);color:#000;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
+.input-row button:disabled{opacity:.4;cursor:not-allowed}
+.welcome{text-align:center;padding:30px 12px;color:var(--text-dim)}
+.welcome h2{font-size:13pt;color:var(--accent);margin-bottom:6px}
+.welcome p{font-size:9.5pt;line-height:1.5}
+.suggestions{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:12px}
+.suggestions button{background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:5px 12px;font-size:8.5pt;cursor:pointer;transition:border-color .15s}
+.suggestions button:hover{border-color:var(--accent)}
+.error-msg{color:#f88;font-size:9pt}
+.thinking{color:var(--text-dim);font-size:9pt;font-style:italic}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Eric AI</h1>
+  <span class="sub"><span id="onlineCount">0</span> 在線 · DeepSeek 賽馬分析</span>
+</header>
+
+<div class="messages" id="messages">
+  <div class="welcome" id="welcome">
+    <h2>Eric AI 賽馬分析助手</h2>
+    <p>分析策略表現、解釋 Eric 定律、查詢賽事數據，幫助你改進預測模型。</p>
+    <div class="suggestions">
+      <button onclick="sendSuggestion(this.textContent)">今天各策略的ROI表現如何？</button>
+      <button onclick="sendSuggestion(this.textContent)">解釋 H5 到 H8 的場地適應假設</button>
+      <button onclick="sendSuggestion(this.textContent)">哪個策略最近表現最好？</button>
+      <button onclick="sendSuggestion(this.textContent)">分析 2026-05-24 的賽事預測</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="input-row">
+    <textarea id="input" rows="1" placeholder="輸入問題..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+    <button id="sendBtn" onclick="send()">➤</button>
+  </div>
+</footer>
+
+<script>
+function getCookie(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():null}
+const token = getCookie('racing_token') || '';
+
+if (!token) {
+  sessionStorage.setItem('chat_return','1');
+  location.replace('/');
+}
+
+let loading = false;
+let currentAiMsg = null;
+let fullContent = '';
+
+const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+let ws;
+let wsReconnectTimer = null;
+
+function connectWs() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+  ws = new WebSocket(`${wsProtocol}//${location.host}/ws/chat?token=${encodeURIComponent(token)}`);
+
+  ws.onopen = () => {
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+  };
+
+  ws.onmessage = (event) => {
+    let data;
+    try { data = JSON.parse(event.data); } catch(e) { return; }
+
+    switch (data.type) {
+      case 'history':
+        document.getElementById('welcome')?.remove();
+        data.messages.forEach(m => addMessage(m.role, m.content));
+        break;
+
+      case 'user_message':
+        document.getElementById('welcome')?.remove();
+        addMessage('user', data.content);
+        break;
+
+      case 'start':
+        currentAiMsg = addMessage('assistant', '', true);
+        fullContent = '';
+        break;
+
+      case 'assistant_chunk':
+        if (!currentAiMsg) {
+          currentAiMsg = addMessage('assistant', '', true);
+          fullContent = '';
+        }
+        currentAiMsg.classList.remove('typing');
+        fullContent += data.content;
+        (currentAiMsg._body || currentAiMsg).innerHTML = md(fullContent);
+        scrollBottom();
+        break;
+
+      case 'thinking':
+        if (!currentAiMsg) {
+          currentAiMsg = addMessage('assistant', '', true);
+          fullContent = '';
+        }
+        (currentAiMsg._body || currentAiMsg).innerHTML = `<span class="thinking">🔍 ${esc(data.content)}</span>`;
+        break;
+
+      case 'done':
+        if (currentAiMsg) {
+          currentAiMsg.classList.remove('typing');
+          if (fullContent) showSuggestions(currentAiMsg, fullContent);
+          currentAiMsg = null;
+          fullContent = '';
+        }
+        loading = false;
+        document.getElementById('sendBtn').disabled = false;
+        break;
+
+      case 'error':
+        if (currentAiMsg) {
+          (currentAiMsg._body || currentAiMsg).innerHTML = `<span class="error-msg">${esc(data.content)}</span>`;
+          currentAiMsg.classList.remove('typing');
+          currentAiMsg = null;
+        }
+        loading = false;
+        document.getElementById('sendBtn').disabled = false;
+        break;
+
+      case 'clients':
+        document.getElementById('onlineCount').textContent = data.count;
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    wsReconnectTimer = setTimeout(connectWs, 3000);
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+function sendSuggestion(text) {
+  document.getElementById('input').value = text;
+  send();
+}
+
+function send() {
+  if (loading) return;
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+  loading = true;
+  document.getElementById('sendBtn').disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('welcome')?.remove();
+
+  ws.send(JSON.stringify({ type: 'message', content: text }));
+}
+
+function addMessage(role, content, typing) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role + (typing ? ' typing' : '');
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+  body.innerHTML = md(content);
+  div.appendChild(body);
+  if (role === 'assistant' && !typing) {
+    const btn = document.createElement('button');
+    btn.className = 'save-btn';
+    btn.title = '儲存為筆記';
+    btn.innerHTML = '💾';
+    btn.onclick = () => saveNote(div);
+    div.appendChild(btn);
+  }
+  document.getElementById('messages').appendChild(div);
+  scrollBottom();
+  div._body = body;
+  return div;
+}
+
+function scrollBottom() {
+  const el = document.getElementById('messages');
+  setTimeout(() => el.scrollTop = el.scrollHeight, 50);
+}
+
+async function saveNote(el) {
+  const btn = el.querySelector('.save-btn');
+  if (!btn || btn.classList.contains('saved')) return;
+  const text = el.textContent.replace('💾','').trim();
+  if (!text) return;
+  btn.classList.add('saved');
+  btn.innerHTML = '✓';
+  try {
+    const resp = await fetch('/api/chat/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ content: text }),
+    });
+    if (!resp.ok) { btn.classList.remove('saved'); btn.innerHTML = '💾'; }
+  } catch (e) {
+    btn.classList.remove('saved');
+    btn.innerHTML = '💾';
+  }
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function md(s) {
+  if (!s) return '';
+  if (typeof marked !== 'undefined' && marked.parse) {
+    return marked.parse(s, { breaks: true });
+  }
+  return s
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/\*(.+?)\*/g, '<i>$1</i>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+function showSuggestions(msgDiv, lastResponse) {
+  const suggestions = [];
+  const t = lastResponse;
+
+  if (/策略|模型|ROI|回報|命中/.test(t)) {
+    suggestions.push('哪個策略最近表現最好？');
+    suggestions.push('對比各策略的ROI表現');
+  }
+  if (/假設|[Hh]\d|定律/.test(t)) {
+    suggestions.push('解釋其他重要的Eric定律');
+    suggestions.push('這些假設的驗證數據是什麼？');
+  }
+  if (/賽事|race|預測|馬匹|horse|出賽/.test(t)) {
+    suggestions.push('分析下一個賽馬日的預測');
+    suggestions.push('搜尋特定馬匹的歷史表現');
+  }
+  if (/場地|track|ground/.test(t)) {
+    suggestions.push('場地狀況如何影響預測？');
+  }
+  if (/賠率|odds|獨贏/.test(t)) {
+    suggestions.push('賠率變動對預測有什麼影響？');
+  }
+
+  suggestions.push('總結今天的重要發現');
+  suggestions.push('Eric的核心分析框架是什麼？');
+
+  const unique = [...new Set(suggestions)].slice(0, 4);
+
+  const container = document.createElement('div');
+  container.className = 'suggestions';
+  container.style.cssText = 'justify-content:flex-start;margin-top:10px';
+
+  unique.forEach(s => {
+    const btn = document.createElement('button');
+    btn.textContent = s;
+    btn.onclick = () => {
+      document.getElementById('input').value = s;
+      send();
+    };
+    container.appendChild(btn);
+  });
+
+  msgDiv.appendChild(container);
+  scrollBottom();
+}
+
+document.getElementById('input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+connectWs();
+document.getElementById('input').focus();
+</script>
+</body>
+</html>
