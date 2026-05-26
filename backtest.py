@@ -65,7 +65,7 @@ To add a new feature:
 See ARCHITECTURE.md for the strategy-vs-tuning distinction and folder layout.
 """
 
-import sys, os, json, argparse, sqlite3, time, re, shutil
+import sys, os, json, argparse, sqlite3, time, re, shutil, math
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
@@ -220,6 +220,40 @@ DEFAULT_HORSE_STYLE_MIDFIELD = 2              # if sectionals data missing
 MIN_TRAINING_ROWS            = 100            # below this, skip the date
 MIN_ACTIVE_FEATURES          = 10             # below this, skip the date
 NORMALISE_MIN_PROB_SUM       = 0.0            # >this triggers per-race rescale
+
+# ── Odds-dimension probability calibration ─────────────────────────────────────
+# Factors computed from 46,856 samples across all 9 strategies combined.
+# For each odds bucket: factor = actual_hit_rate / model_avg_prob, capped at 1.0.
+# The model over-estimates longshots (factors < 1.0) but is conservative on
+# favourites (capped at 1.0 — don't up-correct). Factors applied via piecewise
+# lookup with linear interpolation between bucket boundaries.
+ODDS_CALIBRATION = {
+    0:  1.0000,   # odds  0- 3x: actual 37.9% model 16.4% (model conservative, no up-correct)
+    3:  1.0000,   # odds  3- 5x: actual 20.9% model 11.7%
+    5:  1.0000,   # odds  5- 7x: actual 14.9% model 10.2%
+    7:  1.0000,   # odds  7-10x: actual 10.7% model  9.9%
+    10: 0.7327,   # odds 10-15x: actual  6.2% model  8.5%
+    15: 0.5064,   # odds 15-25x: actual  4.0% model  7.9%
+    25: 0.3006,   # odds 25-100x: actual  1.7% model  5.5%
+}
+
+def calibrate_prob(raw_prob: float, win_odds: float) -> float:
+    """Apply odds-bucket calibration factor with linear interpolation."""
+    odds = float(win_odds or 0)
+    if odds <= 1.0:
+        return raw_prob
+    breaks = sorted(ODDS_CALIBRATION.keys())
+    for i, b in enumerate(breaks):
+        if odds < b:
+            lo = breaks[i-1] if i > 0 else 0
+            hi = b
+            break
+    else:
+        lo, hi = breaks[-1], 100.0
+    flo = ODDS_CALIBRATION.get(lo, 1.0)
+    fhi = ODDS_CALIBRATION.get(hi, 0.15)
+    factor = flo if hi == lo else flo + (fhi - flo) * (odds - lo) / (hi - lo)
+    return raw_prob * factor
 
 
 def _cfg_values(cfg: dict):
@@ -955,13 +989,18 @@ def _tally_race(horses, today_feats, race_no_int, cfg, accum):
         accum['top1_correct'] += 1
 
     for h in horses:
-        if h['edge'] <= bet_edge_threshold:
-            continue
         odds_val = float(h.get('win_odds') or 0)
-        if odds_val <= 1.0 or odds_val < bet_min_odds:
+        if math.isnan(odds_val) or odds_val <= 1.0 or odds_val < bet_min_odds:
             continue
 
-        # Hard stop: block bets above max odds ceiling; record for root-cause analysis.
+        # Calibrated edge: shrink model probability toward market at high odds
+        raw_prob = float(h.get('win_prob') or 0)
+        cal_prob = calibrate_prob(raw_prob, odds_val)
+        cal_edge = cal_prob * odds_val
+
+        if cal_edge <= bet_edge_threshold:
+            continue
+
         if odds_val > bet_max_odds:
             accum['hard_stopped'] += 1
             accum['hard_stopped_bets'].append({
@@ -970,19 +1009,19 @@ def _tally_race(horses, today_feats, race_no_int, cfg, accum):
                 'name':     h.get('name', ''),
                 'odds':     round(odds_val, 1),
                 'edge':     round(float(h['edge']), 2),
+                'cal_edge': round(cal_edge, 2),
                 'win_prob': round(float(h['win_prob']), 4),
+                'cal_prob': round(cal_prob, 4),
             })
             continue
 
         # Bet sizing: fractional Kelly or flat 1 unit.
         if kelly_fraction > 0:
-            p     = float(h['win_prob'])
             b_net = odds_val - 1.0
-            # Full Kelly f* = (p·b - q) / b  where b = net odds, q = 1-p
-            kelly_f  = max(0.0, (p * odds_val - 1.0) / b_net)
+            kelly_f  = max(0.0, (cal_prob * odds_val - 1.0) / b_net)
             bet_size = min(kelly_f * kelly_fraction, kelly_max_bet)
             if bet_size < 0.01:
-                continue   # Kelly says too small to bother
+                continue
         else:
             bet_size = 1.0
 
@@ -1321,11 +1360,13 @@ def retally(model_name: str, verbose: bool = False) -> dict:
 
             # ── WIN bets ──────────────────────────────────────────
             for h in horses:
-                edge = float(h.get('edge') or 0)
-                if edge <= bet_edge:
-                    continue
                 odds = float(h.get('win_odds') or 0)
                 if odds <= 1.0 or odds < bet_min or odds > bet_max:
+                    continue
+                raw_prob = float(h.get('win_prob') or 0)
+                cal_prob = calibrate_prob(raw_prob, odds)
+                edge = cal_prob * odds
+                if edge <= bet_edge:
                     continue
                 day['bets_placed']  += 1
                 day['units_staked'] += 1.0

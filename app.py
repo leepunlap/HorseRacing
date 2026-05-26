@@ -5,7 +5,7 @@ Login: hardcoded password, no username.
 Serves dashboard + API + WebSocket for live odds.
 """
 
-import os, sys, io, json, hashlib, secrets, asyncio, sqlite3, re, httpx
+import os, sys, io, json, hashlib, secrets, asyncio, sqlite3, re, math, httpx
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -779,6 +779,144 @@ async def retally_model(name: str, auth = Depends(verify_token)):
 
     asyncio.create_task(_run())
     return {"started": True, "model": name, "operation": "retally"}
+
+
+@app.get("/api/models/{name}/bet-audit")
+async def bet_audit(name: str, auth = Depends(verify_token)):
+    """Counterfactual audit of bet_max_odds cap.
+
+    Replays every historical prediction file and finds horses that *would* have
+    been bet on if bet_max_odds were lifted. Cross-references the results DB to
+    determine actual outcomes, then aggregates:
+      • placed   — bets passing the current cap (matches summary.json)
+      • blocked  — bets the cap rejected (counterfactual: would-they-have-won?)
+      • buckets  — blocked bets split by odds range
+      • sweep    — ROI of all candidate bets capped at varying max-odds levels
+    Tells you whether the cap is leaving money on the table or rightfully
+    rejecting bets that lose more than they pay out.
+    """
+    cfg_path = MODELS_DIR / name / "config.json"
+    if not cfg_path.exists():
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+
+    edge_thr = float(cfg.get('bet_edge_threshold', 1.0))
+    min_odds = float(cfg.get('bet_min_odds', 0.0))
+    cur_max  = float(cfg.get('bet_max_odds', 999.0))
+
+    results_dir = MODELS_DIR / name / "results"
+    if not results_dir.exists():
+        return {"model": name, "bet_max_odds_current": cur_max,
+                "placed": None, "blocked": None, "buckets": [], "sweep": []}
+
+    db = get_db()
+    all_bets = []   # all candidate bets across all dates, regardless of cap
+
+    for date_dir in sorted(results_dir.iterdir()):
+        if not date_dir.is_dir():
+            continue
+        pred_file = date_dir / 'predictions.json'
+        if not pred_file.exists():
+            continue
+        try:
+            preds = json.loads(pred_file.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+
+        date_str = date_dir.name
+
+        winners: dict[str, set] = {}
+        for r in db.execute(
+            "SELECT race_no, brand FROM results WHERE date=? AND position='1'",
+            (date_str,)
+        ).fetchall():
+            winners.setdefault(str(int(r['race_no'])), set()).add(r['brand'])
+
+        for race_key, race in preds.items():
+            if race_key.startswith('_'):
+                continue
+            try:
+                race_no = str(int(race_key))
+            except Exception:
+                continue
+            race_winners = winners.get(race_no, set())
+
+            for h in race.get('horses', []) or []:
+                try:
+                    odds = float(h.get('win_odds') or 0)
+                    edge = float(h.get('edge') or 0)
+                except Exception:
+                    continue
+                if math.isnan(edge) or edge <= edge_thr:
+                    continue
+                if math.isnan(odds) or odds <= 1.0 or odds < min_odds:
+                    continue
+
+                all_bets.append({
+                    'date':     date_str,
+                    'race':     race_no,
+                    'name':     h.get('name', ''),
+                    'brand':    h.get('brand', ''),
+                    'odds':     round(odds, 1),
+                    'edge':     round(edge, 2),
+                    'win_prob': round(float(h.get('win_prob') or 0), 4),
+                    'won':      h.get('brand') in race_winners,
+                })
+
+    def stats(bets: list) -> dict:
+        if not bets:
+            return {"count": 0, "winners": 0, "hit_rate": 0.0,
+                    "units_staked": 0, "units_net": 0.0, "roi": 0.0}
+        wins = sum(1 for b in bets if b['won'])
+        units_net = sum((b['odds'] - 1) if b['won'] else -1 for b in bets)
+        return {
+            "count":        len(bets),
+            "winners":      wins,
+            "hit_rate":     round(wins / len(bets), 4),
+            "units_staked": len(bets),
+            "units_net":    round(units_net, 2),
+            "roi":          round(units_net / len(bets), 4),
+        }
+
+    placed  = [b for b in all_bets if b['odds'] <= cur_max]
+    blocked = [b for b in all_bets if b['odds'] >  cur_max]
+
+    bucket_defs = [(cur_max, 7.0), (7.0, 10.0), (10.0, 15.0),
+                   (15.0, 25.0), (25.0, 50.0), (50.0, 9999.0)]
+    buckets = []
+    for lo, hi in bucket_defs:
+        if lo >= hi:
+            continue
+        b_in = [b for b in blocked if lo < b['odds'] <= hi]
+        if not b_in:
+            continue
+        s = stats(b_in)
+        s["range"] = f"{lo:.1f}-{hi:.1f}x" if hi < 9999 else f">{lo:.1f}x"
+        buckets.append(s)
+
+    sweep_thresholds = [3.0, 5.0, cur_max, 8.0, 10.0, 15.0, 25.0, 999.0]
+    sweep_thresholds = sorted(set(round(t, 2) for t in sweep_thresholds))
+    sweep = []
+    for t in sweep_thresholds:
+        s = stats([b for b in all_bets if b['odds'] <= t])
+        s["max_odds"] = t if t < 999 else None
+        s["label"]    = "無上限" if t >= 999 else f"≤{t:g}x"
+        s["current"]  = abs(t - cur_max) < 0.01
+        sweep.append(s)
+
+    sample_blocked = sorted(blocked, key=lambda b: -b['odds'])[:20]
+
+    return {
+        "model":               name,
+        "bet_edge_threshold":  edge_thr,
+        "bet_min_odds":        min_odds,
+        "bet_max_odds_current": cur_max,
+        "placed":              stats(placed),
+        "blocked":             stats(blocked),
+        "buckets":             buckets,
+        "sweep":               sweep,
+        "sample_blocked":      sample_blocked,
+    }
 
 
 @app.get("/api/model-inventory/{name}")

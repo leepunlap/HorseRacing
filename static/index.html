@@ -192,6 +192,7 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
         <div id="chartAccuracy" style="height:150px"></div>
       </div>
       <div id="dashIssues"></div>
+      <div id="dashBetAudit" style="margin-top:14px"></div>
     </div>
 
     <!-- ─── Races (live / historical race view) ───────────────── -->
@@ -2193,6 +2194,150 @@ async function _fetchAndRenderDash(){
   _renderDashStatCards(data);
   _renderDashCharts(data);
   _renderDashIssues(data);
+  _fetchAndRenderBetAudit(dashModel);
+}
+
+async function _fetchAndRenderBetAudit(model){
+  const el=document.getElementById('dashBetAudit');
+  if(!el)return;
+  el.innerHTML=`<div style="font-size:9pt;color:#888;padding:8px">載入賠率上限分析…</div>`;
+  const d=await api('/api/models/'+encodeURIComponent(model)+'/bet-audit');
+  if(!d){el.innerHTML='';return;}
+  if(dashModel!==model)return;   // user navigated away
+  _renderBetAudit(d);
+}
+
+function _renderBetAudit(d){
+  const el=document.getElementById('dashBetAudit');
+  if(!el)return;
+  const p=d.placed||{}, b=d.blocked||{};
+  const cap=d.bet_max_odds_current;
+
+  // Find optimal cap from sweep (highest ROI, with at least 30 bets for stat sig)
+  let best=null;
+  (d.sweep||[]).forEach(s=>{
+    if(s.count>=30 && (!best || s.roi>best.roi)) best=s;
+  });
+
+  const roiCls = roi => roi>=0?'color:#27ae60;font-weight:bold' : roi>=-0.1?'color:#856404' : 'color:#e74c3c';
+  const pct = v => (v*100).toFixed(1)+'%';
+  const sgn = v => (v>=0?'+':'')+v.toFixed(2);
+
+  // Verdict
+  let verdict = '';
+  if(!b.count){
+    verdict = `<span style="color:#27ae60">✓ 此上限沒有攔截任何下注</span>`;
+  } else if(b.roi < p.roi - 0.05){
+    verdict = `<span style="color:#27ae60">✓ 上限合理 — 攔截宗 ROI (${pct(b.roi)}) 顯著差於下注宗 (${pct(p.roi)})</span>`;
+  } else if(b.roi > p.roi + 0.05){
+    verdict = `<span style="color:#e74c3c">⚠ 上限可能過嚴 — 攔截宗 ROI (${pct(b.roi)}) 反而優於下注宗 (${pct(p.roi)})</span>`;
+  } else {
+    verdict = `<span style="color:#856404">≈ 攔截宗與下注宗 ROI 相近，調整上限可能影響不大</span>`;
+  }
+
+  const sweepRows = (d.sweep||[]).map(s=>{
+    const isBest = best && Math.abs(s.max_odds-best.max_odds)<0.01 && best.max_odds!=null;
+    const isCur  = s.current;
+    const badge = isCur && isBest ? ' ★當前/最佳' : isCur ? ' (當前)' : isBest ? ' ★最佳' : '';
+    const bgCol = isCur ? '#fff3cd' : isBest ? '#d4edda' : '';
+    return `<tr style="background:${bgCol}">
+      <td style="padding:4px 8px;font-weight:${isCur||isBest?'bold':'normal'}">${s.label}${badge}</td>
+      <td style="padding:4px 8px;text-align:right">${s.count}</td>
+      <td style="padding:4px 8px;text-align:right">${s.winners}</td>
+      <td style="padding:4px 8px;text-align:right">${pct(s.hit_rate)}</td>
+      <td style="padding:4px 8px;text-align:right;${roiCls(s.roi)}">${pct(s.roi)}</td>
+      <td style="padding:4px 8px;text-align:right;${roiCls(s.units_net)}">${sgn(s.units_net)}</td>
+    </tr>`;
+  }).join('');
+
+  const bucketRows = (d.buckets||[]).map(bk=>`<tr>
+    <td style="padding:4px 8px">${bk.range}</td>
+    <td style="padding:4px 8px;text-align:right">${bk.count}</td>
+    <td style="padding:4px 8px;text-align:right">${bk.winners}</td>
+    <td style="padding:4px 8px;text-align:right">${pct(bk.hit_rate)}</td>
+    <td style="padding:4px 8px;text-align:right;${roiCls(bk.roi)}">${pct(bk.roi)}</td>
+    <td style="padding:4px 8px;text-align:right;${roiCls(bk.units_net)}">${sgn(bk.units_net)}</td>
+  </tr>`).join('');
+
+  const sampleRows = (d.sample_blocked||[]).slice(0,10).map(s=>`<tr>
+    <td style="padding:3px 8px;font-size:8.5pt">${s.date}</td>
+    <td style="padding:3px 8px;font-size:8.5pt">R${s.race}</td>
+    <td style="padding:3px 8px;font-size:8.5pt">${s.name||s.brand}</td>
+    <td style="padding:3px 8px;font-size:8.5pt;text-align:right">${s.odds}x</td>
+    <td style="padding:3px 8px;font-size:8.5pt;text-align:right">${s.edge.toFixed(2)}</td>
+    <td style="padding:3px 8px;font-size:8.5pt;text-align:center">${s.won?'<span style="color:#27ae60">✓</span>':''}</td>
+  </tr>`).join('');
+
+  el.innerHTML = `
+    <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <b style="font-size:11pt;color:#1a3a5c">高賠率攔截審計</b>
+        <span style="font-size:9pt;color:#666">當前 bet_max_odds = <b>${cap}x</b> · edge 閾值 = <b>${d.bet_edge_threshold}</b></span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:#f8f9fa;padding:10px;border-radius:4px;border-left:3px solid #1a3a5c">
+          <div style="font-size:8.5pt;color:#666">已下注 (≤${cap}x)</div>
+          <div style="font-size:14pt;font-weight:bold">${p.count} 注</div>
+          <div style="font-size:8.5pt">命中 ${p.winners} (${pct(p.hit_rate||0)}) · ROI <span style="${roiCls(p.roi||0)}">${pct(p.roi||0)}</span> · ${sgn(p.units_net||0)}u</div>
+        </div>
+        <div style="background:#f8f9fa;padding:10px;border-radius:4px;border-left:3px solid #856404">
+          <div style="font-size:8.5pt;color:#666">攔截 (>${cap}x)</div>
+          <div style="font-size:14pt;font-weight:bold">${b.count} 注</div>
+          <div style="font-size:8.5pt">命中 ${b.winners} (${pct(b.hit_rate||0)}) · ROI <span style="${roiCls(b.roi||0)}">${pct(b.roi||0)}</span> · ${sgn(b.units_net||0)}u</div>
+        </div>
+      </div>
+
+      <div style="font-size:9.5pt;margin-bottom:14px;padding:8px;background:#f8f9fa;border-radius:4px">${verdict}</div>
+
+      <div style="margin-bottom:14px">
+        <b style="font-size:10pt;color:#1a3a5c">上限敏感性分析</b>
+        <div style="font-size:8.5pt;color:#888;margin-bottom:6px">假設 bet_max_odds 設為不同值，所有歷史候選下注的 ROI 模擬</div>
+        <table style="width:100%;font-size:9pt;border-collapse:collapse">
+          <thead><tr style="background:#f0f0f0">
+            <th style="padding:4px 8px;text-align:left">上限</th>
+            <th style="padding:4px 8px;text-align:right">注數</th>
+            <th style="padding:4px 8px;text-align:right">命中</th>
+            <th style="padding:4px 8px;text-align:right">命中率</th>
+            <th style="padding:4px 8px;text-align:right">ROI</th>
+            <th style="padding:4px 8px;text-align:right">淨 (u)</th>
+          </tr></thead>
+          <tbody>${sweepRows}</tbody>
+        </table>
+      </div>
+
+      ${bucketRows ? `
+      <div style="margin-bottom:14px">
+        <b style="font-size:10pt;color:#1a3a5c">攔截賠率分布</b>
+        <table style="width:100%;font-size:9pt;border-collapse:collapse;margin-top:6px">
+          <thead><tr style="background:#f0f0f0">
+            <th style="padding:4px 8px;text-align:left">賠率區間</th>
+            <th style="padding:4px 8px;text-align:right">注數</th>
+            <th style="padding:4px 8px;text-align:right">命中</th>
+            <th style="padding:4px 8px;text-align:right">命中率</th>
+            <th style="padding:4px 8px;text-align:right">ROI</th>
+            <th style="padding:4px 8px;text-align:right">淨 (u)</th>
+          </tr></thead>
+          <tbody>${bucketRows}</tbody>
+        </table>
+      </div>` : ''}
+
+      ${sampleRows ? `
+      <div>
+        <b style="font-size:10pt;color:#1a3a5c">攔截樣本 (最高賠率)</b>
+        <table style="width:100%;font-size:9pt;border-collapse:collapse;margin-top:6px">
+          <thead><tr style="background:#f0f0f0">
+            <th style="padding:3px 8px;text-align:left">日期</th>
+            <th style="padding:3px 8px;text-align:left">場</th>
+            <th style="padding:3px 8px;text-align:left">馬</th>
+            <th style="padding:3px 8px;text-align:right">賠率</th>
+            <th style="padding:3px 8px;text-align:right">Edge</th>
+            <th style="padding:3px 8px;text-align:center">中</th>
+          </tr></thead>
+          <tbody>${sampleRows}</tbody>
+        </table>
+      </div>` : ''}
+    </div>`;
 }
 
 // ── Status card ──────────────────────────────────────────────────────────
