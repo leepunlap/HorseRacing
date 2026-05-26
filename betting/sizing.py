@@ -47,7 +47,14 @@ def size_bet(
     if f <= 0:
         return SizingResult(stake=0.0, reason="no_edge", raw_kelly_pct=0.0)
 
-    raw_stake = f * kelly_fraction_strat * bankroll
+    # kelly_fraction_strat == 0 means FLAT STAKING — every qualifying bet
+    # uses the bankroll-percentage cap as its stake regardless of edge size.
+    # Lets users disable Kelly without leaving the same code path. Previously
+    # this returned stake = 0 which silently killed every bet.
+    if kelly_fraction_strat == 0:
+        raw_stake = kelly_max_bankroll_pct * bankroll
+    else:
+        raw_stake = f * kelly_fraction_strat * bankroll
     clamp_pct = kelly_max_bankroll_pct * bankroll
     clamp_pool = (pool_impact_max_pct * pool_total) if pool_total else float("inf")
     clamp_abs = absolute_max if absolute_max is not None else float("inf")
@@ -56,11 +63,12 @@ def size_bet(
     if stake <= 0:
         return SizingResult(stake=0.0, reason="clamped_zero", raw_kelly_pct=f)
 
-    reason = ""
-    if raw_stake > clamp_pct:
-        reason = "bankroll_cap"
-    elif pool_total and raw_stake > clamp_pool:
-        reason = "pool_cap"
-    elif absolute_max and raw_stake > clamp_abs:
-        reason = "abs_cap"
+    reason = "flat" if kelly_fraction_strat == 0 else ""
+    if reason != "flat":
+        if raw_stake > clamp_pct:
+            reason = "bankroll_cap"
+        elif pool_total and raw_stake > clamp_pool:
+            reason = "pool_cap"
+        elif absolute_max and raw_stake > clamp_abs:
+            reason = "abs_cap"
     return SizingResult(stake=stake, reason=reason, raw_kelly_pct=f)

@@ -496,6 +496,49 @@ def strategy_dashboard(strategy_id: int) -> dict:
         edge_cols = ("snapshot_basis","race_id","course","race_no","brand",
                      "calibrated_prob","odds","edge","position")
         top_edges = [dict(zip(edge_cols, r)) for r in top_edges_rows]
+
+        # ── Top-pick accuracy metrics. Group predictions by race, rank by
+        #    calibrated_prob desc, find the winner's rank. Aggregate across
+        #    races to compute top-1 / top-3 hit rate and winner log-loss.
+        #    Tells you "how often is my model's #1 pick the actual winner"
+        #    independent of betting filters / sizing.
+        per_race_rows = conn.execute(
+            """
+            SELECT p.race_id, p.brand, p.calibrated_prob,
+                   CASE WHEN r.position = '1' OR r.position = 1 THEN 1 ELSE 0 END AS won
+            FROM predictions p
+            LEFT JOIN results r ON r.race_id = p.race_id AND r.brand = p.brand
+            WHERE p.strategy_id = ? AND p.calibrated_prob IS NOT NULL
+            """,
+            (strategy_id,),
+        ).fetchall()
+        by_race: dict[int, list[tuple[float, int]]] = {}
+        for race_id, brand, prob, won in per_race_rows:
+            by_race.setdefault(race_id, []).append((float(prob), int(won)))
+        import math as _m
+        races_with_winner = 0
+        top1_hits = top3_hits = 0
+        log_loss_sum = 0.0
+        for race_id, items in by_race.items():
+            if not any(w for _, w in items):
+                continue   # race result missing or void
+            races_with_winner += 1
+            items.sort(key=lambda x: -x[0])
+            for rank, (_p, won) in enumerate(items, start=1):
+                if won:
+                    if rank == 1: top1_hits += 1
+                    if rank <= 3: top3_hits += 1
+                    winner_prob = max(min(items[rank - 1][0], 1 - 1e-9), 1e-9)
+                    log_loss_sum += -_m.log(winner_prob)
+                    break
+        accuracy = {
+            "races_with_winner": races_with_winner,
+            "top1": top1_hits / races_with_winner if races_with_winner else None,
+            "top3": top3_hits / races_with_winner if races_with_winner else None,
+            "winner_log_loss": log_loss_sum / races_with_winner if races_with_winner else None,
+            # Baseline = uniform 1/avg-field-size to gauge improvement over random
+            "random_baseline_top1": 1.0 / (sum(len(v) for v in by_race.values()) / max(len(by_race), 1)),
+        }
     finally:
         conn.close()
 
@@ -505,6 +548,7 @@ def strategy_dashboard(strategy_id: int) -> dict:
         "calibration_trend": calibration_trend,
         "audit_summary": audit_summary,
         "top_edges": top_edges,
+        "accuracy": accuracy,
     }
 
 
@@ -542,12 +586,15 @@ def strategy_charts(strategy_id: int,
         if not strat:
             raise HTTPException(404, f"strategy {strategy_id} not found")
         bet_max_odds, bet_min_odds, min_prob, edge_thr, kelly_frac, kelly_max_bank = strat
-        bet_max_odds = float(bet_max_odds or 20.0)
-        bet_min_odds = float(bet_min_odds or 2.5)
-        min_prob = float(min_prob or 0.05)
-        edge_thr = float(edge_thr or 1.05)
-        kelly_frac = float(kelly_frac or 0.25)
-        kelly_max_bank = float(kelly_max_bank or 0.05)
+        # Use explicit None checks — `value or default` evaluates `0` as
+        # falsy, which would silently override an intentional kelly_fraction=0
+        # (flat staking) with the 0.25 default.
+        bet_max_odds   = float(20.0   if bet_max_odds  is None else bet_max_odds)
+        bet_min_odds   = float(2.5    if bet_min_odds  is None else bet_min_odds)
+        min_prob       = float(0.05   if min_prob      is None else min_prob)
+        edge_thr       = float(1.05   if edge_thr      is None else edge_thr)
+        kelly_frac     = float(0.25   if kelly_frac    is None else kelly_frac)
+        kelly_max_bank = float(0.05   if kelly_max_bank is None else kelly_max_bank)
         bankroll = 10000.0
 
         where = "WHERE p.strategy_id = ?"
@@ -632,8 +679,8 @@ def strategy_charts(strategy_id: int,
     # Pass 2: production sizing — fractional Kelly capped by bankroll-pct.
     placed: list[dict] = []
     for q in qualified:
-        stake = min(q["kelly_full"] * kelly_frac * bankroll,
-                    kelly_max_bank * bankroll)
+        stake = (kelly_max_bank * bankroll if kelly_frac == 0
+                 else min(q["kelly_full"] * kelly_frac * bankroll, kelly_max_bank * bankroll))
         if stake <= 0:
             continue
         placed.append({
@@ -767,7 +814,8 @@ def strategy_charts(strategy_id: int,
                 if e < _ethr: continue
                 kf = ((prob*odds - 1) / (odds - 1)) if odds > 1 else 0.0
                 if kf <= 0: continue
-                s = min(kf * kelly_frac * bankroll, kelly_max_bank * bankroll)
+                s = (kelly_max_bank * bankroll if kelly_frac == 0
+                     else min(kf * kelly_frac * bankroll, kelly_max_bank * bankroll))
                 if s <= 0: continue
                 stake += s
                 n += 1

@@ -1866,10 +1866,35 @@ function renderStrategyDashboard(sel) {
   const eceClass = latest?.ece != null && latest.ece < 0.05 ? 'good'
                  : latest?.ece != null && latest.ece < 0.10 ? 'warn' : (latest ? 'bad' : '');
   const roiClass = a.roi != null && a.roi > 0 ? 'good' : a.roi != null && a.roi < -0.05 ? 'bad' : 'warn';
+  const acc = d.accuracy || {};
+  const top1Pct = acc.top1 != null ? (acc.top1 * 100).toFixed(1) + '%' : '—';
+  const top3Pct = acc.top3 != null ? (acc.top3 * 100).toFixed(1) + '%' : '—';
+  const baselinePct = acc.random_baseline_top1 != null
+    ? (acc.random_baseline_top1 * 100).toFixed(1) + '%' : '—';
+  // Traffic-light: top-1 ≥ 30% green (HK syndicate-class), 15-30% warn, <15% bad
+  const top1Class = acc.top1 == null ? '' :
+    acc.top1 >= 0.30 ? 'good' : acc.top1 >= 0.15 ? 'warn' : 'bad';
+  const top3Class = acc.top3 == null ? '' :
+    acc.top3 >= 0.55 ? 'good' : acc.top3 >= 0.40 ? 'warn' : 'bad';
   return `
     <div class="panel">
       <h2>${escapeHtml(sel.name)} · ${t('儀表', 'Dashboard')}</h2>
       <div class="stat-row">
+        <div class="stat-card ${top1Class}">
+          <div class="label">${t('頭馬命中率', 'Top-1 accuracy')}</div>
+          <div class="value">${top1Pct}</div>
+          <div class="sub">${t('隨機基準', 'baseline')} ${baselinePct} · ${acc.races_with_winner || 0} ${t('場有效', 'races')}</div>
+        </div>
+        <div class="stat-card ${top3Class}">
+          <div class="label">${t('前三命中率', 'Top-3 accuracy')}</div>
+          <div class="value">${top3Pct}</div>
+          <div class="sub">${t('頭馬落在預測前三', 'winner in model top-3')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">${t('頭馬 log-loss', 'Winner log-loss')}</div>
+          <div class="value">${acc.winner_log_loss != null ? acc.winner_log_loss.toFixed(3) : '—'}</div>
+          <div class="sub">${t('越低越好', 'lower is better')}</div>
+        </div>
         <div class="stat-card ${eceClass}">
           <div class="label">ECE ${t('（最新窗口）', '(latest)')}</div>
           <div class="value">${eceText}</div>
@@ -1878,10 +1903,6 @@ function renderStrategyDashboard(sel) {
         <div class="stat-card">
           <div class="label">Brier</div>
           <div class="value">${latest?.brier != null ? latest.brier.toFixed(4) : '—'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">log-loss</div>
-          <div class="value">${latest?.log_loss != null ? latest.log_loss.toFixed(4) : '—'}</div>
         </div>
         <div class="stat-card ${roiClass}">
           <div class="label">ROI ${t('（全期）', '(full window)')}</div>
@@ -2145,10 +2166,12 @@ function renderRaceBlock(r, data, sid) {
     }
 
     // Fractional Kelly with bankroll cap (matches betting/sizing.py).
+    // kFrac == 0 means flat staking: every qualifying bet uses the bankroll
+    // cap as its stake — disabling Kelly entirely without changing filters.
     const kellyF = (p * o - 1) / (o - 1);   // full Kelly fraction
     const kFrac = strat.kelly_fraction ?? 0.25;
     const bankCap = (strat.kelly_max_bankroll_pct ?? 0.05) * BANKROLL;
-    const rawStake = Math.max(0, kellyF * kFrac * BANKROLL);
+    const rawStake = kFrac === 0 ? bankCap : Math.max(0, kellyF * kFrac * BANKROLL);
     const stake = Math.min(rawStake, bankCap);
     let pnl = null;
     const posInt = parseInt(h.position);
@@ -2168,10 +2191,12 @@ function renderRaceBlock(r, data, sid) {
       drivers.top.length    ? `Tailwinds: ${driverLine(drivers.top, '↑')}`    : '',
       drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
     ].filter(Boolean).join(' · ');
+    const sizingZh = kFrac === 0 ? '平注' : rawStake > bankCap ? '資金上限' : `${kFrac} Kelly`;
+    const sizingEn = kFrac === 0 ? 'flat stake' : rawStake > bankCap ? 'capped by bankroll' : `sized by ${kFrac}-Kelly`;
     return {
       bet: true,
-      reasonZh: `下注 — 模型 ${modelPct}% 對市場 ${mktPct}%，edge ${edgeV.toFixed(2)}×（${rawStake > bankCap ? '資金上限' : '四分之一 Kelly'}）${driversZh ? ' · ' + driversZh : ''}`,
-      reasonEn: `Bet — model ${modelPct}% vs market ${mktPct}%, edge ${edgeV.toFixed(2)}× (${rawStake > bankCap ? 'capped by bankroll limit' : 'sized by quarter-Kelly'})${driversEn ? ' · ' + driversEn : ''}`,
+      reasonZh: `下注 — 模型 ${modelPct}% 對市場 ${mktPct}%，edge ${edgeV.toFixed(2)}×（${sizingZh}）${driversZh ? ' · ' + driversZh : ''}`,
+      reasonEn: `Bet — model ${modelPct}% vs market ${mktPct}%, edge ${edgeV.toFixed(2)}× (${sizingEn})${driversEn ? ' · ' + driversEn : ''}`,
       stake, pnl,
     };
   }
