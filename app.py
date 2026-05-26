@@ -18,6 +18,7 @@ import uvicorn
 from model_config import (list_models as _list_model_configs, load_config,
                           FEATURES, FEATURE_CATEGORIES, FEATURE_CATEGORY_ZH,
                           FEATURE_NAME_ZH, staleness as _staleness)
+from backtest import calibrate_prob
 
 # ─── Config ───────────────────────────────────────────────
 HARDCODED_PASSWORD = "168888"
@@ -483,15 +484,27 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
             })
 
         # Per-race betting analysis
-        # Find top predicted horse (highest prob among horses with edge > threshold)
+        # Uses calibrated edge (odds-dimension factors) instead of raw edge.
+        # bet_max_odds cap is respected for bet placement; blocked bets are
+        # logged as blocked_by_cap for audit.
         bettable = []
+        blocked_by_cap = []
         for h in horses_out:
             if h["prob"] is None:
                 continue
-            if (h["edge"] or 0) <= BET_EDGE_THRESHOLD:
-                continue
             odds_val = float(h.get("win_odds") or 0)
-            if odds_val <= 1.0 or odds_val < BET_MIN_ODDS or odds_val > BET_MAX_ODDS:
+            if odds_val <= 1.0 or odds_val < BET_MIN_ODDS:
+                continue
+            # Calibrated edge
+            raw_prob = float(h.get("win_prob") or 0)
+            cal_prob = calibrate_prob(raw_prob, odds_val)
+            edge = cal_prob * odds_val
+            if edge <= BET_EDGE_THRESHOLD:
+                continue
+            if odds_val > BET_MAX_ODDS:
+                blocked_by_cap.append({"brand": h["brand"], "name": h["name"],
+                    "odds": odds_val, "cal_edge": round(edge, 2),
+                    "cal_prob": round(cal_prob, 4)})
                 continue
             bettable.append(h)
         top_pred  = max(horses_out, key=lambda h: h["prob"] or 0, default=None) if horses_out else None
@@ -521,12 +534,13 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
                 "horse_name":    bet_horse["name"]  if bet_horse else None,
                 "horse_brand":   bet_horse["brand"] if bet_horse else None,
                 "prob":          bet_horse["prob"]  if bet_horse else None,
-                "edge":          bet_horse["edge"]  if bet_horse else None,
+                "edge":          bet_horse.get("edge") if bet_horse else None,
                 "win_odds":      bet_horse.get("win_odds") if bet_horse else None,
                 "result_odds":   bet_horse.get("result_odds") if bet_horse else None,
                 "correct":       (bet_horse and actual_winner and
                                   bet_horse["brand"] == actual_winner["brand"]),
                 "pnl":           bet_pnl,
+                "blocked_by_cap": blocked_by_cap,
                 "top_predicted": top_pred["name"] if top_pred else None,
                 "actual_winner": actual_winner["name"] if actual_winner else None,
             } if pred_horses_list else None,
