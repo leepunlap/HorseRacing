@@ -897,7 +897,8 @@ def _engineer_features(today_rows, target_date, res_csv, sec, prof_dict, rh, cfg
     disabled  = set(cfg.get('features_disabled', []))
     feat_cols = [c for c in FEATURE_COLS if c not in disabled
                  and c in today_feats.columns and c in train_feats.columns]
-    if len(feat_cols) < MIN_ACTIVE_FEATURES:
+    min_active = int(cfg.get('min_active_features', MIN_ACTIVE_FEATURES))
+    if len(feat_cols) < min_active:
         print(f"  too few features ({len(feat_cols)})")
         return None, None, None
 

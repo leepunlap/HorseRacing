@@ -384,7 +384,12 @@ FEATURE_NAME_ZH = {
 # ── Model config loader ───────────────────────────────────────────────────────
 
 def list_models() -> list[dict]:
-    """Return a list of all model configs found in models/ directory."""
+    """Return a list of all model configs found in models/ directory.
+
+    The active model (active=true) floats to the top; remaining configs keep
+    alphabetical-by-folder order. This makes the UI dropdown default-first
+    without affecting any code that iterates over all models.
+    """
     configs = []
     if not MODELS_DIR.exists():
         return configs
@@ -402,6 +407,7 @@ def list_models() -> list[dict]:
                 configs.append(cfg)
             except Exception:
                 pass
+    configs.sort(key=lambda c: (0 if c.get('active') else 1))
     return configs
 
 
