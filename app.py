@@ -40,23 +40,22 @@ DEEPSEEK_MODEL = "deepseek-chat"
 
 
 def _parse_hypotheses() -> dict:
-    """Parse all *_HYPOTHESIS.md files in the repo root into a unified catalogue.
+    """Parse all *_HYPOTHESIS.md (and *_HYPOTHESIS_EN.md overlay) files into a unified catalogue.
 
     The source for each hypothesis is derived from the filename prefix:
-        ERIC_HYPOTHESIS.md   → source "Eric"
-        SYSTEM_HYPOTHESIS.md → source "System"
-        CHERRY_HYPOTHESIS.md → source "Cherry"
+        ERIC_HYPOTHESIS.md      → source "Eric" (Chinese)
+        ERIC_HYPOTHESIS_EN.md   → English overlay merged into "Eric" entries
+        SYSTEM_HYPOTHESIS.md    → source "System"
 
-    Each hypothesis dict carries {id, source, version, text}. If two sources
-    happen to use the same H-id (e.g. Eric's H1 and System's H1), the later
-    file wins on the bare key; consumers wanting attribution-safe lookup
-    should use the dict's `source` field instead of treating the key as
-    canonical. The renderer pulls `source` from the dict so attribution is
-    data-driven, not hardcoded.
+    Each hypothesis dict carries {id, source, version, text, text_en}. The English
+    overlay file matches H-ids and contributes text_en. If only the Chinese file
+    exists, text_en falls back to text. Consumers pick the language at render time.
     """
     result: dict = {}
+    # First pass: base (Chinese) files.
     for path in sorted(BASE_DIR.glob('*_HYPOTHESIS.md')):
-        # Derive source from filename: "ERIC_HYPOTHESIS.md" → "Eric"
+        if path.stem.endswith('_EN'):
+            continue
         stem = path.stem.replace('_HYPOTHESIS', '')
         source = stem.title() if stem else 'Unknown'
         current_version = ''
@@ -70,7 +69,14 @@ def _parse_hypotheses() -> dict:
             if hm:
                 hid, htext = hm.group(1), hm.group(2).strip()
                 result[hid] = {'id': hid, 'source': source,
-                               'version': current_version, 'text': htext}
+                               'version': current_version,
+                               'text': htext, 'text_en': htext}
+    # Second pass: EN overlays — merge text_en into matching H-ids.
+    for path in sorted(BASE_DIR.glob('*_HYPOTHESIS_EN.md')):
+        for line in path.read_text(encoding='utf-8').splitlines():
+            hm = re.match(r'^\s*-\s*\*\*([A-Za-z]?H\d+)\*\*:\s*(.+)', line)
+            if hm and hm.group(1) in result:
+                result[hm.group(1)]['text_en'] = hm.group(2).strip()
     return result
 
 _ERIC_HYPS: dict = _parse_hypotheses()
@@ -91,14 +97,16 @@ for _f in FEATURES:
 
 
 def _parse_hypothesis_sections() -> list:
-    """Parse every *_HYPOTHESIS.md file into a flat list of sections.
+    """Parse every *_HYPOTHESIS.md (plus _EN overlays) into sections.
 
-    Each section is tagged with `source` (derived from the filename prefix);
-    each hypothesis dict inside also carries its `source` so renderers can
-    attribute it without hardcoding any author name.
+    Each hypothesis dict carries {id, source, text, text_en, validation, validation_en}.
+    The English overlay file's H-ids are matched and their text/validation merged in;
+    when no overlay is present text_en falls back to text.
     """
     all_sections: list = []
     for path in sorted(BASE_DIR.glob('*_HYPOTHESIS.md')):
+        if path.stem.endswith('_EN'):
+            continue
         stem = path.stem.replace('_HYPOTHESIS', '')
         source = stem.title() if stem else 'Unknown'
 
@@ -136,6 +144,7 @@ def _parse_hypothesis_sections() -> list:
                     'id': hid,
                     'source': source,
                     'text': htext,
+                    'text_en': htext,
                     'features': _HYP_FEATURE_MAP.get(hid, []),
                 })
                 continue
@@ -152,13 +161,46 @@ def _parse_hypothesis_sections() -> list:
         for sec in sections:
             sec['groups'] = [g for g in sec['groups'] if g['hypotheses']]
         all_sections.extend([s for s in sections if s['groups']])
+
+    # Merge English overlays: for each *_HYPOTHESIS_EN.md, walk H-ids and patch
+    # text_en / validation_en onto matching hypotheses across all sections.
+    by_id: dict = {}
+    for sec in all_sections:
+        for grp in sec['groups']:
+            for hyp in grp['hypotheses']:
+                by_id[(sec['source'], hyp['id'])] = hyp
+    for path in sorted(BASE_DIR.glob('*_HYPOTHESIS_EN.md')):
+        stem = path.stem.replace('_HYPOTHESIS_EN', '')
+        source = stem.title() if stem else 'Unknown'
+        last_hyp = None
+        sub_buf = ''
+        def _flush_en(h, buf):
+            if h is not None and buf.strip():
+                h['validation_en'] = buf.strip()
+        for line in path.read_text(encoding='utf-8').splitlines():
+            hm = re.match(r'^\s*-\s*\*\*([A-Za-z]?H\d+)\*\*:\s*(.+)', line)
+            if hm:
+                _flush_en(last_hyp, sub_buf); sub_buf = ''
+                target = by_id.get((source, hm.group(1)))
+                if target is not None:
+                    target['text_en'] = hm.group(2).strip()
+                last_hyp = target
+                continue
+            sub = re.match(r'^\s{2}-\s+(.+)', line)
+            if sub and last_hyp is not None:
+                sub_buf += (sub_buf and '\n' or '') + sub.group(1).strip()
+                continue
+            _flush_en(last_hyp, sub_buf); sub_buf = ''
+        _flush_en(last_hyp, sub_buf)
+
     return all_sections
 
 
 def _flush_buf(group, buf):
-    """Attach accumulated sub-bullet text as validation to the last hypothesis in group."""
+    """Attach accumulated sub-bullet text as validation (zh + en fallback) to last hypothesis."""
     if group and group['hypotheses'] and buf.strip():
         group['hypotheses'][-1]['validation'] = buf.strip()
+        group['hypotheses'][-1]['validation_en'] = buf.strip()  # default; overlay may overwrite
 
 
 def get_db():
@@ -259,15 +301,11 @@ import signal as _signal
 def _install_signal_handlers(loop: asyncio.AbstractEventLoop) -> None:
     """Install our SIGHUP handler — hot-reload the hypothesis catalogue.
 
-    SIGTERM / SIGINT are intentionally NOT intercepted: uvicorn installs its
-    own handlers that flip should_exit, drain HTTP/WS connections, and then
-    trigger the lifespan shutdown block — which is where we kill the
-    in-flight backtest subprocess. Overwriting uvicorn's handlers would skip
-    the drain step and lead to systemd SIGKILL after TimeoutStopSec.
+    SIGTERM / SIGINT are handled by GracefulServer.handle_exit (see __main__
+    at the bottom of this file) which broadcasts a 'draining' lifecycle event
+    over /ws/progress before uvicorn closes connections.
     """
     def _on_hup() -> None:
-        # Reload the hypothesis catalogue from disk so adding a new
-        # *_HYPOTHESIS.md file doesn't require a full restart.
         global _ERIC_HYPS, _HYP_FEATURE_MAP
         _ERIC_HYPS = _parse_hypotheses()
         _HYP_FEATURE_MAP = {}
@@ -285,34 +323,139 @@ def _install_signal_handlers(loop: asyncio.AbstractEventLoop) -> None:
     try:
         loop.add_signal_handler(_signal.SIGHUP, _on_hup)
     except NotImplementedError:
-        # Windows or constrained environments: skip silently.
+        pass  # Windows etc.
+
+
+# How long we'll wait for an in-flight subprocess to exit cleanly after
+# sending SIGTERM, before escalating to SIGKILL. Total lifespan-shutdown
+# budget is ~3× this (one per active subprocess kind: current_run, batch,
+# scraper) and must stay under TimeoutStopSec=20 in racing.service.
+_SUBPROC_KILL_TIMEOUT = 5.0
+
+
+async def _terminate_subproc(proc, label: str) -> None:
+    """SIGTERM a subprocess, wait briefly, SIGKILL if it didn't exit."""
+    if proc is None or proc.returncode is not None:
+        return
+    try:
+        proc.terminate()
+        await asyncio.wait_for(proc.wait(), timeout=_SUBPROC_KILL_TIMEOUT)
+        print(f"[shutdown] {label} subprocess exited cleanly", flush=True)
+    except asyncio.TimeoutError:
+        print(f"[shutdown] {label} subprocess did not exit in {_SUBPROC_KILL_TIMEOUT}s — SIGKILL", flush=True)
+        try: proc.kill()
+        except ProcessLookupError: pass
+    except ProcessLookupError:
         pass
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # ── Startup ────────────────────────────────────────────────
     _install_signal_handlers(asyncio.get_running_loop())
     asyncio.create_task(periodic_scrape_odds())
+    # Start the cron-like scheduler. Stored as a task so we can cancel it on
+    # shutdown — otherwise its sleep would hold the event loop open briefly.
+    from scheduler import run_scheduler_loop, _action_registry
+    # Register actions the scheduler can fire. Each wrapper rejects with a
+    # 'busy' / 'in progress' string when its corresponding job is already
+    # running; scheduler.fire_schedule() catches those and marks the run as
+    # 'skipped' rather than failing the schedule.
+    def _act_scraper(args):
+        if scraper_job["active"]:
+            raise RuntimeError("scraper already running")
+        if SHUTTING_DOWN:
+            raise RuntimeError("server shutting down")
+        asyncio.create_task(_run_scraper())
+
+    def _act_batch_backtest(args):
+        if batch_job["active"]:
+            raise RuntimeError("batch backtest already running")
+        if current_run["active"]:
+            raise RuntimeError("single backtest in progress")
+        if SHUTTING_DOWN:
+            raise RuntimeError("server shutting down")
+        model = args.get("model")
+        if not model:
+            raise RuntimeError("schedule.args missing 'model'")
+        dates = args.get("dates") or _auto_batch_dates(model)
+        if not dates:
+            raise RuntimeError("no missing dates to backtest")
+        asyncio.create_task(_run_batch_backtest(model, dates))
+
+    def _act_single_backtest(args):
+        if current_run["active"] or batch_job["active"]:
+            raise RuntimeError("a backtest is already in progress")
+        if SHUTTING_DOWN:
+            raise RuntimeError("server shutting down")
+        model, date = args.get("model"), args.get("date")
+        if not model or not date:
+            raise RuntimeError("schedule.args needs 'model' and 'date'")
+        asyncio.create_task(_stream_subprocess_to_progress(model, date))
+
+    _action_registry["scraper"]         = _act_scraper
+    _action_registry["batch_backtest"]  = _act_batch_backtest
+    _action_registry["single_backtest"] = _act_single_backtest
+    scheduler_task = asyncio.create_task(run_scheduler_loop(progress_broadcast, lambda: SHUTTING_DOWN))
     print(f"[startup] horseracing app ready (PID {os.getpid()})", flush=True)
+    # Announce we're up. Clients connected to /ws/progress get an immediate
+    # "ready" — useful so a recently-restarted UI dismisses any "draining" UI.
+    await progress_broadcast.broadcast({
+        "type": "lifecycle", "phase": "ready",
+        "startup_id": STARTUP_ID, "pid": os.getpid(),
+    })
+
     yield
-    # Shutdown — final chance to clean up. SHUTTING_DOWN was already set by
-    # the signal handler if this came from SIGTERM; set it here too for the
-    # rare cases where shutdown is triggered some other way.
+
+    # ── Shutdown ───────────────────────────────────────────────
     global SHUTTING_DOWN
     SHUTTING_DOWN = True
-    proc = current_run.get("_proc")
-    if proc is not None and proc.returncode is None:
-        try:
-            proc.terminate()
-            # Give the child a beat to exit before uvicorn closes its event loop.
-            await asyncio.wait_for(proc.wait(), timeout=5.0)
-        except (ProcessLookupError, asyncio.TimeoutError):
-            try: proc.kill()
-            except ProcessLookupError: pass
+    print("[shutdown] draining…", flush=True)
+    # Tell every connected client we're going down BEFORE we start killing
+    # things. Browsers can show a banner and stop sending new requests.
+    try:
+        await progress_broadcast.broadcast({
+            "type": "lifecycle", "phase": "draining",
+            "startup_id": STARTUP_ID,
+        })
+    except Exception:
+        pass  # broadcasting may fail if loop is already tearing down
+
+    # Stop the scheduler first so it can't spawn fresh jobs during the kill.
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except (asyncio.CancelledError, Exception):
+        pass
+
+    # Kill every in-flight subprocess we know about. Previously only
+    # current_run["_proc"] was terminated, which left batch + scraper procs
+    # orphaned and dependent on systemd's KillMode=mixed cgroup cleanup.
+    await asyncio.gather(
+        _terminate_subproc(current_run.get("_proc"),  "current_run"),
+        _terminate_subproc(scraper_job.get("_proc"),  "scraper"),
+        # Batch backtest's per-date proc lives only on _run_batch_backtest's
+        # local stack; we signal it via batch_job["stopping"] and rely on the
+        # subprocess SIGTERM handler. The loop also terminates the proc when
+        # it sees the flag.
+        return_exceptions=True,
+    )
+    batch_job["stopping"] = True
+
     print("[shutdown] graceful shutdown complete", flush=True)
 
-app = FastAPI(title="馬場分析", lifespan=lifespan)
+app = FastAPI(title="馬場分析 / HorseLab", lifespan=lifespan)
+
+# ─── v2 side-by-side router (off by default) ──────────────
+# Set RACING_V2=1 to mount /api/v2/* routes. The v1 surface is unaffected
+# either way: v2 lives in api_v2.py and reads data/racing_v2.db only.
+if os.environ.get("RACING_V2") == "1":
+    try:
+        from api_v2 import router as _api_v2_router
+        app.include_router(_api_v2_router)
+        print("[startup] RACING_V2=1: /api/v2/* router mounted", flush=True)
+    except Exception as _v2_err:
+        print(f"[startup] RACING_V2=1 but api_v2 failed to load: {_v2_err}", flush=True)
 
 
 # ─── Health endpoint ──────────────────────────────────────
@@ -439,13 +582,14 @@ async def dashboard(auth = Depends(verify_token)):
 async def get_races(date: str, auth = Depends(verify_token), model: str = Query(None)):
     """Get merged race data: card + results + predictions for a date."""
 
-    async def _prog(pct: int, step: str):
+    async def _prog(pct: int, step_zh: str, step_en: str = None):
         await progress_broadcast.broadcast(
-            {"type": "load_progress", "pct": pct, "step": step,
+            {"type": "load_progress", "pct": pct,
+             "step": step_zh, "step_en": step_en or step_zh,
              "model": model or "", "date": date}
         )
 
-    await _prog(30, "開始載入賽事數據...")
+    await _prog(30, "開始載入賽事數據...", "Loading race data…")
 
     db = get_db()
 
@@ -457,7 +601,7 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         if rc_path.exists():
             with open(rc_path) as f:
                 racecard = json.load(f)
-    await _prog(36, "已讀取賽事列表")
+    await _prog(36, "已讀取賽事列表", "Race list loaded")
 
     # Predictions come from model results dir if model is specified
     if model:
@@ -473,10 +617,10 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
     # Load model predictions (prob/edge per horse)
     predictions = {}
     if pred_json_path and pred_json_path.exists():
-        await _prog(40, "讀取預測資料...")
+        await _prog(40, "讀取預測資料...", "Loading predictions…")
         with open(pred_json_path, encoding='utf-8') as f:
             predictions = json.load(f)
-    await _prog(52, "已載入預測數據")
+    await _prog(52, "已載入預測數據", "Predictions loaded")
 
     # Results from DB, keyed by normalised race_no then by brand
     results_by_race = {}
@@ -492,13 +636,13 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         row = dict(r)
         results_by_race[rn].append(row)
         results_by_brand[(rn, r['brand'])] = row
-    await _prog(60, "已查詢賽事結果")
+    await _prog(60, "已查詢賽事結果", "Results queried")
 
     # Race metadata from DB
     db_races = {}
     for r in db.execute("SELECT * FROM races WHERE date = ? ORDER BY raceno", (date,)).fetchall():
         db_races[str(int(r['raceno']))] = dict(r)
-    await _prog(68, "已讀取賽事資料")
+    await _prog(68, "已讀取賽事資料", "Race metadata loaded")
 
     BET_EDGE_THRESHOLD = 1.0
     BET_MIN_ODDS = 0.0
@@ -658,7 +802,7 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
         # Broadcast merge progress every 2nd race (or every race if ≤5 total)
         if n_keys <= 5 or idx % 2 == 1 or idx == n_keys - 1:
             pct = 70 + int((idx + 1) / n_keys * 14)
-            await _prog(min(pct, 84), "組裝賽事數據...")
+            await _prog(min(pct, 84), "組裝賽事數據...", "Assembling race data…")
 
     db.close()
 
@@ -676,7 +820,7 @@ async def get_races(date: str, auth = Depends(verify_token), model: str = Query(
     if model:
         try: model_stale = _staleness(model).get('needs_rerun', False)
         except: pass
-    await _prog(86, "組裝回應數據")
+    await _prog(86, "組裝回應數據", "Building response")
 
     return {
         "date":          date,
@@ -1551,6 +1695,30 @@ async def jobs_status(auth = Depends(verify_token)):
     }
 
 
+def _auto_batch_dates(model: str) -> list[str]:
+    """Return sorted list of dates that have a racecard but no backtest result yet.
+
+    Extracted so the scheduler can call it without going through the HTTP path.
+    Returns [] if nothing is missing.
+    """
+    import re as _re
+    results_dir = MODELS_DIR / model / "results"
+    backtested: set = set()
+    if results_dir.exists():
+        for d in results_dir.iterdir():
+            if d.is_dir() and _re.match(r"\d{4}-\d{2}-\d{2}$", d.name):
+                if (d / "predictions.json").exists():
+                    backtested.add(d.name)
+    pred_base = BASE_DIR / "predictions"
+    available: set = set()
+    if pred_base.exists():
+        for d in pred_base.iterdir():
+            if d.is_dir() and _re.match(r"\d{4}-\d{2}-\d{2}$", d.name):
+                if (d / "racecard_parsed.json").exists():
+                    available.add(d.name)
+    return sorted(available - backtested)
+
+
 @app.post("/api/jobs/backtest/start")
 async def start_batch_backtest(request: Request, auth = Depends(verify_token)):
     """Start batch backtest for all missing dates of a model."""
@@ -1570,22 +1738,7 @@ async def start_batch_backtest(request: Request, auth = Depends(verify_token)):
         raise HTTPException(status_code=404, detail=f"Model '{model}' not found")
 
     if not dates:
-        import re as _re
-        results_dir = MODELS_DIR / model / "results"
-        backtested: set = set()
-        if results_dir.exists():
-            for d in results_dir.iterdir():
-                if d.is_dir() and _re.match(r"\d{4}-\d{2}-\d{2}$", d.name):
-                    if (d / "predictions.json").exists():
-                        backtested.add(d.name)
-        pred_base = BASE_DIR / "predictions"
-        available: set = set()
-        if pred_base.exists():
-            for d in pred_base.iterdir():
-                if d.is_dir() and _re.match(r"\d{4}-\d{2}-\d{2}$", d.name):
-                    if (d / "racecard_parsed.json").exists():
-                        available.add(d.name)
-        dates = sorted(available - backtested)
+        dates = _auto_batch_dates(model)
 
     if not dates:
         raise HTTPException(status_code=422, detail="No missing dates to backtest")
@@ -1627,6 +1780,76 @@ async def stop_scraper_job(auth = Depends(verify_token)):
     return {"stopping": True}
 
 
+# ─── Scheduler API ─────────────────────────────────────────
+# Cron-like jobs stored in data/schedules.json. The actual loop lives in
+# scheduler.py; this surface just CRUDs the JSON and offers a manual-trigger
+# endpoint that calls the same action registry the loop uses.
+import scheduler as _scheduler
+
+
+@app.get("/api/schedules")
+async def list_schedules_api(auth = Depends(verify_token)):
+    return {
+        "schedules": _scheduler.list_schedules(),
+        "available_actions": list(_scheduler._action_registry.keys()),
+    }
+
+
+@app.post("/api/schedules")
+async def create_schedule_api(request: Request, auth = Depends(verify_token)):
+    body = await request.json()
+    try:
+        s = _scheduler.create_schedule(
+            name=body.get("name", ""),
+            cron=body.get("cron", ""),
+            action=body.get("action", ""),
+            args=body.get("args") or {},
+            enabled=body.get("enabled", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return s
+
+
+@app.patch("/api/schedules/{sched_id}")
+async def patch_schedule_api(sched_id: str, request: Request, auth = Depends(verify_token)):
+    body = await request.json()
+    try:
+        s = _scheduler.update_schedule(sched_id, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if s is None:
+        raise HTTPException(status_code=404, detail="schedule not found")
+    return s
+
+
+@app.delete("/api/schedules/{sched_id}")
+async def delete_schedule_api(sched_id: str, auth = Depends(verify_token)):
+    if not _scheduler.delete_schedule(sched_id):
+        raise HTTPException(status_code=404, detail="schedule not found")
+    return {"deleted": True}
+
+
+@app.post("/api/schedules/{sched_id}/run")
+async def run_schedule_now(sched_id: str, auth = Depends(verify_token)):
+    """Fire a schedule immediately, bypassing its cron trigger."""
+    s = _scheduler.get_schedule(sched_id)
+    if s is None:
+        raise HTTPException(status_code=404, detail="schedule not found")
+    status, reason = await _scheduler.fire_schedule(s)
+    _scheduler._mark_fire(sched_id, status, reason)
+    await progress_broadcast.broadcast({
+        "type": "schedule_fired", "id": sched_id, "name": s["name"],
+        "action": s["action"], "status": status, "reason": reason,
+        "at": datetime.now().isoformat(timespec='seconds'),
+        "_manual": True,
+    })
+    if status == "ok":
+        return {"fired": True}
+    raise HTTPException(status_code=409 if status == "skipped" else 500,
+                        detail={"status": status, "reason": reason})
+
+
 @app.websocket("/ws/progress")
 async def ws_progress(websocket: WebSocket, token: str = Query(None)):
     """Stream backtest/scrape progress events. Auth via ?token=<bearer>."""
@@ -1635,6 +1858,14 @@ async def ws_progress(websocket: WebSocket, token: str = Query(None)):
         return
     await progress_broadcast.connect(websocket)
     try:
+        # Tell the newly-connected client our current lifecycle phase. If we're
+        # already draining the client sees that immediately and can show its
+        # banner without waiting for the next broadcast.
+        await websocket.send_json({
+            "type": "lifecycle",
+            "phase": "draining" if SHUTTING_DOWN else "ready",
+            "startup_id": STARTUP_ID, "pid": os.getpid(),
+        })
         # Replay in-progress job state so reconnecting clients can resume monitoring
         if current_run["active"]:
             await websocket.send_json({
@@ -1937,8 +2168,8 @@ async def spa_index():
         return spa_path.read_text(encoding="utf-8")
     # Inline fallback
     return """
-    <!DOCTYPE html><html><head><title>馬場分析</title></head>
-    <body><h1>馬場分析</h1><p>載入中...</p></body></html>
+    <!DOCTYPE html><html><head><title>馬場分析 / HorseLab</title></head>
+    <body><h1>馬場分析 / HorseLab</h1><p>載入中… / Loading…</p></body></html>
     """
 
 @app.get("/api/health")
@@ -1952,13 +2183,14 @@ async def available_dates(auth = Depends(verify_token), model: str = Query(None)
     Optimised: single aggregate GROUP BY query instead of one connection + 2
     queries per date (N+1 connections → 1 connection, 2N+1 queries → 1 query).
     """
-    async def _prog(pct: int, step: str):
+    async def _prog(pct: int, step_zh: str, step_en: str = None):
         await progress_broadcast.broadcast(
-            {"type": "load_progress", "pct": pct, "step": step,
+            {"type": "load_progress", "pct": pct,
+             "step": step_zh, "step_en": step_en or step_zh,
              "model": model or "", "date": ""}
         )
 
-    await _prog(12, "查詢日期列表...")
+    await _prog(12, "查詢日期列表...", "Querying date list…")
 
     db = get_db()
     rows = db.execute("""
@@ -1969,7 +2201,7 @@ async def available_dates(auth = Depends(verify_token), model: str = Query(None)
     """).fetchall()
     db.close()
 
-    await _prog(15, "檢查預測狀態...")
+    await _prog(15, "檢查預測狀態...", "Checking prediction status…")
 
     if model:
         pred_dir = MODELS_DIR / model / "results"
@@ -1999,9 +2231,9 @@ async def available_dates(auth = Depends(verify_token), model: str = Query(None)
         # Broadcast every ~12th date for large lists (keeps progress bar moving steadily)
         if total > 40 and i % max(total // 8, 1) == 0:
             pct = 15 + int((i + 1) / total * 8)
-            await _prog(min(pct, 23), "檢查預測狀態...")
+            await _prog(min(pct, 23), "檢查預測狀態...", "Checking prediction status…")
 
-    await _prog(24, "日期列表已就緒")
+    await _prog(24, "日期列表已就緒", "Date list ready")
     return {"dates": dates}
 
 
@@ -2481,10 +2713,51 @@ async def chat_save_note(req: SaveNoteRequest, auth=Depends(verify_token)):
 
 
 # ─── Main ──────────────────────────────────────────────────
+class GracefulServer(uvicorn.Server):
+    """Uvicorn server that broadcasts a lifecycle 'draining' event to WS clients
+    before tearing down connections.
+
+    `handle_exit` is uvicorn's signal callback — it's normally a one-liner that
+    flips `should_exit`. We schedule an async task that broadcasts first, then
+    flips the flag. SHUTTING_DOWN guards against the second SIGTERM (which
+    uvicorn treats as a hard force-exit by setting force_exit=True via the
+    parent handler).
+    """
+    def handle_exit(self, sig, frame):
+        global SHUTTING_DOWN
+        # Second signal → force exit immediately; skip the broadcast dance.
+        if SHUTTING_DOWN:
+            super().handle_exit(sig, frame)
+            return
+        SHUTTING_DOWN = True
+
+        async def _drain_then_exit():
+            try:
+                await progress_broadcast.broadcast({
+                    "type": "lifecycle", "phase": "draining",
+                    "startup_id": STARTUP_ID, "pid": os.getpid(),
+                })
+                # Yield long enough for the WS frames to leave the kernel
+                # send buffer before uvicorn closes the sockets.
+                await asyncio.sleep(0.15)
+            except Exception as exc:
+                print(f"[shutdown] draining broadcast failed: {exc}", flush=True)
+            # Now defer to uvicorn's real handler, which sets should_exit
+            # and lets the serve loop run the lifespan shutdown.
+            super(GracefulServer, self).handle_exit(sig, frame)
+
+        try:
+            asyncio.get_event_loop().create_task(_drain_then_exit())
+        except RuntimeError:
+            # Loop already gone — just defer to uvicorn.
+            super().handle_exit(sig, frame)
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8005)
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
-    uvicorn.run(app, host=args.host, port=args.port)
+    config = uvicorn.Config(app, host=args.host, port=args.port)
+    GracefulServer(config=config).run()

@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>馬場分析</title>
+<title data-zh="馬場分析" data-en="HorseLab">馬場分析</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
@@ -148,12 +148,12 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 <body>
 
 <div class="login-overlay" id="loginOverlay">
-<div class="login-box"><h1>馬場分析</h1><p>輸入密碼</p>
+<div class="login-box"><h1 data-zh="馬場分析" data-en="HorseLab">馬場分析</h1><p data-zh="輸入密碼" data-en="Enter password">輸入密碼</p>
 <input type="password" id="pwInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
 <div style="margin-top:10px;font-size:10pt;color:#888;text-align:left;padding-left:4px">
-<label style="cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="rememberPw" onchange="savePwCookie()"> 記住密碼（365天）</label>
+<label style="cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="rememberPw" onchange="savePwCookie()"> <span data-zh="記住密碼（365天）" data-en="Remember password (365 days)">記住密碼（365天）</span></label>
 </div>
-<button onclick="login()">登入</button><div class="error" id="loginError">密碼錯誤</div></div></div>
+<button onclick="login()" data-zh="登入" data-en="Sign in">登入</button><div class="error" id="loginError" data-zh="密碼錯誤" data-en="Incorrect password">密碼錯誤</div></div></div>
 
 <div class="app" id="app">
   <div class="sidebar collapsed" id="sidebar">
@@ -165,13 +165,14 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
     <div class="nav-item" data-page="horses" onclick="go('horses')"><span class="icon">♞</span><span data-zh="馬匹" data-en="Horses">馬匹</span></div>
     <div class="nav-item" data-page="jockeys" onclick="go('jockeys')"><span class="icon">♘</span><span data-zh="騎師" data-en="Jockeys">騎師</span></div>
     <div class="nav-item" data-page="trainers" onclick="go('trainers')"><span class="icon">⌘</span><span data-zh="練馬師" data-en="Trainers">練馬師</span></div>
+    <div class="nav-item" data-page="schedules" onclick="go('schedules')"><span class="icon">⏰</span><span data-zh="排程" data-en="Schedules">排程</span></div>
     <div class="nav-item" onclick="window.open('/chat','_self')" style="border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:14px"><span class="icon">⚡</span><span>Eric AI</span></div>
   </div>
   <button id="langToggleBtn" class="logout-btn" onclick="toggleLang()" style="right:90px;min-width:46px;text-align:center" title="Switch language / 切換語言">EN</button>
   <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
 
   <div class="main">
-    <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px"><span id="pageTitle">儀表板</span> <span id="dashInfo" style="font-size:12pt;color:#666"></span></h2>
+    <h2 style="font-size:18pt;color:#1a3a5c;margin-bottom:14px;padding-left:4px"><span id="pageTitle" data-zh="儀表板" data-en="Dashboard">儀表板</span> <span id="dashInfo" style="font-size:12pt;color:#666"></span></h2>
 
     <!-- ─── Analytics Dashboard ──────────────────────────────── -->
     <div class="page show" id="page-dashboard">
@@ -180,16 +181,16 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
       <div id="dashStats" class="dash-stats-grid"></div>
       <div class="dash-chart-row">
         <div class="dash-chart-box">
-          <div class="chart-title">每日盈虧（單位）</div>
+          <div class="chart-title" data-zh="每日盈虧（單位）" data-en="Daily P&L (units)">每日盈虧（單位）</div>
           <div id="chartPnl" style="height:200px"></div>
         </div>
         <div class="dash-chart-box">
-          <div class="chart-title">累計盈虧趨勢</div>
+          <div class="chart-title" data-zh="累計盈虧趨勢" data-en="Cumulative P&L">累計盈虧趨勢</div>
           <div id="chartCumPnl" style="height:200px"></div>
         </div>
       </div>
       <div class="dash-chart-box" style="margin-bottom:12px">
-        <div class="chart-title">每日命中率 (%)</div>
+        <div class="chart-title" data-zh="每日命中率 (%)" data-en="Daily hit rate (%)">每日命中率 (%)</div>
         <div id="chartAccuracy" style="height:150px"></div>
       </div>
       <div id="dashIssues"></div>
@@ -213,11 +214,11 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 
     <div class="page" id="page-horses">
       <div class="search-bar">
-        <input type="text" id="horseName" class="form-control" placeholder="馬名或烙號..." style="font-size:10pt">
-        <select id="horseSex" class="form-select" style="font-size:10pt"><option value="">性別</option></select>
-        <input type="number" id="horseAgeMin" class="form-control" placeholder="齡≥" style="width:70px;font-size:10pt">
-        <input type="number" id="horseAgeMax" class="form-control" placeholder="齡≤" style="width:70px;font-size:10pt">
-        <button class="btn btn-primary" onclick="loadHorses(1)" style="font-size:10pt">篩選</button>
+        <input type="text" id="horseName" class="form-control" placeholder="馬名或烙號..." data-zh-attr="馬名或烙號..." data-en-attr="Horse name or brand…" data-i18n-attr="placeholder" style="font-size:10pt">
+        <select id="horseSex" class="form-select" style="font-size:10pt"><option value="" data-zh="性別" data-en="Sex">性別</option></select>
+        <input type="number" id="horseAgeMin" class="form-control" placeholder="齡≥" data-zh-attr="齡≥" data-en-attr="Age ≥" data-i18n-attr="placeholder" style="width:70px;font-size:10pt">
+        <input type="number" id="horseAgeMax" class="form-control" placeholder="齡≤" data-zh-attr="齡≤" data-en-attr="Age ≤" data-i18n-attr="placeholder" style="width:70px;font-size:10pt">
+        <button class="btn btn-primary" onclick="loadHorses(1)" style="font-size:10pt" data-zh="篩選" data-en="Filter">篩選</button>
       </div>
       <div class="card-grid" id="horseGrid"></div>
       <div class="pagination" id="horsePages"></div>
@@ -225,8 +226,8 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 
     <div class="page" id="page-jockeys">
       <div class="search-bar">
-        <input type="text" id="jockeyName" class="form-control" placeholder="騎師名..." style="font-size:10pt">
-        <button class="btn btn-primary" onclick="loadJockeys(1)" style="font-size:10pt">篩選</button>
+        <input type="text" id="jockeyName" class="form-control" placeholder="騎師名..." data-zh-attr="騎師名..." data-en-attr="Jockey name…" data-i18n-attr="placeholder" style="font-size:10pt">
+        <button class="btn btn-primary" onclick="loadJockeys(1)" style="font-size:10pt" data-zh="篩選" data-en="Filter">篩選</button>
       </div>
       <div class="card-grid" id="jockeyGrid"></div>
       <div class="pagination" id="jockeyPages"></div>
@@ -234,8 +235,8 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
 
     <div class="page" id="page-trainers">
       <div class="search-bar">
-        <input type="text" id="trainerName" class="form-control" placeholder="練馬師名..." style="font-size:10pt">
-        <button class="btn btn-primary" onclick="loadTrainers(1)" style="font-size:10pt">篩選</button>
+        <input type="text" id="trainerName" class="form-control" placeholder="練馬師名..." data-zh-attr="練馬師名..." data-en-attr="Trainer name…" data-i18n-attr="placeholder" style="font-size:10pt">
+        <button class="btn btn-primary" onclick="loadTrainers(1)" style="font-size:10pt" data-zh="篩選" data-en="Filter">篩選</button>
       </div>
       <div class="card-grid" id="trainerGrid"></div>
       <div class="pagination" id="trainerPages"></div>
@@ -262,6 +263,11 @@ table{width:100%;border-collapse:collapse;font-size:11pt}th{background:#1a3a5c;c
     <!-- ─── Eric 定律 Page ──────────────────────────────────── -->
     <div class="page" id="page-eric">
       <div id="ericContent"></div>
+    </div>
+
+    <!-- ─── Scheduler Page ──────────────────────────────────── -->
+    <div class="page" id="page-schedules">
+      <div id="schedContent"></div>
     </div>
   </div>
 </div>
@@ -387,6 +393,38 @@ function _applyStaticI18n(){
 // Apply once at load so initial render matches stored language.
 document.addEventListener('DOMContentLoaded', _applyStaticI18n);
 
+// ─── Lifecycle banner ─────────────────────────────────────
+// A small fixed banner that appears when the server announces 'draining' over
+// the /ws/progress WebSocket (instant) OR when /api/health polling detects a
+// startup_id change (15s fallback). Dismissed when the server announces 'ready'.
+function _ensureLifecycleBanner(){
+  let el = document.getElementById('lifecycleBanner');
+  if(el) return el;
+  el = document.createElement('div');
+  el.id = 'lifecycleBanner';
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:8px 16px;text-align:center;font-size:10pt;font-weight:600;display:none;color:#fff;background:#c0392b;box-shadow:0 2px 6px rgba(0,0,0,0.2)';
+  document.body.appendChild(el);
+  return el;
+}
+function _showLifecycle(text, color){
+  const el = _ensureLifecycleBanner();
+  el.style.background = color || '#c0392b';
+  el.textContent = text;
+  el.style.display = 'block';
+}
+function _hideLifecycle(){
+  const el = document.getElementById('lifecycleBanner');
+  if(el) el.style.display = 'none';
+}
+function _onLifecycle(msg){
+  if(msg.phase === 'draining'){
+    _showLifecycle(T('⚠ 伺服器準備重啟中 — 請稍候','⚠ Server is restarting — please wait'), '#c0392b');
+  } else if(msg.phase === 'ready'){
+    _showLifecycle(T('✓ 伺服器已重新上線','✓ Server is back online'), '#27ae60');
+    setTimeout(_hideLifecycle, 2500);
+  }
+}
+
 // ─── Auto-reload on server restart ─────────────────────────
 // Poll /api/health every 15 s. The server stamps a STARTUP_ID at process
 // start; if we see a different id than the one cached from the first
@@ -430,6 +468,7 @@ function go(name){
     dashboard: T('儀表板','Dashboard'), races: T('賽事','Races'),  model: T('策略','Strategy'),
     eric:      T('假設清單','Hypotheses'),
     horses:    T('馬匹','Horses'),     jockeys: T('騎師','Jockeys'), trainers: T('練馬師','Trainers'),
+    schedules: T('排程','Schedules'),
   };
   document.getElementById('pageTitle').textContent=titles[name]||'';
   if(name==='dashboard')loadDashboard();
@@ -439,6 +478,7 @@ function go(name){
   if(name==='horses')loadHorses(1);
   if(name==='jockeys')loadJockeys(1);
   if(name==='trainers')loadTrainers(1);
+  if(name==='schedules')loadSchedules();
 }
 
 // ─── Races ────────────────────────────────────────────────
@@ -530,7 +570,7 @@ function setRaceLoading(pct, step, model, date){
   ov.style.display='block';
   const sub=(model||'')+((model&&date)?' · ':'')+((date&&date!==new Date().toISOString().slice(0,10))?date:'');
   ov.innerHTML=`<div class="rload-wrap">
-    <div class="rload-title">⟳ 載入賽事資料</div>
+    <div class="rload-title">⟳ ${T('載入賽事資料','Loading race data')}</div>
     <div class="rload-sub">${sub||''}</div>
     <div class="rload-track"><div class="rload-fill" id="rloadFill" style="width:${pct}%"></div></div>
     <div class="rload-foot"><span id="rloadStep">${step||''}</span><span>${pct}%</span></div>
@@ -550,14 +590,14 @@ function getSelectedModel(){return racesModel||null}
 
 async function runRetally(name){
   const btn=document.getElementById('retallyBtn_'+name.replace(/[^a-zA-Z0-9]/g,'_'));
-  if(btn){btn.disabled=true;btn.textContent='計算中...';}
+  if(btn){btn.disabled=true;btn.textContent=T('計算中...','Calculating…');}
   document.getElementById('runLog').classList.add('active');
   const r=await fetch('/api/models/'+encodeURIComponent(name)+'/retally',
     {method:'POST',headers:{'Authorization':'Bearer '+token}});
   if(!r.ok){
     const e=await r.json().catch(()=>({}));
-    appendRunLog('✗ Re-tally 失敗: '+(e.detail?.message||e.detail||r.status),'err');
-    if(btn){btn.disabled=false;btn.textContent='重新計算';}
+    appendRunLog('✗ '+T('Re-tally 失敗: ','Re-tally failed: ')+(e.detail?.message||e.detail||r.status),'err');
+    if(btn){btn.disabled=false;btn.textContent=T('重新計算','Recalculate');}
   }
 }
 
@@ -587,7 +627,7 @@ async function loadRaces(dateStr){
   // ── Stage 0: immediate loading overlay ──────────────────────
   const earlyModel=getSelectedModel();
   const earlyDate=dateStr||getCookie('race_date')||document.getElementById('dateSelect').value||new Date().toISOString().slice(0,10);
-  setRaceLoading(10,'初始化策略導覽...',earlyModel,earlyDate);
+  setRaceLoading(10,T('初始化策略導覽...','Initializing strategy nav…'),earlyModel,earlyDate);
 
   await initModelNav();
   if(seq!==_loadSeq)return;
@@ -607,28 +647,30 @@ async function _reloadDateList(){
   const curDate = sel.value;
   const dd = await api('/api/dates?model='+(model||''));
   if(!dd||!dd.dates) return;
+  const horseSfx = T('匹',' horses');
   sel.innerHTML = dd.dates.map(d=>{
     const tag = d.model_stale ? '📭' : d.has_predictions ? '📊' : '';
     const race = d.race_count ? `R${d.race_count}` : '';
-    return `<option value="${d.date}"${d.date===curDate?' selected':''}>${d.date} ${tag} ${race} ${d.horse_count||''}匹</option>`;
+    return `<option value="${d.date}"${d.date===curDate?' selected':''}>${d.date} ${tag} ${race} ${d.horse_count||''}${horseSfx}</option>`;
   }).join('');
 }
 
   // ── Stage 1: fetch available dates ──────────────────────────
   if(!document.getElementById('dateSelect').options.length){
-    _setRaceLoadingPct(14,'載入日期列表...');
+    _setRaceLoadingPct(14,T('載入日期列表...','Loading date list…'));
     const dd=await api('/api/dates?model='+(model||''));
     if(seq!==_loadSeq)return;
     if(dd&&dd.dates){
       const sel=document.getElementById('dateSelect');
+      const horseSfx = T('匹',' horses');
       sel.innerHTML=dd.dates.map(d=>{
         const tag = d.model_stale ? '📭' : d.has_predictions ? '📊' : '';
         const race = d.race_count ? `R${d.race_count}` : '';
-        return `<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${tag} ${race} ${d.horse_count||''}匹</option>`;
+        return `<option value="${d.date}"${d.date===dateStr?' selected':''}>${d.date} ${tag} ${race} ${d.horse_count||''}${horseSfx}</option>`;
       }).join('');
       if(!dd.dates.find(d=>d.date===dateStr)&&dd.dates.length)dateStr=dd.dates[0].date;
     }
-    _setRaceLoadingPct(25,'日期已載入');
+    _setRaceLoadingPct(25,T('日期已載入','Dates loaded'));
   }
   document.getElementById('dateSelect').value=dateStr;
   _loadingDate=dateStr;
@@ -636,23 +678,23 @@ async function _reloadDateList(){
   // ── Stage 2: fetch race + prediction data ────────────────────
   // Server broadcasts load_progress WS events (30-86%) while processing.
   // We start at 28% here; WS events will advance it in real time.
-  _setRaceLoadingPct(28,'讀取賽事數據...');
+  _setRaceLoadingPct(28,T('讀取賽事數據...','Reading race data…'));
   const rc=await api('/api/races/'+dateStr+'?model='+(model||''));
   if(seq!==_loadSeq)return;
 
   if(!rc||!rc.races){
     setRaceLoading(null);
     document.getElementById('raceTabs').style.display='';
-    document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">暫無賽事數據</div>';
+    document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">'+T('暫無賽事數據','No race data')+'</div>';
     renderRunBanner(null);
     return;
   }
   if(rc.races.length===0){
     setRaceLoading(null);
     document.getElementById('raceTabs').style.display='';
-    document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">此日期暫無賽事數據，請選擇其他日期</div>';
+    document.getElementById('raceTabs').innerHTML='<div class="text-muted p-3">'+T('此日期暫無賽事數據，請選擇其他日期','No race data for this date — please pick another')+'</div>';
     document.getElementById('raceTable').innerHTML='';
-    document.getElementById('dashInfo').innerHTML=`<span style="font-size:11pt">${dateStr} · 無賽事</span>`;
+    document.getElementById('dashInfo').innerHTML=`<span style="font-size:11pt">${dateStr} · ${T('無賽事','No races')}</span>`;
     document.getElementById('betSummary').textContent='';
     renderRunBanner(null);
     renderScrapePill(rc);
@@ -660,12 +702,12 @@ async function _reloadDateList(){
   }
 
   // ── Stage 3: render ──────────────────────────────────────────
-  _setRaceLoadingPct(90,'渲染中...');
+  _setRaceLoadingPct(90,T('渲染中...','Rendering…'));
   const totalHorses=rc.races.reduce((s,r)=>s+(r.horses?.length||0),0);
   const hasResults=rc.races.filter(r=>r.has_results).length;
   const modelLabel=model?`<span style="background:#e8f0fe;color:#1a3a5c;border:1px solid #c5d5e8;border-radius:10px;padding:1px 9px;font-size:10pt;font-weight:600">${model}</span> `:'';
-  const resultsLabel=hasResults?` · <span style="color:#27ae60">✅ ${hasResults}場已有賽果</span>`:'';
-  document.getElementById('dashInfo').innerHTML=`${modelLabel}<span style="font-size:11pt">${dateStr} · ${rc.races.length}場賽事 · ${totalHorses}匹參賽馬${resultsLabel}</span>`;
+  const resultsLabel=hasResults?` · <span style="color:#27ae60">✅ ${hasResults}${T('場已有賽果',' races with results')}</span>`:'';
+  document.getElementById('dashInfo').innerHTML=`${modelLabel}<span style="font-size:11pt">${dateStr} · ${rc.races.length}${T('場賽事',' races')} · ${totalHorses}${T('匹參賽馬',' runners')}${resultsLabel}</span>`;
   raceCache=rc.races;
   raceCacheMeta=rc;
   featWeights=rc._feature_weights||{};
@@ -679,7 +721,7 @@ async function _reloadDateList(){
     const wins=bets.filter(r=>r.bet.correct).length;
     const totalPnl=bets.reduce((s,r)=>s+(r.bet.pnl||0),0);
     const pnlStyle=totalPnl>=0?'color:#27ae60':'color:#e74c3c';
-    document.getElementById('betSummary').innerHTML=`📊 ${model||''} 預測: ${bets.length}場下注 ${wins}勝 <span style="${pnlStyle};font-weight:bold">${totalPnl>=0?'+':''}${totalPnl.toFixed(2)} 單位</span>`;
+    document.getElementById('betSummary').innerHTML=`📊 ${model||''} ${T('預測','prediction')}: ${bets.length}${T('場下注',' bets')} ${wins}${T('勝',' won')} <span style="${pnlStyle};font-weight:bold">${totalPnl>=0?'+':''}${totalPnl.toFixed(2)} ${T('單位','u')}</span>`;
   } else {
     document.getElementById('betSummary').textContent='';
   }
@@ -703,7 +745,7 @@ async function _reloadDateList(){
   }
 
   // ── Done: dismiss overlay ──────────────────────────────────
-  _setRaceLoadingPct(100,'完成');
+  _setRaceLoadingPct(100,T('完成','Done'));
   setTimeout(()=>{ if(seq===_loadSeq)setRaceLoading(null); },220);
 }
 
@@ -720,14 +762,14 @@ function timeAgo(iso){
   if(!iso) return '';
   const then=new Date(iso).getTime(), now=Date.now();
   const diffMs=now-then;
-  if(diffMs < 0) return '剛剛';
+  if(diffMs < 0) return T('剛剛','just now');
   const mins=Math.floor(diffMs/60000);
-  if(mins < 1)   return '剛剛';
-  if(mins < 60)  return `${mins} 分鐘前`;
+  if(mins < 1)   return T('剛剛','just now');
+  if(mins < 60)  return T(`${mins} 分鐘前`,`${mins} min ago`);
   const hrs=Math.floor(mins/60);
-  if(hrs < 24)   return `${hrs} 小時 ${mins%60} 分鐘前`;
+  if(hrs < 24)   return T(`${hrs} 小時 ${mins%60} 分鐘前`,`${hrs}h ${mins%60}m ago`);
   const days=Math.floor(hrs/24);
-  return `${days} 天 ${hrs%24} 小時前`;
+  return T(`${days} 天 ${hrs%24} 小時前`,`${days}d ${hrs%24}h ago`);
 }
 
 /* ─── Run banner: shows when current strategy hasn't run for the date ───
@@ -747,8 +789,8 @@ function renderRunBanner(rc){
     const date  = rc.date;
     el.innerHTML = `<div class="run-banner" style="background:#f5f5f5;border:1px solid #ddd">
       <span class="icon">📭</span>
-      <div class="msg"><b>${model} — 模型已修改，需重新回測</b><br><small>策略參數已變更，現有預測數據已失效。請重新執行回測以獲得有效數據。</small></div>
-      <button onclick="triggerRun('${model}','${date}',false)" id="runBtn">⏪ 重新回測</button>
+      <div class="msg"><b>${model} — ${T('模型已修改，需重新回測','model changed — needs re-backtest')}</b><br><small>${T('策略參數已變更，現有預測數據已失效。請重新執行回測以獲得有效數據。','Strategy parameters changed; existing predictions are stale. Re-run the backtest to refresh.')}</small></div>
+      <button onclick="triggerRun('${model}','${date}',false)" id="runBtn">⏪ ${T('重新回測','Re-backtest')}</button>
     </div>`;
     return;
   }
@@ -757,11 +799,11 @@ function renderRunBanner(rc){
   const model = rc.model || getSelectedModel() || '';
   const date  = rc.date;
   const isFut = rc.is_future;
-  const label = isFut ? '此日期尚未跑「預測」' : '此日期尚未跑「回測」';
-  const btn   = isFut ? '🔮 執行預測'         : '⏪ 執行回測';
+  const label = isFut ? T('此日期尚未跑「預測」','No prediction run for this date yet') : T('此日期尚未跑「回測」','No backtest run for this date yet');
+  const btn   = isFut ? T('🔮 執行預測','🔮 Run prediction')         : T('⏪ 執行回測','⏪ Run backtest');
   const hint  = isFut
-    ? '比賽尚未發生 — 跑預測會用截至今天的歷史訓練模型，預測該日表現。'
-    : '比賽已完成 — 跑回測會以截至該日前的資料訓練模型，模擬當日預測並計算盈虧。';
+    ? T('比賽尚未發生 — 跑預測會用截至今天的歷史訓練模型，預測該日表現。','Race has not happened yet — prediction trains the model on data up to today and forecasts this date.')
+    : T('比賽已完成 — 跑回測會以截至該日前的資料訓練模型，模擬當日預測並計算盈虧。','Race has finished — backtest trains the model on data up to the day before and simulates what the prediction + P&L would have been.');
   el.innerHTML = `<div class="run-banner">
     <span class="icon">${isFut?'🔮':'⏪'}</span>
     <div class="msg"><b>${model} — ${label}</b><br><small>${hint}</small></div>
@@ -782,14 +824,14 @@ function renderScrapePill(rc){
   if(!ts) return;
   const ageMin = (Date.now() - new Date(ts).getTime()) / 60000;
   const stale  = rc.is_future && ageMin > 180;  // 3 hours
-  const label  = rc.is_future ? '賠率最後更新' : '資料最後更新';
-  el.innerHTML = `<span class="scrape-pill${stale?' stale':''}" title="${ts}">${label}：${timeAgo(ts)}</span>`;
+  const label  = rc.is_future ? T('賠率最後更新','Odds last updated') : T('資料最後更新','Data last updated');
+  el.innerHTML = `<span class="scrape-pill${stale?' stale':''}" title="${ts}">${label}${T('：',': ')}${timeAgo(ts)}</span>`;
 }
 
 /* ─── /api/run trigger ─────────────────────────────────────────────── */
 async function triggerRun(model, date, isFuture){
   const btn = document.getElementById('runBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '啟動中…'; }
+  if(btn){ btn.disabled = true; btn.textContent = T('啟動中…','Starting…'); }
   document.getElementById('runLog').classList.add('active');
   document.getElementById('runLog').innerHTML = '';
   try{
@@ -799,17 +841,17 @@ async function triggerRun(model, date, isFuture){
       body: JSON.stringify({model, date}),
     });
     if(r.status === 409){
-      appendRunLog('⚠ 另一個任務正在執行中，請稍候…', 'err');
+      appendRunLog('⚠ '+T('另一個任務正在執行中，請稍候…','Another job is running — please wait…'), 'err');
       const j = await r.json();
       console.warn('Run conflict:', j);
     } else if(!r.ok){
       const j = await r.json().catch(()=>({}));
-      appendRunLog('啟動失敗: ' + (j.detail || r.statusText), 'err');
+      appendRunLog(T('啟動失敗: ','Start failed: ') + (j.detail || r.statusText), 'err');
     } else {
-      appendRunLog('✓ 任務已啟動: ' + model + ' @ ' + date);
+      appendRunLog('✓ '+T('任務已啟動: ','Job started: ') + model + ' @ ' + date);
     }
   } catch(e){
-    appendRunLog('網絡錯誤: ' + e.message, 'err');
+    appendRunLog(T('網絡錯誤: ','Network error: ') + e.message, 'err');
   }
 }
 
@@ -846,17 +888,27 @@ function connectProgressWS(){
       // Real-time server progress for /api/races fetch — update bar if still loading same request
       // Accept events where: model matches, AND (date matches OR we don't have a date yet)
       if(msg.model===_loadingModel && (msg.date===_loadingDate || !_loadingDate)){
-        _setRaceLoadingPct(msg.pct, msg.step);
+        const step = lang === 'en' ? (msg.step_en || msg.step) : (msg.step || msg.step_en);
+        _setRaceLoadingPct(msg.pct, step);
       }
+    } else if(msg.type === 'lifecycle'){
+      // Server announcing startup/shutdown phase. 'draining' = SIGTERM received,
+      // about to die; 'ready' = back up. We use this for an instant banner —
+      // /api/health polling is the fallback (15s).
+      _onLifecycle(msg);
+    } else if(msg.type === 'schedule_fired'){
+      // Scheduler triggered a job. Surface in the run log so the user sees it.
+      appendRunLog(`⏰ ${msg.name}${msg._manual?T(' (手動)',' (manual)'):''} → ${msg.status}${msg.reason?` (${msg.reason})`:''}`,
+                   msg.status==='ok'?'done':msg.status==='skipped'?'':'err');
     } else if(msg.type === 'start'){
       document.getElementById('runLog').classList.add('active');
-      appendRunLog(`▶ 開始: ${msg.model} @ ${msg.date}` + (msg._resumed ? ' (續監聽)' : ''));
+      appendRunLog(`▶ ${T('開始','Start')}: ${msg.model} @ ${msg.date}` + (msg._resumed ? ' '+T('(續監聽)','(resumed listening)') : ''));
     } else if(msg.type === 'log'){
       appendRunLog(msg.text);
     } else if(msg.type === 'done'){
       const ok = msg.code === 0;
       const isRetally = msg.date === 'retally';
-      appendRunLog(`■ ${isRetally?'重新計算':'回測'}完成 (退出碼 ${msg.code})`, ok ? 'done' : 'err');
+      appendRunLog(`■ ${isRetally?T('重新計算','Recalculate'):T('回測','Backtest')}${T('完成',' done')} (${T('退出碼','exit code')} ${msg.code})`, ok ? 'done' : 'err');
       // Invalidate model cache so stale badges + summaries refresh on both navs
       _invalidateModelsCache();
       setTimeout(async ()=>{
@@ -871,7 +923,7 @@ function connectProgressWS(){
         }
       }, 800);
     } else if(msg.type === 'error'){
-      appendRunLog('✗ 錯誤: ' + msg.text, 'err');
+      appendRunLog('✗ '+T('錯誤: ','Error: ') + msg.text, 'err');
     } else if(msg.type === 'batch_start'){
       Object.assign(_batchJob,{active:true,stopping:false,model:msg.model,
         queue:msg.queue||[],current:null,current_idx:0,done:[],failed:[],
@@ -899,7 +951,7 @@ function connectProgressWS(){
     } else if(msg.type === 'batch_done' || msg.type === 'batch_stopped'){
       Object.assign(_batchJob,{active:false,stopping:false,current:null,
         done:msg.done||[],failed:msg.failed||[]});
-      _pushLog(_batchLog,msg.type==='batch_done'?`✓ 完成 (${(msg.done||[]).length} 成功, ${(msg.failed||[]).length} 失敗)`:`■ 已停止`);
+      _pushLog(_batchLog,msg.type==='batch_done'?`✓ ${T('完成','Done')} (${(msg.done||[]).length} ${T('成功','ok')}, ${(msg.failed||[]).length} ${T('失敗','failed')})`:`■ ${T('已停止','Stopped')}`);
       _renderJobsPane();
       _invalidateModelsCache();
       setTimeout(async()=>{
@@ -926,7 +978,7 @@ function connectProgressWS(){
       } else {_renderJobsPane();setTimeout(()=>_scrollLogBox('scraperLogBox'),50);}
     } else if(msg.type === 'scraper_done' || msg.type === 'scraper_stopped'){
       Object.assign(_scraperJob,{active:false,stopping:false,current_task:null});
-      _pushLog(_scraperLog,msg.type==='scraper_done'?'✓ 抓取完成':'■ 已停止');
+      _pushLog(_scraperLog,msg.type==='scraper_done'?'✓ '+T('抓取完成','Scrape done'):'■ '+T('已停止','Stopped'));
       _renderJobsPane();
       // Refresh date list with new data
       if(msg.type === 'scraper_done') _reloadDateList();
@@ -939,34 +991,38 @@ function connectProgressWS(){
   progressWS.onerror = ()=>{ /* onclose handles reconnect */ };
 }
 
-// Feature descriptions for hover
-const fDesc={age:'年齡',sex_gelding:'騸馬',rating:'評分',races_count:'出賽次數',
-  horse_wr:'馬匹勝率',jockey_wr:'騎師勝率',trainer_wr:'練馬師勝率',
-  jt_pair:'騎練組合勝率',jh_pair:'人馬組合勝率',dist_adapt:'路程適應',
-  going_adapt:'場地適應',trainer_hot:'練馬師近期勝數',draw:'檔位',
-  draw_inner:'內檔(1-4)',draw_outer:'外檔(≥10)',weight:'負磅',
-  weight_allow:'負磅優勢',is_hv:'跑馬地',distance_km:'途程(km)',
-  going_num:'場地指數',class_num:'班次',participants:'參賽馬數',
-  days_since:'休後日數',layoff_penalty:'久休懲罰',race_pace:'賽事步速',
-  horse_style:'馬匹跑法',pace_style_match:'步速跑法配合',pace_draw_bonus:'檔位步速加成',
-  late_pace_avg:'末段速度',cold_stable_season:'馬房季度勝率',wide_draw:'大外檔標記',
-  cold_stable_x_wide:'弱廄大外檔',chri_score:'綜合風險指數',gear_change:'配備變更',
-  first_gear_use:'首次配備',rating_trend:'評分趨勢',class_drop:'降班',
-  inner_x_leader:'內檔×放頭',outer_x_closer:'外檔×後上',draw_x_hv:'檔位×跑馬地',
-  draw_x_going:'檔位×場地',inner_x_pace:'內檔×慢步速',outer_x_fast:'外檔×快步速',
-  late_x_outer:'末段×外檔'};
+// Feature descriptions for hover (bilingual: [zh, en])
+const fDescBilingual={
+  age:['年齡','Age'], sex_gelding:['騸馬','Gelding'], rating:['評分','Rating'], races_count:['出賽次數','Starts'],
+  horse_wr:['馬匹勝率','Horse WR'], jockey_wr:['騎師勝率','Jockey WR'], trainer_wr:['練馬師勝率','Trainer WR'],
+  jt_pair:['騎練組合勝率','J-T pair WR'], jh_pair:['人馬組合勝率','J-Horse WR'], dist_adapt:['路程適應','Distance fit'],
+  going_adapt:['場地適應','Going fit'], trainer_hot:['練馬師近期勝數','Trainer hot'], draw:['檔位','Draw'],
+  draw_inner:['內檔(1-4)','Inner draw (1-4)'], draw_outer:['外檔(≥10)','Outer draw (≥10)'], weight:['負磅','Weight'],
+  weight_allow:['負磅優勢','Weight allow'], is_hv:['跑馬地','Happy Valley'], distance_km:['途程(km)','Distance (km)'],
+  going_num:['場地指數','Going code'], class_num:['班次','Class'], participants:['參賽馬數','Runners'],
+  days_since:['休後日數','Days since'], layoff_penalty:['久休懲罰','Layoff penalty'], race_pace:['賽事步速','Race pace'],
+  horse_style:['馬匹跑法','Run style'], pace_style_match:['步速跑法配合','Pace×style'], pace_draw_bonus:['檔位步速加成','Pace×draw bonus'],
+  late_pace_avg:['末段速度','Late pace'], cold_stable_season:['馬房季度勝率','Cold stable'], wide_draw:['大外檔標記','Wide draw'],
+  cold_stable_x_wide:['弱廄大外檔','Cold×wide'], chri_score:['綜合風險指數','CHRI'], gear_change:['配備變更','Gear change'],
+  first_gear_use:['首次配備','First gear'], rating_trend:['評分趨勢','Rating trend'], class_drop:['降班','Class drop'],
+  inner_x_leader:['內檔×放頭','Inner×leader'], outer_x_closer:['外檔×後上','Outer×closer'], draw_x_hv:['檔位×跑馬地','Draw×HV'],
+  draw_x_going:['檔位×場地','Draw×going'], inner_x_pace:['內檔×慢步速','Inner×slow'], outer_x_fast:['外檔×快步速','Outer×fast'],
+  late_x_outer:['末段×外檔','Late×outer'],
+};
+const fDesc = new Proxy({}, {get: (_,k) => {const v=fDescBilingual[k]; return v ? (lang==='en'?v[1]:v[0]) : k;}});
 
-// 8 Feature Categories
+// 8 Feature Categories (bilingual)
 const featCats=[
-  {label:'馬匹基本', keys:['age','sex_gelding','rating','races_count','gear_change','first_gear_use','class_drop']},
-  {label:'勝率指標', keys:['horse_wr','jockey_wr','trainer_wr','jt_pair','jh_pair']},
-  {label:'賽事背景', keys:['distance_km','going_num','class_num','participants','is_hv']},
-  {label:'適應性',   keys:['dist_adapt','going_adapt','rating_trend']},
-  {label:'檔位負磅', keys:['draw','draw_inner','draw_outer','wide_draw','weight','weight_allow']},
-  {label:'步速跑法', keys:['race_pace','horse_style','pace_style_match','pace_draw_bonus','late_pace_avg','inner_x_leader','outer_x_closer']},
-  {label:'狀態趨勢', keys:['days_since','layoff_penalty','trainer_hot','cold_stable_season']},
-  {label:'交互特徵', keys:['cold_stable_x_wide','chri_score','draw_x_hv','draw_x_going','inner_x_pace','outer_x_fast','late_x_outer']},
+  {label_zh:'馬匹基本', label_en:'Horse Profile',     keys:['age','sex_gelding','rating','races_count','gear_change','first_gear_use','class_drop']},
+  {label_zh:'勝率指標', label_en:'Win Rates',         keys:['horse_wr','jockey_wr','trainer_wr','jt_pair','jh_pair']},
+  {label_zh:'賽事背景', label_en:'Race Context',      keys:['distance_km','going_num','class_num','participants','is_hv']},
+  {label_zh:'適應性',   label_en:'Adaptation',        keys:['dist_adapt','going_adapt','rating_trend']},
+  {label_zh:'檔位負磅', label_en:'Draw & Weight',     keys:['draw','draw_inner','draw_outer','wide_draw','weight','weight_allow']},
+  {label_zh:'步速跑法', label_en:'Pace & Style',      keys:['race_pace','horse_style','pace_style_match','pace_draw_bonus','late_pace_avg','inner_x_leader','outer_x_closer']},
+  {label_zh:'狀態趨勢', label_en:'Form Trend',        keys:['days_since','layoff_penalty','trainer_hot','cold_stable_season']},
+  {label_zh:'交互特徵', label_en:'Interactions',      keys:['cold_stable_x_wide','chri_score','draw_x_hv','draw_x_going','inner_x_pace','outer_x_fast','late_x_outer']},
 ];
+function _catLabel(cat){ return lang==='en' ? cat.label_en : cat.label_zh; }
 
 function _catScoreColor(score){
   if(score> 0.6) return'#0a5c1e';
@@ -996,14 +1052,15 @@ function buildFeatChart(hh, featMin, featMax){
       }
       desc+=`${fDesc[k]||k}: ${rawV}\n`;
     });
-    const title=`${cat.label} 綜合分: ${hasData?(sumW>0?sumNorm/sumW:0).toFixed(3):'—'}\n${desc.trim()}`;
+    const catLbl=_catLabel(cat);
+    const title=`${catLbl} ${T('綜合分','score')}: ${hasData?(sumW>0?sumNorm/sumW:0).toFixed(3):'—'}\n${desc.trim()}`;
     if(!hasData){
-      return`<span title="${title}" style="display:inline-flex;align-items:center;gap:2px;padding:0 5px;border-radius:3px;background:#f0f0f0;border:1px solid #ddd;font-size:7.5pt;line-height:1.6;white-space:nowrap;opacity:0.45"><span style="color:#aaa;text-decoration:line-through">${cat.label}</span><span style="color:#bbb;font-size:6pt">✕</span></span>`;
+      return`<span title="${title}" style="display:inline-flex;align-items:center;gap:2px;padding:0 5px;border-radius:3px;background:#f0f0f0;border:1px solid #ddd;font-size:7.5pt;line-height:1.6;white-space:nowrap;opacity:0.45"><span style="color:#aaa;text-decoration:line-through">${catLbl}</span><span style="color:#bbb;font-size:6pt">✕</span></span>`;
     }
     const score=sumW>0?sumNorm/sumW:0;
     const scoreCol=_catScoreColor(score);
     const scoreStr=(score>=0?'+':'')+score.toFixed(2);
-    return`<span title="${title}" style="display:inline-flex;align-items:center;gap:3px;padding:0 5px;border-radius:3px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt;line-height:1.6;white-space:nowrap"><span style="color:#555;font-weight:600">${cat.label}</span><span style="color:${scoreCol};font-size:7pt;font-weight:700">${scoreStr}</span></span>`;
+    return`<span title="${title}" style="display:inline-flex;align-items:center;gap:3px;padding:0 5px;border-radius:3px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt;line-height:1.6;white-space:nowrap"><span style="color:#555;font-weight:600">${catLbl}</span><span style="color:${scoreCol};font-size:7pt;font-weight:700">${scoreStr}</span></span>`;
   }).join('');
   return`<div style="display:flex;flex-wrap:wrap;gap:2px;align-content:flex-start;padding:1px 0">${pills}</div>`;
 }
@@ -1073,13 +1130,13 @@ function showRace(rn, silent){
   // PHASE 4 — Build table header
   const showPredCols = (hasPreds || missingPreds) && !modelStale;
   const showFeatCols = (hasFeat  || missingPreds) && !modelStale;
-  const noPredLabel = missingPreds ? '<span style="color:#aaa;font-size:8pt">未預測</span>' : '—';
-  let h=`<table class="race-tbl"><thead><tr><th>#</th><th>馬名</th><th>騎師</th><th>練馬師</th><th>檔</th><th>磅</th><th>賠率</th>`;
-  if(showFeatCols)h+=`<th style="width:510px">特徵組別得分</th>`;
-  if(showPredCols)h+=`<th>勝率</th><th>值博率</th>`;
-  if(!modelStale) h+=`<th>預測</th>`;
-  h+=`<th>名次</th><th>頭馬距離</th><th>沿途走位</th>`;
-  if(!modelStale) h+=`<th>注碼</th><th>盈虧</th>`;
+  const noPredLabel = missingPreds ? `<span style="color:#aaa;font-size:8pt">${T('未預測','no pred')}</span>` : '—';
+  let h=`<table class="race-tbl"><thead><tr><th>#</th><th>${T('馬名','Horse')}</th><th>${T('騎師','Jockey')}</th><th>${T('練馬師','Trainer')}</th><th>${T('檔','Drw')}</th><th>${T('磅','Wt')}</th><th>${T('賠率','Odds')}</th>`;
+  if(showFeatCols)h+=`<th style="width:510px">${T('特徵組別得分','Category scores')}</th>`;
+  if(showPredCols)h+=`<th>${T('勝率','Win %')}</th><th>${T('值博率','Edge')}</th>`;
+  if(!modelStale) h+=`<th>${T('預測','Pred')}</th>`;
+  h+=`<th>${T('名次','Pos')}</th><th>${T('頭馬距離','LBW')}</th><th>${T('沿途走位','Running')}</th>`;
+  if(!modelStale) h+=`<th>${T('注碼','Stake')}</th><th>${T('盈虧','P&L')}</th>`;
   h+=`</tr></thead><tbody>`;
 
   // PHASE 5 — Sort horses by predicted rank ascending; unranked horses to bottom
@@ -1158,11 +1215,11 @@ function showRace(rn, silent){
     const pnlStr  = bet.pnl!=null ? (bet.pnl>=0?`+${bet.pnl.toFixed(2)}`:bet.pnl.toFixed(2)) : '';
     const pnlStyle= bet.pnl!=null ? (bet.pnl>=0?'color:#27ae60':'color:#e74c3c') : '';
     h+=`<div style="font-size:9pt;color:#555;margin-top:6px;padding:6px 10px;background:#f8f9fa;border-radius:4px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
-      <span>${predIcon} <b>預測馬:</b> ${bet.top_predicted||'-'}</span>
-      <span><b>下注:</b> ${bet.placed?(bet.horse_name+' (賠'+bet.win_odds+'x)'):'-'}</span>
-      ${bet.placed&&bet.edge!=null?`<span><b>值博率:</b> ${bet.edge.toFixed(2)}</span>`:''}
-      ${race.has_results?`<span><b>冠軍:</b> ${bet.actual_winner||'-'}</span>`:''}
-      ${pnlStr?`<span style="${pnlStyle};font-weight:bold">盈虧: ${pnlStr} 單位</span>`:''}
+      <span>${predIcon} <b>${T('預測馬','Pick')}:</b> ${bet.top_predicted||'-'}</span>
+      <span><b>${T('下注','Bet')}:</b> ${bet.placed?(bet.horse_name+' ('+T('賠','@ ')+bet.win_odds+'x)'):'-'}</span>
+      ${bet.placed&&bet.edge!=null?`<span><b>${T('值博率','Edge')}:</b> ${bet.edge.toFixed(2)}</span>`:''}
+      ${race.has_results?`<span><b>${T('冠軍','Winner')}:</b> ${bet.actual_winner||'-'}</span>`:''}
+      ${pnlStr?`<span style="${pnlStyle};font-weight:bold">${T('盈虧','P&L')}: ${pnlStr} ${T('單位','u')}</span>`:''}
     </div>`;
   }
   // PHASE 7 — Per-row total from the UI's STAKE_STRONG/STAKE_MILD recommendations.
@@ -1185,42 +1242,58 @@ function showRace(rn, silent){
   const netProfit = totalProfit - totalBet;
   const profitPct = totalBet>0 ? ((netProfit/totalBet)*100).toFixed(1) : '0';
   if(!modelStale && totalBet>0)h+=`<div style="font-size:9pt;color:#666;margin-top:4px;padding:4px 8px;background:#fff;border-radius:4px">
-    <b>注碼($): ${totalBet}</b> &ensp; 回報: ${totalProfit} &ensp;
-    淨盈虧: <span style="color:${netProfit>=0?'#27ae60':'#e74c3c'};font-weight:bold">${netProfit>=0?'+':''}$${netProfit} (${netProfit>=0?'+':''}${profitPct}%)</span>
+    <b>${T('注碼','Stake')}($): ${totalBet}</b> &ensp; ${T('回報','Return')}: ${totalProfit} &ensp;
+    ${T('淨盈虧','Net P&L')}: <span style="color:${netProfit>=0?'#27ae60':'#e74c3c'};font-weight:bold">${netProfit>=0?'+':''}$${netProfit} (${netProfit>=0?'+':''}${profitPct}%)</span>
     </div>`;
 
-  if(hasFeat)h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-    <b>特徵組別得分：</b>
-    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">類別</span><span style="color:#0a5c1e;font-size:7pt;font-weight:700">+0.6+</span></span> 極強正面
-    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">類別</span><span style="color:#27ae60;font-size:7pt;font-weight:700">+0.1+</span></span> 正面
-    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">類別</span><span style="color:#aaa;font-size:7pt;font-weight:700">±0.0</span></span> 中性
-    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">類別</span><span style="color:#d63030;font-size:7pt;font-weight:700">-0.1-</span></span> 負面
-    <span style="display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:8px;background:#f0f0f0;border:1px solid #ddd;font-size:7.5pt;opacity:0.45"><span style="color:#aaa;text-decoration:line-through">類別</span><span style="color:#bbb;font-size:6pt">✕</span></span> 未計算
-    &ensp;|&ensp; 懸停顯示各特徵細節 &ensp; <span style="color:#27ae60;font-weight:bold">值博率>1.3=👍</span> <span style="color:#f0a030">>0.9=👀</span>
+  if(hasFeat){
+    const catLbl=T('類別','Cat');
+    h+=`<div style="font-size:9pt;color:#666;margin-top:8px;padding:8px;background:#fff;border-radius:4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+    <b>${T('特徵組別得分：','Category scores: ')}</b>
+    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">${catLbl}</span><span style="color:#0a5c1e;font-size:7pt;font-weight:700">+0.6+</span></span> ${T('極強正面','very strong +')}
+    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">${catLbl}</span><span style="color:#27ae60;font-size:7pt;font-weight:700">+0.1+</span></span> ${T('正面','positive')}
+    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">${catLbl}</span><span style="color:#aaa;font-size:7pt;font-weight:700">±0.0</span></span> ${T('中性','neutral')}
+    <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;font-size:7.5pt"><span style="color:#555;font-weight:600">${catLbl}</span><span style="color:#d63030;font-size:7pt;font-weight:700">-0.1-</span></span> ${T('負面','negative')}
+    <span style="display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:8px;background:#f0f0f0;border:1px solid #ddd;font-size:7.5pt;opacity:0.45"><span style="color:#aaa;text-decoration:line-through">${catLbl}</span><span style="color:#bbb;font-size:6pt">✕</span></span> ${T('未計算','not computed')}
+    &ensp;|&ensp; ${T('懸停顯示各特徵細節','Hover for feature details')} &ensp; <span style="color:#27ae60;font-weight:bold">${T('值博率','Edge')}>1.3=👍</span> <span style="color:#f0a030">>0.9=👀</span>
     </div>`;
-  if(hasRes)h+='<br><small class="text-success">✅ 已有賽果</small>';
+  }
+  if(hasRes)h+='<br><small class="text-success">✅ '+T('已有賽果','results available')+'</small>';
   document.getElementById('raceTable').innerHTML=h;
+}
+
+// Bilingual mapping for horse sex (backend returns Chinese chars in sex_cn).
+const SEX_EN_MAP = {'閹':'Gelding','騸':'Gelding','雌':'Mare','雄':'Horse','隱睪':'Cryptorchid','馬':'Horse'};
+function sexLabel(sexCn){
+  if(!sexCn) return '';
+  return lang === 'en' ? (SEX_EN_MAP[sexCn] || sexCn) : sexCn;
 }
 
 // ─── Horses ───────────────────────────────────────────────
 async function loadHorses(page){
   const p={page,limit:200,name:document.getElementById('horseName').value,sex:document.getElementById('horseSex').value,age_min:document.getElementById('horseAgeMin').value||0,age_max:document.getElementById('horseAgeMax').value||99,sort:'rating',order:'desc'};
   const d=await api('/api/horses?'+new URLSearchParams(p));if(!d)return;
-  document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{const wr=(h.win_rate*100).toFixed(1);return`<div class="horse-card" onclick="showHorseDetail('${h.brand}')"><div class="brand">#${h.brand}</div><div>${h.name||''}</div><div style="color:#888;font-size:8pt">${h.age||'?'}歲 ${h.sex_cn||''} 評${h.rating||0} ${h.races||0}場 ${h.wins||0}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  const ageU=T('歲','y');
+  const raceU=T('場',' starts');
+  const winU=T('W','W');
+  const ratingPrefix=T('評','R');
+  document.getElementById('horseGrid').innerHTML=d.horses.map(h=>{const wr=(h.win_rate*100).toFixed(1);return`<div class="horse-card" onclick="showHorseDetail('${h.brand}')"><div class="brand">#${h.brand}</div><div>${h.name||''}</div><div style="color:#888;font-size:8pt">${h.age||'?'}${ageU} ${sexLabel(h.sex_cn)} ${ratingPrefix}${h.rating||0} ${h.races||0}${raceU} ${h.wins||0}${winU} <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
   let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadHorses(${i})">${i}</button>`;
   document.getElementById('horsePages').innerHTML=pg;
 }
 
 async function loadJockeys(page){
   const d=await api('/api/jockeys?'+new URLSearchParams({page,limit:200,sort:'wins',order:'desc'}));if(!d)return;
-  document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{const wr=parseFloat(j.win_rate)||0;return`<div class="horse-card"><b>${j.name}</b><div style="color:#888;font-size:8pt">${j.rides}場 ${j.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  const raceU=T('場',' rides');
+  document.getElementById('jockeyGrid').innerHTML=d.jockeys.map(j=>{const wr=parseFloat(j.win_rate)||0;return`<div class="horse-card"><b>${j.name}</b><div style="color:#888;font-size:8pt">${j.rides}${raceU} ${j.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
   let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadJockeys(${i})">${i}</button>`;
   document.getElementById('jockeyPages').innerHTML=pg;
 }
 
 async function loadTrainers(page){
   const d=await api('/api/trainers?'+new URLSearchParams({page,limit:200,sort:'wins',order:'desc'}));if(!d)return;
-  document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{const wr=parseFloat(t.win_rate)||0;return`<div class="horse-card"><b>${t.name}</b><div style="color:#888;font-size:8pt">${t.rides}場 ${t.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
+  const raceU=T('場',' runners');
+  document.getElementById('trainerGrid').innerHTML=d.trainers.map(t=>{const wr=parseFloat(t.win_rate)||0;return`<div class="horse-card"><b>${t.name}</b><div style="color:#888;font-size:8pt">${t.rides}${raceU} ${t.wins}W <span style="color:#27ae60">${wr}%</span></div></div>`}).join('');
   let pg='';for(let i=1;i<=Math.ceil(d.total/200);i++)pg+=`<button onclick="loadTrainers(${i})">${i}</button>`;
   document.getElementById('trainerPages').innerHTML=pg;
 }
@@ -1233,43 +1306,48 @@ async function loadTrainers(page){
 // ─── Model Page ─────────────────────────────────────────────
 let modelConfigCache={}, modelTabActive='features';
 
-// Maps tunable feature names → their editable config params
+// Maps tunable feature names → their editable config params.
+// label fields are bilingual: {zh, en}. _lbl() picks based on current lang.
 const FEATURE_PARAMS = {
   cold_stable_season: [
-    {key:'cold_stable_threshold', label:'冷廄門檻',  type:'float'},
-    {key:'trainer_form_days',     label:'窗口天數',  type:'int'},
+    {key:'cold_stable_threshold', label:{zh:'冷廄門檻',en:'Cold-stable threshold'}, type:'float'},
+    {key:'trainer_form_days',     label:{zh:'窗口天數',en:'Window (days)'},          type:'int'},
   ],
-  draw_inner:  [{key:'draw_inner_max',        label:'內閘上限',    type:'int'}],
-  draw_outer:  [{key:'draw_outer_min',        label:'外閘下限',    type:'int'}],
-  wide_draw:   [{key:'draw_outer_min',        label:'外閘下限',    type:'int'}],
-  weight_allow:[{key:'weight_allow_divisor',  label:'除數',        type:'float'}],
-  going_num:   [{key:null, label:'→ 場地編碼',       tab:'going',  type:'link'}],
-  days_since:  [{key:'layoff.max_days',       label:'最長天數',    type:'int'}],
+  draw_inner:  [{key:'draw_inner_max',        label:{zh:'內閘上限',en:'Inner-draw max'},    type:'int'}],
+  draw_outer:  [{key:'draw_outer_min',        label:{zh:'外閘下限',en:'Outer-draw min'},    type:'int'}],
+  wide_draw:   [{key:'draw_outer_min',        label:{zh:'外閘下限',en:'Outer-draw min'},    type:'int'}],
+  weight_allow:[{key:'weight_allow_divisor',  label:{zh:'除數',    en:'Divisor'},            type:'float'}],
+  going_num:   [{key:null, label:{zh:'→ 場地編碼', en:'→ Going code'},       tab:'going',  type:'link'}],
+  days_since:  [{key:'layoff.max_days',       label:{zh:'最長天數',en:'Max days'},          type:'int'}],
   layoff_penalty:[
-    {key:'layoff.long_days',      label:'長休起點(天)',  type:'int'},
-    {key:'layoff.long_penalty',   label:'長休懲罰',     type:'float'},
-    {key:'layoff.medium_days',    label:'中休起點(天)', type:'int'},
-    {key:'layoff.medium_penalty', label:'中休懲罰',     type:'float'},
-    {key:'layoff.short_penalty',  label:'短休懲罰',     type:'float'},
+    {key:'layoff.long_days',      label:{zh:'長休起點(天)', en:'Long-layoff start (d)'}, type:'int'},
+    {key:'layoff.long_penalty',   label:{zh:'長休懲罰',     en:'Long-layoff penalty'},   type:'float'},
+    {key:'layoff.medium_days',    label:{zh:'中休起點(天)', en:'Medium-layoff start (d)'}, type:'int'},
+    {key:'layoff.medium_penalty', label:{zh:'中休懲罰',     en:'Medium-layoff penalty'}, type:'float'},
+    {key:'layoff.short_penalty',  label:{zh:'短休懲罰',     en:'Short-layoff penalty'},  type:'float'},
   ],
-  rating_trend:    [{key:'rating_trend_window',      label:'窗口期數',    type:'int'}],
+  rating_trend:    [{key:'rating_trend_window',      label:{zh:'窗口期數',en:'Window (races)'}, type:'int'}],
   pace_style_match:[
-    {key:'pace_match.leader_slow',  label:'領跑慢賽',   type:'float'},
-    {key:'pace_match.closer_fast',  label:'追後快賽',   type:'float'},
-    {key:'pace_match.stalker_slow', label:'跟跑慢賽',   type:'float'},
-    {key:'pace_match.default',      label:'預設值',     type:'float'},
+    {key:'pace_match.leader_slow',  label:{zh:'領跑慢賽',en:'Leader×slow'}, type:'float'},
+    {key:'pace_match.closer_fast',  label:{zh:'追後快賽',en:'Closer×fast'}, type:'float'},
+    {key:'pace_match.stalker_slow', label:{zh:'跟跑慢賽',en:'Stalker×slow'}, type:'float'},
+    {key:'pace_match.default',      label:{zh:'預設值',  en:'Default'},      type:'float'},
   ],
-  pace_draw_bonus:   [{key:null, label:'→ 步速矩陣',  tab:'pace',   type:'link'}],
+  pace_draw_bonus:   [{key:null, label:{zh:'→ 步速矩陣', en:'→ Pace matrix'},  tab:'pace',   type:'link'}],
   cold_stable_x_wide:[
-    {key:'cold_stable_threshold', label:'冷廄門檻',  type:'float'},
-    {key:'draw_outer_min',        label:'外閘下限',  type:'int'},
+    {key:'cold_stable_threshold', label:{zh:'冷廄門檻',en:'Cold-stable threshold'}, type:'float'},
+    {key:'draw_outer_min',        label:{zh:'外閘下限',en:'Outer-draw min'},        type:'int'},
   ],
   chri_score:[
-    {key:'chri.weight_allow',       label:'減磅係數',     type:'float'},
-    {key:'chri.wide_draw',          label:'外閘係數',     type:'float'},
-    {key:'chri.cold_stable_x_wide', label:'冷廄外閘係數', type:'float'},
+    {key:'chri.weight_allow',       label:{zh:'減磅係數',     en:'Weight-allow coef'}, type:'float'},
+    {key:'chri.wide_draw',          label:{zh:'外閘係數',     en:'Wide-draw coef'},    type:'float'},
+    {key:'chri.cold_stable_x_wide', label:{zh:'冷廄外閘係數', en:'Cold×wide coef'},    type:'float'},
   ],
 };
+function _lbl(label){
+  if(label && typeof label === 'object') return lang==='en' ? (label.en||label.zh) : (label.zh||label.en);
+  return label || '';
+}
 
 function _getNestedCfgVal(cfg, dotKey){
   return dotKey.split('.').reduce((o,k)=>o?.[k], cfg) ?? '—';
@@ -1279,13 +1357,14 @@ function _tunableCell(featureName, cfg){
   const params = FEATURE_PARAMS[featureName];
   if(!params) return '<span style="color:#ccc;font-size:8pt">—</span>';
   return params.map(p=>{
+    const lbl = _lbl(p.label);
     if(p.type==='link')
-      return `<div style="margin-bottom:2px"><span style="font-size:8pt;color:#1a3a5c;cursor:pointer;text-decoration:underline dotted" onclick="showModelTab('${p.tab}')">${p.label}</span></div>`;
+      return `<div style="margin-bottom:2px"><span style="font-size:8pt;color:#1a3a5c;cursor:pointer;text-decoration:underline dotted" onclick="showModelTab('${p.tab}')">${lbl}</span></div>`;
     const val = _getNestedCfgVal(cfg, p.key);
     return `<div style="margin-bottom:3px;font-size:8pt;display:flex;align-items:center;gap:4px">
-      <span style="color:#888;min-width:0;flex-shrink:0">${p.label}:</span>
+      <span style="color:#888;min-width:0;flex-shrink:0">${lbl}:</span>
       <span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 1px"
-            onclick="editParam('${p.key}','${p.label}','${p.type}',this)">${val}</span>
+            onclick="editParam('${p.key}','${lbl}','${p.type}',this)">${val}</span>
     </div>`;
   }).join('');
 }
@@ -1305,7 +1384,10 @@ async function editParam(key, label, type, el){
   async function commit(){
     const newVal=type==='float'?parseFloat(input.value):parseInt(input.value,10);
     if(isNaN(newVal)||String(newVal)===String(current)){input.replaceWith(el);return;}
-    if(!confirm(`確認更改「${modelName}」\n參數：${label}\n\n舊值：${current}\n新值：${newVal}\n\n⚠️ 此為策略參數，更改後需重新執行完整回測，現有結果將標記為過期。`)){
+    const confirmMsg = lang === 'en'
+      ? `Change "${modelName}"?\nParameter: ${label}\n\nOld: ${current}\nNew: ${newVal}\n\n⚠️ This is a strategy parameter — existing backtest results will be marked stale and the full backtest will need to be re-run.`
+      : `確認更改「${modelName}」\n參數：${label}\n\n舊值：${current}\n新值：${newVal}\n\n⚠️ 此為策略參數，更改後需重新執行完整回測，現有結果將標記為過期。`;
+    if(!confirm(confirmMsg)){
       input.replaceWith(el);return;
     }
     input.disabled=true;
@@ -1316,7 +1398,7 @@ async function editParam(key, label, type, el){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
-      alert('更改失敗：'+(e.detail||r.status));
+      alert(T('更改失敗：','Change failed: ')+(e.detail||r.status));
       input.replaceWith(el);return;
     }
     _invalidateModelsCache();
@@ -1475,8 +1557,8 @@ async function deleteModelBacktest(name){
 async function loadModelConfig(name){
   const dsEl=document.getElementById('modelDescSection');
   const invEl=document.getElementById('modelInventory');
-  if(dsEl) dsEl.innerHTML=_loadingHtml('載入模型描述…');
-  if(invEl) invEl.innerHTML=_loadingHtml('載入回測覆蓋率…');
+  if(dsEl) dsEl.innerHTML=_loadingHtml(T('載入模型描述…','Loading model description…'));
+  if(invEl) invEl.innerHTML=_loadingHtml(T('載入回測覆蓋率…','Loading backtest coverage…'));
   const [d, inv] = await Promise.all([
     api('/api/model-config/'+name),
     api('/api/model-inventory/'+encodeURIComponent(name)),
@@ -1495,62 +1577,105 @@ async function loadModelConfig(name){
   loadJobsPane();
 }
 
+// Strategy explanations are bilingual: each field is either a string (zh-only legacy)
+// or {zh, en}. _se() picks based on lang.
 const STRATEGY_EXPLAIN={
   '均衡基礎策略':{
-    overview:'全部44個特徵同時啟用，XGBoost樹深5層、100輪訓練，配合中等強度的貝葉斯平滑修正冷啟動偏差。所有維度均衡考量，是其他策略的基礎版本，適合作為對比基準。',
-    strengths:'擁有充足歷史記錄的老馬與資深騎師；好地至好地偏軟的標準場地；沙田及跑馬地均適用；各種距離的班際賽及評分賽。',
-    limitations:'大量新馬首次亮相的賽事；場地極度鬆軟時步速/場地交互變得複雜；騎師臨時替換且無共同記錄的組合。',
-    bet_style:'值博率達1.0即下注，賠率範圍1.0至6.5倍，出手頻率適中，不刻意迴避熱門或冷門。',
+    overview:{zh:'全部44個特徵同時啟用，XGBoost樹深5層、100輪訓練，配合中等強度的貝葉斯平滑修正冷啟動偏差。所有維度均衡考量，是其他策略的基礎版本，適合作為對比基準。',
+              en:'All 44 features enabled with XGBoost depth 5 over 100 rounds, plus medium-strength Bayesian shrinkage to correct cold-start bias. Balances every dimension and serves as the baseline for comparing other strategies.'},
+    strengths:{zh:'擁有充足歷史記錄的老馬與資深騎師；好地至好地偏軟的標準場地；沙田及跑馬地均適用；各種距離的班際賽及評分賽。',
+               en:'Veteran horses and experienced jockeys with deep history; Good to Good-to-Yielding tracks; works on both Sha Tin and Happy Valley; class and handicap races at any distance.'},
+    limitations:{zh:'大量新馬首次亮相的賽事；場地極度鬆軟時步速/場地交互變得複雜；騎師臨時替換且無共同記錄的組合。',
+                 en:'Races packed with first-time runners; extremely soft going where pace/going interaction gets messy; ad-hoc jockey swaps with no shared record.'},
+    bet_style:{zh:'值博率達1.0即下注，賠率範圍1.0至6.5倍，出手頻率適中，不刻意迴避熱門或冷門。',
+               en:'Bets when edge ≥ 1.0; odds range 1.0–6.5×; moderate frequency; neither favours nor avoids longshots.'},
   },
   '大樣本信任策略':{
-    overview:'模型結構與均衡基礎策略完全相同，唯一差別是貝葉斯平滑強度全面減半。平滑的作用是把勝率估值向全體平均（約8.3%）拉近；強度減半代表模型更快相信實際觀察到的勝率，而不是偏向保守的平均值。馬匹出賽20次的觀察勝率就已接近真實水準，不再受大幅壓縮。',
-    strengths:'歷史出賽超過30場的老馬；賽季中後期（騎師與馬廄熱度資料豐富）；固定配搭的騎師馬匹組合；資深練馬師的熟悉馬匹。',
-    limitations:'新馬或歷史出賽少於10場的馬匹（樣本小，高勝率可能被誇大）；季初賽事騎師配對記錄尚少；近期一兩場大爆冷的短暫熱度容易被過度信任。',
-    bet_style:'與均衡基礎策略相同，值博率1.0，賠率1.0至6.5倍。差別在預測概率本身，而非篩選條件。',
+    overview:{zh:'模型結構與均衡基礎策略完全相同，唯一差別是貝葉斯平滑強度全面減半。平滑的作用是把勝率估值向全體平均（約8.3%）拉近；強度減半代表模型更快相信實際觀察到的勝率，而不是偏向保守的平均值。馬匹出賽20次的觀察勝率就已接近真實水準，不再受大幅壓縮。',
+              en:'Same model as Balanced, but halves all Bayesian shrinkage strengths. Shrinkage pulls win-rate estimates toward the global average (~8.3%); halving it means the model trusts observed win rates faster. By ~20 starts a horse\'s observed WR is treated as close to its true level.'},
+    strengths:{zh:'歷史出賽超過30場的老馬；賽季中後期（騎師與馬廄熱度資料豐富）；固定配搭的騎師馬匹組合；資深練馬師的熟悉馬匹。',
+               en:'Horses with 30+ career starts; mid-to-late season when jockey/stable form data is rich; long-standing jockey-horse pairings; veteran trainers\' familiar horses.'},
+    limitations:{zh:'新馬或歷史出賽少於10場的馬匹（樣本小，高勝率可能被誇大）；季初賽事騎師配對記錄尚少；近期一兩場大爆冷的短暫熱度容易被過度信任。',
+                 en:'New horses or those with <10 starts (small samples may exaggerate WR); early-season races with sparse jockey-pairing data; short-lived hot streaks from one or two recent upsets get over-trusted.'},
+    bet_style:{zh:'與均衡基礎策略相同，值博率1.0，賠率1.0至6.5倍。差別在預測概率本身，而非篩選條件。',
+               en:'Same filters as Balanced — edge ≥ 1.0, odds 1.0–6.5×. The difference is in the predicted probabilities, not the selection rules.'},
   },
   '強平滑策略':{
-    overview:'貝葉斯平滑強度全面加倍，對任何個別馬匹或騎師的近期表現都保持高度懷疑，預測更傾向全體平均水準。馬匹需要超過60場出賽記錄，其勝率估值才能擺脫平均值的強力拉扯。此策略本質上認為「賽馬隨機性很高，極端值多數會回歸均值」。',
-    strengths:'季初大量新馬/新騎師首次出賽；多頭馬黑馬比例高的班次；第4至5班出賽馬水平接近、難分高下；馬廄熱度虛高（只贏了兩三場就被誇大）。',
-    limitations:'賽季中後期已有充分記錄的頂級馬匹，模型會系統性低估其真實優勢；熱門馬廄連贏多場的正確熱度訊號可能被壓制；有明確距離或場地優勢的老馬估值被壓縮。',
-    bet_style:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。因預測差異更小，值博率超標的情況相對少，出手頻率可能略低。',
+    overview:{zh:'貝葉斯平滑強度全面加倍，對任何個別馬匹或騎師的近期表現都保持高度懷疑，預測更傾向全體平均水準。馬匹需要超過60場出賽記錄，其勝率估值才能擺脫平均值的強力拉扯。此策略本質上認為「賽馬隨機性很高，極端值多數會回歸均值」。',
+              en:'Doubles all Bayesian shrinkage strengths; treats individual recent form with deep skepticism and pulls estimates strongly toward the global average. A horse needs 60+ starts before its WR escapes the pull. Embodies the view that "racing is noisy and extremes mostly revert".'},
+    strengths:{zh:'季初大量新馬/新騎師首次出賽；多頭馬黑馬比例高的班次；第4至5班出賽馬水平接近、難分高下；馬廄熱度虛高（只贏了兩三場就被誇大）。',
+               en:'Early season with many new horses/jockeys debuting; classes with many evenly-matched runners; Class 4-5 races where ability is hard to separate; situations where stable "heat" is inflated by just 2-3 recent wins.'},
+    limitations:{zh:'賽季中後期已有充分記錄的頂級馬匹，模型會系統性低估其真實優勢；熱門馬廄連贏多場的正確熱度訊號可能被壓制；有明確距離或場地優勢的老馬估值被壓縮。',
+                 en:'Systematically under-rates top horses with rich late-season records; suppresses legitimately hot stable signals after several wins; under-prices veterans with clear distance/going edges.'},
+    bet_style:{zh:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。因預測差異更小，值博率超標的情況相對少，出手頻率可能略低。',
+               en:'Same as Balanced — edge ≥ 1.0, odds 1.0–6.5×. Because predictions are flatter, fewer horses clear the edge threshold so bet frequency may be slightly lower.'},
   },
   '步速主導策略':{
-    overview:'停用馬匹、騎師、練馬師三個直接歷史勝率特徵（保留騎師配對、馬匹配對等相關特徵），同時將步速×閘位矩陣加成幅度提高約40%，步速配合加成從1.0提高至1.5倍。策略的核心假設是：閘位與步速的交互才是決定性因素，個人歷史勝率反而引入雜訊。',
-    strengths:'跑馬地短途賽（閘位×步速效應最顯著）；賽事步速極慢時內閘領跑馬優勢極大；快步速大外閘追後馬的機會；閘位分配明顯不均的賽事；騎師勝率數據噪音高時（如多名騎師水平接近）。',
-    limitations:'馬匹個人質素差距懸殊的賽事（勝率差異遠比步速重要）；步速預測本身不準確時，後續加成會放大錯誤；沙田長直路賽（閘位效應較弱）。',
-    bet_style:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。',
+    overview:{zh:'停用馬匹、騎師、練馬師三個直接歷史勝率特徵（保留騎師配對、馬匹配對等相關特徵），同時將步速×閘位矩陣加成幅度提高約40%，步速配合加成從1.0提高至1.5倍。策略的核心假設是：閘位與步速的交互才是決定性因素，個人歷史勝率反而引入雜訊。',
+              en:'Disables horse/jockey/trainer raw WR features (keeps pairing features), and amplifies pace×draw matrix bonuses ~40% with pace-style match weight bumped 1.0→1.5×. Core thesis: draw × pace interaction is decisive; individual WRs are mostly noise.'},
+    strengths:{zh:'跑馬地短途賽（閘位×步速效應最顯著）；賽事步速極慢時內閘領跑馬優勢極大；快步速大外閘追後馬的機會；閘位分配明顯不均的賽事；騎師勝率數據噪音高時（如多名騎師水平接近）。',
+               en:'Happy Valley sprints (draw×pace dominates); very slow paces where inner-draw leaders run away; fast paces giving outer closers a chance; races with uneven draw distribution; when jockey WR data is noisy (many evenly-skilled riders).'},
+    limitations:{zh:'馬匹個人質素差距懸殊的賽事（勝率差異遠比步速重要）；步速預測本身不準確時，後續加成會放大錯誤；沙田長直路賽（閘位效應較弱）。',
+                 en:'Races where horse ability gaps dwarf any pace effect; if the pace prediction itself is wrong the bonuses amplify the error; Sha Tin long straights where draw effect is weak.'},
+    bet_style:{zh:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。',
+               en:'Same as Balanced — edge ≥ 1.0, odds 1.0–6.5×.'},
   },
   '深度推算策略':{
-    overview:'XGBoost樹深由5層提高至7層，訓練輪數增至150，學習率提高至0.05，正則化稍微放寬。更深的樹可以捕捉三至四個特徵同時滿足的細微組合條件，例如「軟地＋外閘＋追後跑法＋評分下降」這類多重交互。平滑強度略降，配合較低門檻的葉子節點（5人次對比基礎的10人次）。',
-    strengths:'多重因素同時相關的複雜賽事；沙田中長途賽（場地、距離、步速、閘位全部相關）；偏軟場地賽事（好地偏軟至軟地）；馬廄冷熱與大外閘同時影響的情況；訓練數據量充足時（回測期越長越準確）。',
-    limitations:'訓練數據量少時有過擬合風險（對近期賽事特例記憶過強）；班際賽中雜牌馬組合多、訊號噪音高；深樹遇到異常賽事容易高度自信卻完全錯誤。',
-    bet_style:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。',
+    overview:{zh:'XGBoost樹深由5層提高至7層，訓練輪數增至150，學習率提高至0.05，正則化稍微放寬。更深的樹可以捕捉三至四個特徵同時滿足的細微組合條件，例如「軟地＋外閘＋追後跑法＋評分下降」這類多重交互。平滑強度略降，配合較低門檻的葉子節點（5人次對比基礎的10人次）。',
+              en:'XGBoost tree depth raised 5→7, rounds 100→150, learning rate 0.03→0.05, regularization loosened. Deeper trees capture 3-4-feature joint conditions like "soft going + outer draw + closer style + rating drop". Shrinkage is slightly lower; min child weight 10→5.'},
+    strengths:{zh:'多重因素同時相關的複雜賽事；沙田中長途賽（場地、距離、步速、閘位全部相關）；偏軟場地賽事（好地偏軟至軟地）；馬廄冷熱與大外閘同時影響的情況；訓練數據量充足時（回測期越長越準確）。',
+               en:'Complex races where multiple factors matter; Sha Tin mid-distance (going, distance, pace, draw all relevant); soft-going races; stable form interacting with wide draws; works best when training data is plentiful.'},
+    limitations:{zh:'訓練數據量少時有過擬合風險（對近期賽事特例記憶過強）；班際賽中雜牌馬組合多、訊號噪音高；深樹遇到異常賽事容易高度自信卻完全錯誤。',
+                 en:'Overfits when training data is thin (memorises recent edge cases); noisy in mixed-ability class races; deep trees can be very confident yet completely wrong on outlier races.'},
+    bet_style:{zh:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。',
+               en:'Same as Balanced — edge ≥ 1.0, odds 1.0–6.5×.'},
   },
   '熱門過濾策略':{
-    overview:'預測模型與均衡基礎策略完全相同，差別只在下注篩選邏輯：值博率門檻降至1.05（更容易觸發），賠率範圍收窄至1.5至6.5倍，排除極低賠率和長賠馬。目的是提高命中率和下注頻率，犧牲單注期望值換取現金流穩定性。',
-    strengths:'賽事賠率合理分布（無極低賠率獨大）；模型預測與市場偏好一致的普通班際賽；5至10匹馬的小場賽（熱門馬優勢更清晰）；連場有穩定熱門的賽日。',
-    limitations:'大冷門場（賠率超過6.5的機會全部放棄）；市場定價失準時（低賠率馬不一定代表真正優勢）；只押賠率1.5至6.5意味著真正的價值往往在此範圍以外。',
-    bet_style:'值博率1.05，賠率1.5至6.5倍，出手頻率偏高，注重命中率而非回報率。',
+    overview:{zh:'預測模型與均衡基礎策略完全相同，差別只在下注篩選邏輯：值博率門檻降至1.05（更容易觸發），賠率範圍收窄至1.5至6.5倍，排除極低賠率和長賠馬。目的是提高命中率和下注頻率，犧牲單注期望值換取現金流穩定性。',
+              en:'Same predictions as Balanced; only the bet filter differs — edge threshold lowered to 1.05 (easier to trigger), odds range narrowed to 1.5–6.5× (excludes ultra-low and longshots). Trades per-bet EV for higher hit rate and steadier cash flow.'},
+    strengths:{zh:'賽事賠率合理分布（無極低賠率獨大）；模型預測與市場偏好一致的普通班際賽；5至10匹馬的小場賽（熱門馬優勢更清晰）；連場有穩定熱門的賽日。',
+               en:'Races with sensible odds distribution (no runaway favourite); ordinary class races where model and market agree; 5-10 horse fields where the favourite\'s edge is clear; meet days with stable favourites every race.'},
+    limitations:{zh:'大冷門場（賠率超過6.5的機會全部放棄）；市場定價失準時（低賠率馬不一定代表真正優勢）；只押賠率1.5至6.5意味著真正的價值往往在此範圍以外。',
+                 en:'Skips all big-upset opportunities (>6.5×); when the market mis-prices, low odds don\'t imply real edge; restricting to 1.5–6.5× often misses where real value lies.'},
+    bet_style:{zh:'值博率1.05，賠率1.5至6.5倍，出手頻率偏高，注重命中率而非回報率。',
+               en:'Edge ≥ 1.05, odds 1.5–6.5×, higher bet frequency, prioritises hit rate over ROI.'},
   },
   '穩健保守策略':{
-    overview:'XGBoost樹深降至3層（最淺，只學習最主要的規律），正則化大幅加強，最小葉子樣本提高至20（每個決策節點需要更多實例支撐）。整體而言，模型只會在非常確定的情況下給出高概率，配合值博率門檻1.2的高要求，確保每次下注都有充分依據。',
-    strengths:'實力懸殊的賽事（強馬佔明顯優勢）；評分差距大的高班次賽；短途直路賽（變數少，模型容易達到1.2門檻）；寒冬期只押高確信度的機會，避免頻繁消耗本金。',
-    limitations:'群馬勢均力敵的班際賽（模型難達1.2門檻，幾乎不下注）；翻身賠率的長賠機會全部過濾；下注量很少，需要較長時間才見到統計規律。',
-    bet_style:'值博率1.2，賠率1.0至6.5倍，出手頻率最低，精準但保守，適合低風險管理策略。',
+    overview:{zh:'XGBoost樹深降至3層（最淺，只學習最主要的規律），正則化大幅加強，最小葉子樣本提高至20（每個決策節點需要更多實例支撐）。整體而言，模型只會在非常確定的情況下給出高概率，配合值博率門檻1.2的高要求，確保每次下注都有充分依據。',
+              en:'XGBoost depth lowered to 3 (only learns top-level patterns), heavy regularization, min child weight raised to 20 (each split needs more support). The model only assigns high probability to confident picks; with edge threshold 1.2, every bet has solid justification.'},
+    strengths:{zh:'實力懸殊的賽事（強馬佔明顯優勢）；評分差距大的高班次賽；短途直路賽（變數少，模型容易達到1.2門檻）；寒冬期只押高確信度的機會，避免頻繁消耗本金。',
+               en:'Races with clear top horses; high-class races with big rating spreads; straight sprints (few variables, easier to clear 1.2); cold streaks where only high-confidence picks are worth the risk.'},
+    limitations:{zh:'群馬勢均力敵的班際賽（模型難達1.2門檻，幾乎不下注）；翻身賠率的長賠機會全部過濾；下注量很少，需要較長時間才見到統計規律。',
+                 en:'Evenly matched class races (rarely clears 1.2, almost no bets); skips all longshot upsets; very low bet volume, takes a long time to see statistical patterns.'},
+    bet_style:{zh:'值博率1.2，賠率1.0至6.5倍，出手頻率最低，精準但保守，適合低風險管理策略。',
+               en:'Edge ≥ 1.2, odds 1.0–6.5×, lowest bet frequency; precise but conservative, suited to low-risk bankroll management.'},
   },
   '純技術指標策略':{
-    overview:'停用與騎師直接相關的三個特徵（騎師勝率、騎師×馬匹配對、騎師×練馬師配對），只保留馬匹客觀能力指標、場地/距離適應性、步速分析、閘位、負磅等與騎師無關的特徵。目的是驗證模型在缺少騎師資訊下仍能識別有優勢的馬匹。',
-    strengths:'騎師臨時替換、無共同歷史記錄的組合；客席騎師出賽（缺乏配對數據）；賽季初期騎師調動頻繁；在評估馬匹本身能力時排除騎師主觀因素的干擾。',
-    limitations:'頂級賽事中騎師是關鍵勝負因素（如知名騎師固定配搭）；有深厚騎師×馬匹默契記錄的老組合被低估；失去部分對弱勢騎師的懲罰訊號。',
-    bet_style:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。',
+    overview:{zh:'停用與騎師直接相關的三個特徵（騎師勝率、騎師×馬匹配對、騎師×練馬師配對），只保留馬匹客觀能力指標、場地/距離適應性、步速分析、閘位、負磅等與騎師無關的特徵。目的是驗證模型在缺少騎師資訊下仍能識別有優勢的馬匹。',
+              en:'Disables all jockey-related features (jockey WR, J×H pairing, J×T pairing); keeps only objective horse ability, going/distance fit, pace, draw, weight. Tests whether the model can still identify edges without any jockey signal.'},
+    strengths:{zh:'騎師臨時替換、無共同歷史記錄的組合；客席騎師出賽（缺乏配對數據）；賽季初期騎師調動頻繁；在評估馬匹本身能力時排除騎師主觀因素的干擾。',
+               en:'Ad-hoc jockey replacements with no shared history; visiting jockeys (no pairing data); early season with frequent jockey moves; isolating horse ability from jockey-noise.'},
+    limitations:{zh:'頂級賽事中騎師是關鍵勝負因素（如知名騎師固定配搭）；有深厚騎師×馬匹默契記錄的老組合被低估；失去部分對弱勢騎師的懲罰訊號。',
+                 en:'Top races where the jockey is decisive (star riders with established pairings); under-rates long-standing J×H combinations; loses the penalty signal for weak jockeys.'},
+    bet_style:{zh:'同均衡基礎策略，值博率1.0，賠率1.0至6.5倍。',
+               en:'Same as Balanced — edge ≥ 1.0, odds 1.0–6.5×.'},
   },
   '黑馬獵手策略':{
-    overview:'只下注賠率6至15倍的長賠馬，且要求值博率達1.4（模型認為真實勝率比市場賠率高出40%以上才出手）。策略接受很低的命中率（大約每10注中1注），但一旦命中回報豐厚。平滑強度與基礎策略相同，給少見配對組合保留足夠的估值空間。',
-    strengths:'大場賽事（12匹以上，長賠馬更多）；特殊場地狀況（鬆軟地）令熱門馬發揮失常；大外閘但步速配合絕佳的馬；馬廄突發熱度而市場未反應；評分大幅下調後的復出馬。',
-    limitations:'熱門馬主導的小場賽（賠率普遍不夠高）；短途賽閘位和步速主導結果、不確定性低；賽日只有1至2場達標，資金分配難度高；長期需要大量賽事才能驗證正期望值。',
-    bet_style:'值博率1.4，賠率6.0至15.0倍，出手頻率極低，屬於高風險高回報的長線策略。',
+    overview:{zh:'只下注賠率6至15倍的長賠馬，且要求值博率達1.4（模型認為真實勝率比市場賠率高出40%以上才出手）。策略接受很低的命中率（大約每10注中1注），但一旦命中回報豐厚。平滑強度與基礎策略相同，給少見配對組合保留足夠的估值空間。',
+              en:'Only bets longshots in the 6-15× range and requires edge ≥ 1.4 (model thinks true WR is 40%+ above market). Accepts very low hit rate (~1 in 10) for high payout when it lands. Shrinkage matches baseline so rare pairings retain estimation space.'},
+    strengths:{zh:'大場賽事（12匹以上，長賠馬更多）；特殊場地狀況（鬆軟地）令熱門馬發揮失常；大外閘但步速配合絕佳的馬；馬廄突發熱度而市場未反應；評分大幅下調後的復出馬。',
+               en:'Big fields (12+ runners, more longshots); unusual going (soft) that derails favourites; wide draws with perfect pace fit; sudden stable hot streaks the market hasn\'t priced; comeback horses after big rating drops.'},
+    limitations:{zh:'熱門馬主導的小場賽（賠率普遍不夠高）；短途賽閘位和步速主導結果、不確定性低；賽日只有1至2場達標，資金分配難度高；長期需要大量賽事才能驗證正期望值。',
+                 en:'Small favourite-dominated fields (no high enough odds); sprints where draw/pace settle it predictably; only 1-2 qualifying races per meet day (hard bankroll sizing); needs a large sample to verify positive EV.'},
+    bet_style:{zh:'值博率1.4，賠率6.0至15.0倍，出手頻率極低，屬於高風險高回報的長線策略。',
+               en:'Edge ≥ 1.4, odds 6.0–15.0×, very low bet frequency; a high-risk / high-reward long-game strategy.'},
   },
 };
+function _se(field){
+  if(field == null) return '';
+  if(typeof field === 'string') return field;
+  return lang === 'en' ? (field.en || field.zh || '') : (field.zh || field.en || '');
+}
 
 function _loadingHtml(msg){
   return`<div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:18px 20px;display:flex;align-items:center;gap:10px;color:#888;font-size:10pt"><div class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></div><span>${msg}</span></div>`;
@@ -1558,31 +1683,40 @@ function _loadingHtml(msg){
 
 function _featureFormula(f,cfg){
   const n=f.name, lay=cfg.layoff||{}, pm=cfg.pace_match||{}, chri=cfg.chri||{};
+  const en = lang === 'en';
   switch(n){
-    case 'draw_inner':       return`啟動條件：閘號 ≤ <b>${cfg.draw_inner_max??'?'}</b>`;
-    case 'draw_outer':       return`啟動條件：閘號 ≥ <b>${cfg.draw_outer_min??'?'}</b>`;
-    case 'wide_draw':        return`啟動條件：閘號 ≥ <b>${cfg.draw_outer_min??'?'}</b>（與 draw_outer 相同門檻，在 CHRI 中獨立使用）`;
-    case 'weight_allow':     return`計算：(場內最重磅 − 本馬負磅) ÷ <b>${cfg.weight_allow_divisor??'?'}</b>`;
-    case 'cold_stable_season':return`滾動窗口：<b>${cfg.trainer_form_days??'?'}</b> 天內勝率`;
-    case 'days_since':       return`休賽天數上限：<b>${lay.max_days??'?'}</b> 天`;
+    case 'draw_inner':       return en?`Trigger: draw ≤ <b>${cfg.draw_inner_max??'?'}</b>`:`啟動條件：閘號 ≤ <b>${cfg.draw_inner_max??'?'}</b>`;
+    case 'draw_outer':       return en?`Trigger: draw ≥ <b>${cfg.draw_outer_min??'?'}</b>`:`啟動條件：閘號 ≥ <b>${cfg.draw_outer_min??'?'}</b>`;
+    case 'wide_draw':        return en?`Trigger: draw ≥ <b>${cfg.draw_outer_min??'?'}</b> (same threshold as draw_outer; used independently inside CHRI)`:`啟動條件：閘號 ≥ <b>${cfg.draw_outer_min??'?'}</b>（與 draw_outer 相同門檻，在 CHRI 中獨立使用）`;
+    case 'weight_allow':     return en?`Formula: (heaviest weight in race − this horse's weight) ÷ <b>${cfg.weight_allow_divisor??'?'}</b>`:`計算：(場內最重磅 − 本馬負磅) ÷ <b>${cfg.weight_allow_divisor??'?'}</b>`;
+    case 'cold_stable_season':return en?`Rolling window: trainer WR over <b>${cfg.trainer_form_days??'?'}</b> days`:`滾動窗口：<b>${cfg.trainer_form_days??'?'}</b> 天內勝率`;
+    case 'days_since':       return en?`Max layoff days: <b>${lay.max_days??'?'}</b>`:`休賽天數上限：<b>${lay.max_days??'?'}</b> 天`;
     case 'layoff_penalty':
-      return`長休 &gt; <b>${lay.long_days??'?'}</b> 天 → <b>${lay.long_penalty??'?'}</b>&ensp;|&ensp;中休 &gt; <b>${lay.medium_days??'?'}</b> 天 → <b>${lay.medium_penalty??'?'}</b>&ensp;|&ensp;短休懲罰 <b>${lay.short_penalty??'?'}</b>`;
-    case 'rating_trend':     return`窗口：近 <b>${cfg.rating_trend_window??'?'}</b> 場評分均值 − 初期均值`;
+      return en?`Long &gt; <b>${lay.long_days??'?'}</b> d → <b>${lay.long_penalty??'?'}</b>&ensp;|&ensp;Medium &gt; <b>${lay.medium_days??'?'}</b> d → <b>${lay.medium_penalty??'?'}</b>&ensp;|&ensp;Short penalty <b>${lay.short_penalty??'?'}</b>`
+              :`長休 &gt; <b>${lay.long_days??'?'}</b> 天 → <b>${lay.long_penalty??'?'}</b>&ensp;|&ensp;中休 &gt; <b>${lay.medium_days??'?'}</b> 天 → <b>${lay.medium_penalty??'?'}</b>&ensp;|&ensp;短休懲罰 <b>${lay.short_penalty??'?'}</b>`;
+    case 'rating_trend':     return en?`Window: last <b>${cfg.rating_trend_window??'?'}</b> races rating average − early average`:`窗口：近 <b>${cfg.rating_trend_window??'?'}</b> 場評分均值 − 初期均值`;
     case 'pace_style_match':
-      return`慢賽領跑 <b>${pm.leader_slow??'?'}</b>&ensp;快賽追後 <b>${pm.closer_fast??'?'}</b>&ensp;慢賽跟跑 <b>${pm.stalker_slow??'?'}</b>&ensp;預設 <b>${pm.default??'?'}</b>`;
+      return en?`Leader×slow <b>${pm.leader_slow??'?'}</b>&ensp;Closer×fast <b>${pm.closer_fast??'?'}</b>&ensp;Stalker×slow <b>${pm.stalker_slow??'?'}</b>&ensp;Default <b>${pm.default??'?'}</b>`
+              :`慢賽領跑 <b>${pm.leader_slow??'?'}</b>&ensp;快賽追後 <b>${pm.closer_fast??'?'}</b>&ensp;慢賽跟跑 <b>${pm.stalker_slow??'?'}</b>&ensp;預設 <b>${pm.default??'?'}</b>`;
     case 'cold_stable_x_wide':
-      return`啟動條件：練馬師12月勝率 &lt; <b>${cfg.cold_stable_threshold??'?'}</b> 且 閘號 ≥ <b>${cfg.draw_outer_min??'?'}</b>`;
+      return en?`Trigger: trainer 12-mo WR &lt; <b>${cfg.cold_stable_threshold??'?'}</b> AND draw ≥ <b>${cfg.draw_outer_min??'?'}</b>`
+              :`啟動條件：練馬師12月勝率 &lt; <b>${cfg.cold_stable_threshold??'?'}</b> 且 閘號 ≥ <b>${cfg.draw_outer_min??'?'}</b>`;
     case 'chri_score':
       return`CHRI = weight_allow × <b>${chri.weight_allow??'?'}</b> + wide_draw × <b>${chri.wide_draw??'?'}</b> + cold_stable_x_wide × <b>${chri.cold_stable_x_wide??'?'}</b>`;
-    case 'going_num':        return`場地編碼詳見「場地編碼」分頁`;
-    case 'pace_draw_bonus':  return`閘位×步速矩陣詳見「步速×檔位矩陣」分頁`;
+    case 'going_num':        return en?`See "Going Code" tab for the going map`:`場地編碼詳見「場地編碼」分頁`;
+    case 'pace_draw_bonus':  return en?`See "Pace × Draw" tab for the matrix`:`閘位×步速矩陣詳見「步速×檔位矩陣」分頁`;
     default:                 return null;
   }
 }
 
-const SHRINKAGE_ZH={
-  horse_alpha:'馬匹',jockey_alpha:'騎師',trainer_alpha:'練馬師',
-  jt_alpha:'騎師×練馬師',jh_alpha:'騎師×馬匹',dist_alpha:'距離',going_alpha:'場地',
+const SHRINKAGE_LABELS={
+  horse_alpha:{zh:'馬匹',en:'Horse'},
+  jockey_alpha:{zh:'騎師',en:'Jockey'},
+  trainer_alpha:{zh:'練馬師',en:'Trainer'},
+  jt_alpha:{zh:'騎師×練馬師',en:'J×T'},
+  jh_alpha:{zh:'騎師×馬匹',en:'J×H'},
+  dist_alpha:{zh:'距離',en:'Distance'},
+  going_alpha:{zh:'場地',en:'Going'},
 };
 
 async function renderFeatureNotes(strategyName){
@@ -1593,7 +1727,7 @@ async function renderFeatureNotes(strategyName){
   const fn = (notes.features||{})[strategyName]||{};
   el.innerHTML = fn.status||fn.notes
     ? `<div class="note-row"><div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:8.5pt;font-weight:600;color:#1a3a5c">驗證筆記</span>
+        <span style="font-size:8.5pt;font-weight:600;color:#1a3a5c">${T('驗證筆記','Validation notes')}</span>
         ${_noteDisplay('feat',strategyName,fn)}
       </div></div>`
     : '';
@@ -1618,35 +1752,35 @@ function renderModelDescSection(d){
   // Strategy explanation block
   const cfg_name=cfg.name||'';
   const ex=STRATEGY_EXPLAIN[cfg_name]||{};
-  const notes=cfg.notes||'';
+  const notes = lang === 'en' ? (cfg.notes_en || cfg.notes || '') : (cfg.notes || cfg.notes_en || '');
   const parent=cfg.parent;
   const shrink=cfg.shrinkage||{};
-  const shrinkKeys=Object.keys(SHRINKAGE_ZH).filter(k=>k in shrink);
+  const shrinkKeys=Object.keys(SHRINKAGE_LABELS).filter(k=>k in shrink);
 
   const parentLine=parent
-    ?`<div style="font-size:9pt;color:#888;margin-bottom:8px">衍生自：<b style="color:#1a3a5c">${parent}</b></div>`:'';
+    ?`<div style="font-size:9pt;color:#888;margin-bottom:8px">${T('衍生自：','Derived from: ')}<b style="color:#1a3a5c">${parent}</b></div>`:'';
 
   const overviewHtml=ex.overview
-    ?`<div style="font-size:9.5pt;color:#333;line-height:1.7;margin-bottom:8px">${ex.overview}</div>`:'';
+    ?`<div style="font-size:9.5pt;color:#333;line-height:1.7;margin-bottom:8px">${_se(ex.overview)}</div>`:'';
 
   const notesHtml=notes
     ?`<div style="font-size:9pt;color:#555;padding:5px 9px;background:#fffbe6;border-left:3px solid #f0c040;border-radius:3px;margin-bottom:8px">⚙️ ${notes}</div>`:'';
 
   const _row=(label,icon,text,bg,border)=>text
-    ?`<div style="display:flex;gap:6px;align-items:flex-start;padding:5px 9px;background:${bg};border-left:3px solid ${border};border-radius:3px;margin-bottom:5px;font-size:9pt"><span style="flex-shrink:0">${icon}</span><span><b style="color:#1a3a5c">${label}：</b><span style="color:#444">${text}</span></span></div>`:'';
+    ?`<div style="display:flex;gap:6px;align-items:flex-start;padding:5px 9px;background:${bg};border-left:3px solid ${border};border-radius:3px;margin-bottom:5px;font-size:9pt"><span style="flex-shrink:0">${icon}</span><span><b style="color:#1a3a5c">${label}${T('：',': ')}</b><span style="color:#444">${_se(text)}</span></span></div>`:'';
 
-  const strengthsHtml=_row('擅長','✅',ex.strengths,'#f0fff4','#27ae60');
-  const limitHtml=_row('不擅長','⚠️',ex.limitations,'#fffbe6','#f0c040');
-  const betHtml=_row('下注風格','💰',ex.bet_style,'#f0f4ff','#2d6aa0');
+  const strengthsHtml=_row(T('擅長','Strengths'),'✅',ex.strengths,'#f0fff4','#27ae60');
+  const limitHtml=_row(T('不擅長','Limitations'),'⚠️',ex.limitations,'#fffbe6','#f0c040');
+  const betHtml=_row(T('下注風格','Bet style'),'💰',ex.bet_style,'#f0f4ff','#2d6aa0');
 
   const shrinkHtml=shrinkKeys.length?`
     <div style="margin-top:8px">
-      <div style="font-size:8pt;color:#888;margin-bottom:5px;font-weight:600">貝葉斯平滑強度（alpha 越高 = 越傾向全體平均，新實體收斂更慢）</div>
+      <div style="font-size:8pt;color:#888;margin-bottom:5px;font-weight:600">${T('貝葉斯平滑強度（alpha 越高 = 越傾向全體平均，新實體收斂更慢）','Bayesian shrinkage strength (higher alpha = pulled more toward global average, slower convergence for new entities)')}</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         ${shrinkKeys.map(k=>{
           const v=shrink[k];
           const col=v<=2?'#27ae60':v<=5?'#2d6aa0':v<=15?'#f0a030':'#e74c3c';
-          return`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;border:1px solid ${col}44;background:${col}11;font-size:9pt"><span style="color:#555">${SHRINKAGE_ZH[k]}</span><b style="color:${col}">${v}</b></span>`;
+          return`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;border:1px solid ${col}44;background:${col}11;font-size:9pt"><span style="color:#555">${_lbl(SHRINKAGE_LABELS[k])}</span><b style="color:${col}">${v}</b></span>`;
         }).join('')}
       </div>
     </div>`:'';
@@ -1654,18 +1788,21 @@ function renderModelDescSection(d){
   const betEdge = cfg.bet_edge_threshold ?? '1.0';
   const betMin  = cfg.bet_min_odds ?? '1.0';
   const betMax  = cfg.bet_max_odds ?? '6.5';
+  const lblEdge=T('值博率門檻','Edge threshold');
+  const lblMin=T('最低賠率','Min odds');
+  const lblMax=T('最高賠率','Max odds');
 
   const betParamsHtml = `
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid #eee;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:9pt">
-      <span style="color:#1a3a5c;font-weight:600">下注門檻：</span>
-      <span style="color:#888">值博率 &gt;</span>
-      <span onclick="editParam('bet_edge_threshold','值博率門檻','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betEdge}</span>
-      <span style="color:#888;margin-left:4px">賠率</span>
-      <span onclick="editParam('bet_min_odds','最低賠率','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betMin}</span>
+      <span style="color:#1a3a5c;font-weight:600">${T('下注門檻：','Bet filter: ')}</span>
+      <span style="color:#888">${T('值博率 &gt;','Edge &gt;')}</span>
+      <span onclick="editParam('bet_edge_threshold','${lblEdge}','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betEdge}</span>
+      <span style="color:#888;margin-left:4px">${T('賠率','Odds')}</span>
+      <span onclick="editParam('bet_min_odds','${lblMin}','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betMin}</span>
       <span style="color:#888">–</span>
-      <span onclick="editParam('bet_max_odds','最高賠率','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betMax}</span>
-      <span style="color:#888">倍</span>
-      <span style="font-size:7.5pt;color:#aaa;margin-left:4px">（點擊數值編輯，改動後僅需重新計算）</span>
+      <span onclick="editParam('bet_max_odds','${lblMax}','float',this)" style="cursor:pointer;font-weight:600;color:#2d6aa0;padding:2px 8px;border-radius:4px;border:1px solid #2d6aa033;background:#f0f4ff">${betMax}</span>
+      <span style="color:#888">${T('倍','×')}</span>
+      <span style="font-size:7.5pt;color:#aaa;margin-left:4px">${T('（點擊數值編輯，改動後僅需重新計算）','(click values to edit; changes only require a retally)')}</span>
     </div>`;
 
   const strategyBlock=`
@@ -1675,8 +1812,8 @@ function renderModelDescSection(d){
 
   el.innerHTML=`<div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:12px 14px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <b style="font-size:11pt;color:#1a3a5c">特徵詳情</b>
-      <span style="font-size:9pt;color:#888">${enabledCount} 啟用 / ${features.length} 總計</span>
+      <b style="font-size:11pt;color:#1a3a5c">${T('特徵詳情','Feature details')}</b>
+      <span style="font-size:9pt;color:#888">${enabledCount} ${T('啟用','on')} / ${features.length} ${T('總計','total')}</span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
     ${strategyBlock}
@@ -1703,38 +1840,39 @@ function renderModelInventory(inv, stale){
   }).join('');
 
   const staleNote=needsRerun
-    ?`<div style="font-size:9pt;color:#a00;background:#fce4e4;border:1px solid #e74c3c;border-radius:4px;padding:5px 10px;margin-bottom:8px">⚠ 模型參數已更改，以下 ${staleDates.length} 個回測日期已失效，需重新執行完整回測</div>`
+    ?`<div style="font-size:9pt;color:#a00;background:#fce4e4;border:1px solid #e74c3c;border-radius:4px;padding:5px 10px;margin-bottom:8px">⚠ ${T(`模型參數已更改，以下 ${staleDates.length} 個回測日期已失效，需重新執行完整回測`, `Model parameters changed — the ${staleDates.length} backtested date(s) below are now stale; a full re-run is required`)}</div>`
     :needsRetally
-    ?`<div style="font-size:9pt;color:#856404;background:#fff3cd;border:1px solid #d4a017;border-radius:4px;padding:5px 10px;margin-bottom:8px">🔄 下注參數已更改，下注分析需重新計算（預測準確率仍有效）</div>`
+    ?`<div style="font-size:9pt;color:#856404;background:#fff3cd;border:1px solid #d4a017;border-radius:4px;padding:5px 10px;margin-bottom:8px">🔄 ${T('下注參數已更改，下注分析需重新計算（預測準確率仍有效）', 'Bet parameters changed — bet analysis needs to be retallied (prediction accuracy is still valid)')}</div>`
     :'';
 
+  const dayU=T('日',' day(s)');
   const coverageStr = needsRerun
-    ? `${inv.total_backtested} 有效 + ${inv.total_stale} 已失效 / ${inv.total_available} 日`
-    : `${inv.total_backtested} / ${inv.total_available} 日`;
+    ? `${inv.total_backtested} ${T('有效','valid')} + ${inv.total_stale} ${T('已失效','stale')} / ${inv.total_available}${dayU}`
+    : `${inv.total_backtested} / ${inv.total_available}${dayU}`;
 
   el.innerHTML=`
     <div style="background:#fff;border:1px solid ${needsRerun?'#e74c3c':needsRetally?'#d4a017':'#dee2e6'};border-radius:6px;padding:14px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-        <b style="font-size:11pt;color:#1a3a5c">回測覆蓋率</b>
+        <b style="font-size:11pt;color:#1a3a5c">${T('回測覆蓋率','Backtest coverage')}</b>
         <span style="font-size:10pt;color:#555">${coverageStr}</span>
         <div style="flex:1;min-width:120px;max-width:260px;background:#eee;border-radius:6px;height:8px;overflow:hidden">
           <div style="width:${barW}%;height:100%;background:${barCol};border-radius:6px;transition:.3s"></div>
         </div>
-        <span style="font-size:10pt;font-weight:bold;color:${barCol}">${pct}%${needsRerun?' (已失效)':needsRetally?' (待更新)':''}</span>
+        <span style="font-size:10pt;font-weight:bold;color:${barCol}">${pct}%${needsRerun?' '+T('(已失效)','(stale)'):needsRetally?' '+T('(待更新)','(needs retally)'):''}</span>
       </div>
       ${staleNote}
       ${done.length?`<div class="inv-section">
-        <h6>✅ 已回測 (${done.length})</h6>
+        <h6>✅ ${T('已回測','Backtested')} (${done.length})</h6>
         <div class="date-chips">${chips(done,'done',true,false)}</div>
       </div>`:''}
       ${staleDates.length?`<div class="inv-section">
-        <h6>⚠ 已失效 (${staleDates.length})</h6>
+        <h6>⚠ ${T('已失效','Stale')} (${staleDates.length})</h6>
         <div class="date-chips">${chips(staleDates,'stale',true,true)}</div>
       </div>`:''}
       ${pending.length?`<div class="inv-section">
-        <h6>⬜ 未回測 (${pending.length})</h6>
+        <h6>⬜ ${T('未回測','Not backtested')} (${pending.length})</h6>
         <div class="date-chips">${chips(pending,'pending')}</div>
-      </div>`:'<div style="font-size:9pt;color:#27ae60;margin-top:4px">✓ 所有可用日期均已回測</div>'}
+      </div>`:`<div style="font-size:9pt;color:#27ae60;margin-top:4px">✓ ${T('所有可用日期均已回測','All available dates have been backtested')}</div>`}
     </div>`;
 }
 
@@ -1793,7 +1931,8 @@ function renderModelFeatures(d){
         const src = hh?.source || '';
         const tag = src ? `${src} ${hid}` : hid;
         if(!hh)return`<div style="display:inline-flex;align-items:baseline;gap:3px;padding:2px 7px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt"><span class="hyp-pill">${tag}</span></div>`;
-        return`<div style="display:inline-flex;align-items:baseline;gap:4px;padding:3px 8px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt;line-height:1.45"><span class="hyp-pill" style="flex-shrink:0">${tag}</span><span class="hyp-pill ver-pill" style="flex-shrink:0">${hh.version}</span><span style="color:#444">${hh.text}</span></div>`;
+        const hText = lang === 'en' ? (hh.text_en || hh.text) : (hh.text || hh.text_en);
+        return`<div style="display:inline-flex;align-items:baseline;gap:4px;padding:3px 8px;background:#f5f8ff;border:1px solid #dae3f0;border-radius:10px;font-size:8pt;line-height:1.45"><span class="hyp-pill" style="flex-shrink:0">${tag}</span><span class="hyp-pill ver-pill" style="flex-shrink:0">${hh.version}</span><span style="color:#444">${hText}</span></div>`;
       }).join('');
       h+=`<tr${on?'':' style="opacity:0.45"'}>
         <td style="background:#f9f9f9;vertical-align:top;padding:6px">
@@ -1811,52 +1950,116 @@ function renderModelFeatures(d){
 }
 
 // key: config path (null = not editable), type: 'int'|'float'|null
+// label/explain are bilingual {zh, en}.
 const XGB_PARAM_INFO={
-  objective:        {zh:'目標函數',       key:null,                   type:null,    explain:'模型的優化目標。binary:logistic 直接輸出勝出概率（0–1），適合二分類（贏/不贏）場景，輸出值可直接作為勝率使用。'},
-  eval_metric:      {zh:'評估指標',       key:null,                   type:null,    explain:'訓練過程中衡量模型好壞的指標。logloss（對數損失）對概率預測失真非常敏感，值越低代表概率預測越準確。'},
-  max_depth:        {zh:'最大樹深',       key:'xgb.max_depth',        type:'int',   explain:'每棵決策樹的最大分裂層數。越深=能捕捉更複雜的特徵交互（如閘位×步速×場地），但同時越容易過擬合訓練數據。5–7層為常用範圍。'},
-  learning_rate:    {zh:'學習率',         key:'xgb.learning_rate',    type:'float', explain:'每輪訓練的步進幅度，又稱 eta。越小=每棵樹貢獻更少、訓練更穩定但需要更多輪次；越大=收斂快但易震蕩。應與迭代輪數反向調整。'},
-  subsample:        {zh:'子樣本比例',     key:'xgb.subsample',        type:'float', explain:'每輪訓練隨機抽取的行樣本比例（0–1）。0.8=每次只用80%的賽事行，增加隨機性、防止過擬合，並加快訓練速度。'},
-  colsample_bytree: {zh:'特徵抽樣比例',  key:'xgb.colsample_bytree', type:'float', explain:'每棵樹隨機選取的特徵列比例（0–1）。0.7=每棵樹只用70%的特徵，防止模型過度依賴少數強特徵（如騎師勝率），增強泛化能力。'},
-  min_child_weight: {zh:'最小葉子權重',  key:'xgb.min_child_weight', type:'int',   explain:'葉子節點所需的最小梯度統計量之和，等效於最少需要多少個樣本才能繼續分裂。越高=樹越保守、防止在小樣本條件下過度分裂。'},
-  lambda:           {zh:'L2 正則化',     key:'xgb.lambda',           type:'float', explain:'對葉子權重平方的懲罰係數（Ridge 正則化）。越高=模型越平滑、對雜訊越不敏感，適合特徵之間有共線性的場景。'},
-  alpha:            {zh:'L1 正則化',     key:'xgb.alpha',            type:'float', explain:'對葉子權重絕對值的懲罰係數（Lasso 正則化）。能促使部分特徵權重歸零，自動過濾弱特徵，令模型更稀疏。'},
-  scale_pos_weight: {zh:'正樣本權重比',  key:'xgb.scale_pos_weight', type:'int',   explain:'負樣本數除以正樣本數的比值，補償類別不均衡。賽馬中每場約10匹才有1匹勝（勝率~8.3%），故設10以平衡正負樣本梯度。'},
-  verbosity:        {zh:'輸出模式',      key:null,                   type:null,    explain:'訓練時的日誌輸出等級：0=靜默，1=警告，2=資訊，3=調試。生產環境設0避免冗余輸出，調試時可臨時改為1。'},
-  nthread:          {zh:'執行緒數',      key:null,                   type:null,    explain:'並行計算使用的 CPU 執行緒數。設定為伺服器可用核心數可最大化訓練速度。超過核心數反而因上下文切換降低效率。'},
-  num_boost_rounds: {zh:'迭代輪數',      key:'num_boost_rounds',     type:'int',   explain:'訓練的決策樹總數量，每輪生成一棵樹。更多輪=模型累計擬合能力更強，但訓練更慢且有過擬合風險。通常與學習率反向調整：學習率小→輪數多。'},
+  objective:        {label:{zh:'目標函數',en:'Objective'},        key:null, type:null,
+                     explain:{zh:'模型的優化目標。binary:logistic 直接輸出勝出概率（0–1），適合二分類（贏/不贏）場景，輸出值可直接作為勝率使用。',
+                              en:'Optimisation target. binary:logistic outputs win probability in [0,1] — suited to binary (win/lose) classification and the output can be used directly as a win rate.'}},
+  eval_metric:      {label:{zh:'評估指標',en:'Eval metric'},      key:null, type:null,
+                     explain:{zh:'訓練過程中衡量模型好壞的指標。logloss（對數損失）對概率預測失真非常敏感，值越低代表概率預測越準確。',
+                              en:'Metric used during training. logloss is highly sensitive to probability mis-calibration; lower is better.'}},
+  max_depth:        {label:{zh:'最大樹深',en:'Max depth'},        key:'xgb.max_depth',        type:'int',
+                     explain:{zh:'每棵決策樹的最大分裂層數。越深=能捕捉更複雜的特徵交互（如閘位×步速×場地），但同時越容易過擬合訓練數據。5–7層為常用範圍。',
+                              en:'Max split depth per tree. Deeper trees capture richer feature interactions (e.g. draw×pace×going) but overfit more readily. 5–7 is the common range.'}},
+  learning_rate:    {label:{zh:'學習率',  en:'Learning rate'},    key:'xgb.learning_rate',    type:'float',
+                     explain:{zh:'每輪訓練的步進幅度，又稱 eta。越小=每棵樹貢獻更少、訓練更穩定但需要更多輪次；越大=收斂快但易震蕩。應與迭代輪數反向調整。',
+                              en:'Step size per round (a.k.a. eta). Smaller = each tree contributes less, training is steadier but needs more rounds. Should be inversely tuned with num_boost_rounds.'}},
+  subsample:        {label:{zh:'子樣本比例',en:'Subsample ratio'},key:'xgb.subsample',        type:'float',
+                     explain:{zh:'每輪訓練隨機抽取的行樣本比例（0–1）。0.8=每次只用80%的賽事行，增加隨機性、防止過擬合，並加快訓練速度。',
+                              en:'Fraction of rows randomly sampled per round (0–1). 0.8 = 80% of race rows used each round; adds variance, reduces overfitting, speeds up training.'}},
+  colsample_bytree: {label:{zh:'特徵抽樣比例',en:'Col-sample (by tree)'}, key:'xgb.colsample_bytree', type:'float',
+                     explain:{zh:'每棵樹隨機選取的特徵列比例（0–1）。0.7=每棵樹只用70%的特徵，防止模型過度依賴少數強特徵（如騎師勝率），增強泛化能力。',
+                              en:'Fraction of features randomly chosen per tree (0–1). 0.7 = each tree sees only 70% of features; prevents over-reliance on a few strong features (e.g. jockey WR).'}},
+  min_child_weight: {label:{zh:'最小葉子權重',en:'Min child weight'}, key:'xgb.min_child_weight', type:'int',
+                     explain:{zh:'葉子節點所需的最小梯度統計量之和，等效於最少需要多少個樣本才能繼續分裂。越高=樹越保守、防止在小樣本條件下過度分裂。',
+                              en:'Minimum sum of instance weights needed in a leaf; effectively the minimum samples required to split. Higher = more conservative splits, prevents small-sample overfitting.'}},
+  lambda:           {label:{zh:'L2 正則化',en:'L2 regularization'}, key:'xgb.lambda',         type:'float',
+                     explain:{zh:'對葉子權重平方的懲罰係數（Ridge 正則化）。越高=模型越平滑、對雜訊越不敏感，適合特徵之間有共線性的場景。',
+                              en:'L2 penalty on leaf weights (Ridge). Higher = smoother model, less noise-sensitive, good when features are collinear.'}},
+  alpha:            {label:{zh:'L1 正則化',en:'L1 regularization'}, key:'xgb.alpha',          type:'float',
+                     explain:{zh:'對葉子權重絕對值的懲罰係數（Lasso 正則化）。能促使部分特徵權重歸零，自動過濾弱特徵，令模型更稀疏。',
+                              en:'L1 penalty on leaf weights (Lasso). Pushes some weights to zero, auto-filtering weak features for a sparser model.'}},
+  scale_pos_weight: {label:{zh:'正樣本權重比',en:'Pos-class weight'}, key:'xgb.scale_pos_weight', type:'int',
+                     explain:{zh:'負樣本數除以正樣本數的比值，補償類別不均衡。賽馬中每場約10匹才有1匹勝（勝率~8.3%），故設10以平衡正負樣本梯度。',
+                              en:'Ratio of negative to positive samples; compensates for class imbalance. With ~1 winner per ~10 runners (~8.3% WR), 10 balances the gradients.'}},
+  verbosity:        {label:{zh:'輸出模式',en:'Verbosity'},        key:null, type:null,
+                     explain:{zh:'訓練時的日誌輸出等級：0=靜默，1=警告，2=資訊，3=調試。生產環境設0避免冗余輸出，調試時可臨時改為1。',
+                              en:'Log level during training: 0=silent, 1=warning, 2=info, 3=debug. Production uses 0; bump to 1 when debugging.'}},
+  nthread:          {label:{zh:'執行緒數',en:'Threads'},          key:null, type:null,
+                     explain:{zh:'並行計算使用的 CPU 執行緒數。設定為伺服器可用核心數可最大化訓練速度。超過核心數反而因上下文切換降低效率。'
+,                              en:'CPU threads used for parallel computation. Setting to the server\'s core count maximises throughput; exceeding it costs context-switch overhead.'}},
+  num_boost_rounds: {label:{zh:'迭代輪數',en:'Boost rounds'},     key:'num_boost_rounds',     type:'int',
+                     explain:{zh:'訓練的決策樹總數量，每輪生成一棵樹。更多輪=模型累計擬合能力更強，但訓練更慢且有過擬合風險。通常與學習率反向調整：學習率小→輪數多。',
+                              en:'Total trees built (one per round). More rounds = more cumulative fitting power but slower and risks overfitting. Tune inversely with learning_rate: smaller lr → more rounds.'}},
 };
-const PACE_ZH={very_slow:'非常慢',slow:'慢',medium:'中等',medium_fast:'中快',fast:'快'};
-const GOING_ZH={
-  'Good':'好地','Good to Firm':'好地偏硬','Good to Yielding':'好地偏軟',
-  'Yielding':'讓步地','Soft':'軟地','Slow':'慢地',
+const PACE_LABELS={
+  very_slow:{zh:'非常慢',en:'Very slow'}, slow:{zh:'慢',en:'Slow'}, medium:{zh:'中等',en:'Medium'},
+  medium_fast:{zh:'中快',en:'Medium-fast'}, fast:{zh:'快',en:'Fast'},
+};
+const GOING_LABELS={
+  'Good':{zh:'好地',en:'Good'},
+  'Good to Firm':{zh:'好地偏硬',en:'Good to Firm'},
+  'Good to Yielding':{zh:'好地偏軟',en:'Good to Yielding'},
+  'Yielding':{zh:'讓步地',en:'Yielding'},
+  'Soft':{zh:'軟地',en:'Soft'},
+  'Slow':{zh:'慢地',en:'Slow'},
 };
 const PACE_DRAW_INFO={
-  _overview:'根據賽事整體跑速（步速）與馬匹閘位，調整各馬的基礎勝出機率（單位：百分點 ppt）。正數加成、負數懲罰。慢步速賽事前馬消耗少，內閘前馬受惠；快步速賽事前馬消耗過大，外閘後上馬反而佔優。矩陣捕捉此步速×閘位的交互效應。',
-  draw_inner_max:{zh:'內閘上限',key:'draw_inner_max',type:'int',explain:'閘號 ≤ 此值的馬匹歸類為「內閘」。沙田短途賽入彎距離短，內閘前馬優勢更顯著；調低此值可收窄「優質內閘」的定義範圍。'},
-  draw_outer_min:{zh:'外閘下限',key:'draw_outer_min',type:'int',explain:'閘號 ≥ 此值的馬匹歸類為「外閘」。快步速賽事外閘後上馬更具優勢；調高此值可收窄「外閘」定義，只令最外側馬享受外閘加成。'},
+  _overview:{zh:'根據賽事整體跑速（步速）與馬匹閘位，調整各馬的基礎勝出機率（單位：百分點 ppt）。正數加成、負數懲罰。慢步速賽事前馬消耗少，內閘前馬受惠；快步速賽事前馬消耗過大，外閘後上馬反而佔優。矩陣捕捉此步速×閘位的交互效應。',
+             en:'Adjusts each horse\'s base win probability (in percentage points, ppt) based on race-wide pace and the horse\'s draw. Positive = bonus, negative = penalty. In slow paces leaders consume less energy and inner-draw runners benefit; in fast paces leaders burn out and outer closers come on. The matrix captures this pace×draw interaction.'},
+  draw_inner_max:{label:{zh:'內閘上限',en:'Inner-draw max'}, key:'draw_inner_max',type:'int',
+                  explain:{zh:'閘號 ≤ 此值的馬匹歸類為「內閘」。沙田短途賽入彎距離短，內閘前馬優勢更顯著；調低此值可收窄「優質內閘」的定義範圍。',
+                           en:'Horses with draw ≤ this are classified as "inner". Sha Tin sprints have short run-ups so inner-draw leaders gain a clearer edge; lower this to narrow what counts as a true inner-draw.'}},
+  draw_outer_min:{label:{zh:'外閘下限',en:'Outer-draw min'}, key:'draw_outer_min',type:'int',
+                  explain:{zh:'閘號 ≥ 此值的馬匹歸類為「外閘」。快步速賽事外閘後上馬更具優勢；調高此值可收窄「外閘」定義，只令最外側馬享受外閘加成。',
+                           en:'Horses with draw ≥ this are classified as "outer". In fast paces, outer closers have an edge; raise this to narrow the definition so only the widest gates get the bonus.'}},
 };
 const GOING_MAP_INFO={
-  _overview:'將場地狀況（硬度）轉換為有序數值，供模型學習馬匹的場地偏好特徵。數值越大代表場地越軟。模型從歷史數據學習每匹馬在不同硬度場地的表現差異，並在預測時作出調整。建議保持數值連貫性（由硬至軟遞增），避免跳躍造成特徵失真。',
+  _overview:{zh:'將場地狀況（硬度）轉換為有序數值，供模型學習馬匹的場地偏好特徵。數值越大代表場地越軟。模型從歷史數據學習每匹馬在不同硬度場地的表現差異，並在預測時作出調整。建議保持數值連貫性（由硬至軟遞增），避免跳躍造成特徵失真。',
+             en:'Maps going condition (firmness) to ordered numerics so the model can learn each horse\'s going preference. Higher = softer. The model learns how each horse performs across firmness levels and adjusts predictions accordingly. Keep values monotone (firm→soft increasing) to avoid distorting the feature.'},
   _explain:{
-    'Good':         '標準場地，香港最常見狀況，為基準值（0）。速馬於好地表現最穩定。',
-    'Good to Firm': '場地偏硬，快馬更易維持速度，有利前追型馬匹。賽事節奏較快。',
-    'Good to Yielding':'場地略軟，前馬消耗稍大，輕微有利後上型馬匹。',
-    'Yielding':     '場地較軟，後上型馬匹明顯受益，前馬容易提早墮後。',
-    'Soft':         '軟地，對大步幅後上型馬匹最為有利，前馬消耗大。',
-    'Slow':         '慢地（如雨後泥濘），節奏紊亂，後上馬佔優但結果不穩定。',
+    'Good':         {zh:'標準場地，香港最常見狀況，為基準值（0）。速馬於好地表現最穩定。',
+                     en:'Standard track — the most common condition in Hong Kong; serves as the baseline (0). Speed horses are most reliable on Good.'},
+    'Good to Firm': {zh:'場地偏硬，快馬更易維持速度，有利前追型馬匹。賽事節奏較快。',
+                     en:'Slightly firm — speed horses sustain pace more easily, favouring leader/pressure runners. Race rhythm tends to be faster.'},
+    'Good to Yielding':{zh:'場地略軟，前馬消耗稍大，輕微有利後上型馬匹。',
+                       en:'Slightly soft — leaders burn a bit more energy; mildly favours closers.'},
+    'Yielding':     {zh:'場地較軟，後上型馬匹明顯受益，前馬容易提早墮後。',
+                     en:'Softer — closers clearly benefit; leaders tend to fade early.'},
+    'Soft':         {zh:'軟地，對大步幅後上型馬匹最為有利，前馬消耗大。',
+                     en:'Soft — strongly favours big-stride closers; leaders are heavily taxed.'},
+    'Slow':         {zh:'慢地（如雨後泥濘），節奏紊亂，後上馬佔優但結果不穩定。',
+                     en:'Slow (e.g. wet/muddy) — rhythm gets disrupted; closers win more often but results are erratic.'},
   },
 };
 const LAYOFF_PARAM_INFO={
-  short_penalty:         {zh:'短期休賽懲罰',  key:'layoff.short_penalty',   type:'int',  explain:'休賽天數 ≤ 中期門檻時的機率懲罰值（ppt）。短暫休息對狀態影響不大，通常設 0 不懲罰。'},
-  medium_penalty:        {zh:'中期休賽懲罰',  key:'layoff.medium_penalty',  type:'int',  explain:'休賽天數介於中期與長期門檻之間的懲罰值（ppt）。馬匹有一定休息期，稍微調低預測信心。負數表示從機率輸出中直接扣除。'},
-  long_penalty:          {zh:'長期休賽懲罰',  key:'layoff.long_penalty',    type:'int',  explain:'休賽天數超過長期門檻的懲罰值（ppt）。長期缺賽（如傷患康復）後狀態不明，施加較重懲罰以降低模型信心。'},
-  medium_days:           {zh:'中期門檻天數',  key:'layoff.medium_days',     type:'int',  explain:'休賽超過此天數視為「中期休賽」，施加中期懲罰。香港通常每 2–3 週出賽一次，超過 14 天屬較長休息。'},
-  long_days:             {zh:'長期門檻天數',  key:'layoff.long_days',       type:'int',  explain:'休賽超過此天數視為「長期休賽」，施加長期懲罰。應考慮傷患康復周期，通常設 4–8 週（28–56 天）。'},
-  max_days:              {zh:'最長計算天數',  key:'layoff.max_days',        type:'int',  explain:'計算休賽天數的上限。超過此值一律以上限計，避免極端值（如數年未出賽的馬匹）拉偏特徵分布。'},
-  cold_stable_threshold: {zh:'冷廄閾值',      key:'cold_stable_threshold',  type:'float',explain:'若練馬師近期出賽率低於此比率，視為「冷廄期」，對其旗下馬匹額外加重懲罰。設 0.05 表示出賽率低於 5% 即觸發冷廄判斷。'},
-  trainer_form_days:     {zh:'練馬師窗口天數',key:'trainer_form_days',      type:'int',  explain:'計算練馬師近期勝率與出賽率的回望天數。窗口越長=趨勢越穩定但對近期改變反應遲緩；越短=更敏感但易受個別賽事干擾。'},
-  rating_trend_window:   {zh:'評分趨勢場數',  key:'rating_trend_window',    type:'int',  explain:'計算馬匹官方評分升降趨勢所用的最近 N 場數。評分連升代表狀態上揚。設 3 即看最近 3 場的評分變化方向。'},
+  short_penalty:         {label:{zh:'短期休賽懲罰',en:'Short-layoff penalty'},   key:'layoff.short_penalty',   type:'int',
+                          explain:{zh:'休賽天數 ≤ 中期門檻時的機率懲罰值（ppt）。短暫休息對狀態影響不大，通常設 0 不懲罰。',
+                                   en:'Probability penalty (ppt) when layoff ≤ the medium threshold. Brief breaks rarely matter; typically left at 0.'}},
+  medium_penalty:        {label:{zh:'中期休賽懲罰',en:'Medium-layoff penalty'},  key:'layoff.medium_penalty',  type:'int',
+                          explain:{zh:'休賽天數介於中期與長期門檻之間的懲罰值（ppt）。馬匹有一定休息期，稍微調低預測信心。負數表示從機率輸出中直接扣除。',
+                                   en:'Penalty (ppt) when layoff is between the medium and long thresholds. The horse has had some break; reduce model confidence slightly. Negative values are subtracted from the probability output.'}},
+  long_penalty:          {label:{zh:'長期休賽懲罰',en:'Long-layoff penalty'},    key:'layoff.long_penalty',    type:'int',
+                          explain:{zh:'休賽天數超過長期門檻的懲罰值（ppt）。長期缺賽（如傷患康復）後狀態不明，施加較重懲罰以降低模型信心。',
+                                   en:'Penalty (ppt) when layoff exceeds the long threshold. After extended absences (e.g. injury recovery) form is uncertain; apply a stronger penalty.'}},
+  medium_days:           {label:{zh:'中期門檻天數',en:'Medium threshold (days)'}, key:'layoff.medium_days',     type:'int',
+                          explain:{zh:'休賽超過此天數視為「中期休賽」，施加中期懲罰。香港通常每 2–3 週出賽一次，超過 14 天屬較長休息。',
+                                   en:'Layoffs above this count as "medium" and incur the medium penalty. Hong Kong horses typically run every 2–3 weeks; >14 days is on the longer side.'}},
+  long_days:             {label:{zh:'長期門檻天數',en:'Long threshold (days)'},  key:'layoff.long_days',       type:'int',
+                          explain:{zh:'休賽超過此天數視為「長期休賽」，施加長期懲罰。應考慮傷患康復周期，通常設 4–8 週（28–56 天）。',
+                                   en:'Layoffs above this count as "long" and incur the long penalty. Typical 4–8 weeks (28–56 days), reflecting injury-recovery cycles.'}},
+  max_days:              {label:{zh:'最長計算天數',en:'Max counted days'},        key:'layoff.max_days',        type:'int',
+                          explain:{zh:'計算休賽天數的上限。超過此值一律以上限計，避免極端值（如數年未出賽的馬匹）拉偏特徵分布。',
+                                   en:'Upper cap on layoff-day calculation. Anything above is capped, preventing extreme values (e.g. horses absent for years) from skewing the feature.'}},
+  cold_stable_threshold: {label:{zh:'冷廄閾值',en:'Cold-stable threshold'},      key:'cold_stable_threshold',  type:'float',
+                          explain:{zh:'若練馬師近期出賽率低於此比率，視為「冷廄期」，對其旗下馬匹額外加重懲罰。設 0.05 表示出賽率低於 5% 即觸發冷廄判斷。',
+                                   en:'When the trainer\'s recent run rate falls below this, the stable is classified as "cold" and horses get an extra penalty. 0.05 = trigger when run rate <5%.'}},
+  trainer_form_days:     {label:{zh:'練馬師窗口天數',en:'Trainer window (days)'}, key:'trainer_form_days',      type:'int',
+                          explain:{zh:'計算練馬師近期勝率與出賽率的回望天數。窗口越長=趨勢越穩定但對近期改變反應遲緩；越短=更敏感但易受個別賽事干擾。',
+                                   en:'Lookback window for trainer WR and run rate. Longer = steadier trends but slow to react to recent changes; shorter = more responsive but noisier.'}},
+  rating_trend_window:   {label:{zh:'評分趨勢場數',en:'Rating-trend races'},     key:'rating_trend_window',    type:'int',
+                          explain:{zh:'計算馬匹官方評分升降趨勢所用的最近 N 場數。評分連升代表狀態上揚。設 3 即看最近 3 場的評分變化方向。',
+                                   en:'Number of recent races used to compute the official rating trend. A rising rating signals improving form. 3 = look at the last 3 races\' rating direction.'}},
 };
 
 function renderModelXGB(cfg){
@@ -1869,10 +2072,11 @@ function renderModelXGB(cfg){
     else rows.push({k,v,info:null});
   });
   rows.push({k:'num_boost_rounds',v:cfg.num_boost_rounds||100,info:XGB_PARAM_INFO['num_boost_rounds']});
+  const tHdrParam=T('參數','Parameter'), tHdrVal=T('值','Value'), tHdrExp=T('說明','Description');
   let h=`<table style="width:100%;font-size:9pt;border-collapse:collapse"><thead><tr>
-    <th style="width:110px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">參數</th>
-    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">值</th>
-    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">說明</th>
+    <th style="width:110px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrParam}</th>
+    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrVal}</th>
+    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrExp}</th>
   </tr></thead><tbody>`;
   rows.forEach(({k,v,info},i)=>{
     const bg=i%2===0?'#fff':'#f9f9f9';
@@ -1880,13 +2084,15 @@ function renderModelXGB(cfg){
       h+=`<tr><td style="padding:5px 8px;background:${bg}">${k}</td><td style="text-align:center;padding:5px 8px;background:${bg}">${v}</td><td style="background:${bg}"></td></tr>`;
       return;
     }
+    const lbl=_lbl(info.label);
+    const expl=_lbl(info.explain);
     const valCell=info.key
-      ?`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('${info.key}','${info.zh}','${info.type}',this)">${v}</span>`
+      ?`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('${info.key}','${lbl}','${info.type}',this)">${v}</span>`
       :`<span style="color:#555">${v}</span>`;
     h+=`<tr>
-      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#1a3a5c;white-space:nowrap">${info.zh}</td>
+      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#1a3a5c;white-space:nowrap">${lbl}</td>
       <td style="text-align:center;padding:5px 8px;background:${bg}">${valCell}</td>
-      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${info.explain}</td>
+      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${expl}</td>
     </tr>`;
   });
   h+='</tbody></table>';
@@ -1897,43 +2103,47 @@ function renderModelPace(cfg){
   const el=document.getElementById('mTab-pace');if(!el)return;
   const pd=cfg.pace_draw||{};
   const paces=Object.keys(pd);
-  if(!paces.length){el.innerHTML='<p class="text-muted">無數據</p>';return;}
+  if(!paces.length){el.innerHTML=`<p class="text-muted">${T('無數據','No data')}</p>`;return;}
   const dimVal=cfg.draw_inner_max||5;
   const domVal=cfg.draw_outer_min||10;
-  let h=`<p style="font-size:9pt;color:#555;margin-bottom:10px;line-height:1.6">${PACE_DRAW_INFO._overview}</p>`;
+  let h=`<p style="font-size:9pt;color:#555;margin-bottom:10px;line-height:1.6">${_lbl(PACE_DRAW_INFO._overview)}</p>`;
+  const tHdrParam=T('參數','Parameter'), tHdrVal=T('值','Value'), tHdrExp=T('說明','Description');
   // draw_inner_max / draw_outer_min params
   h+=`<table style="width:100%;font-size:9pt;border-collapse:collapse;margin-bottom:14px"><thead><tr>
-    <th style="width:110px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">參數</th>
-    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">值</th>
-    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">說明</th>
+    <th style="width:110px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrParam}</th>
+    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrVal}</th>
+    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrExp}</th>
   </tr></thead><tbody>`;
   [[PACE_DRAW_INFO.draw_inner_max,dimVal],[PACE_DRAW_INFO.draw_outer_min,domVal]].forEach(([info,v],i)=>{
     const bg=i%2===0?'#fff':'#f9f9f9';
-    const vc=`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('${info.key}','${info.zh}','${info.type}',this)">${v}</span>`;
+    const lbl=_lbl(info.label);
+    const vc=`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('${info.key}','${lbl}','${info.type}',this)">${v}</span>`;
     h+=`<tr>
-      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#1a3a5c;white-space:nowrap">${info.zh}</td>
+      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#1a3a5c;white-space:nowrap">${lbl}</td>
       <td style="text-align:center;padding:5px 8px;background:${bg}">${vc}</td>
-      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${info.explain}</td>
+      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${_lbl(info.explain)}</td>
     </tr>`;
   });
   h+='</tbody></table>';
   // Matrix
-  h+=`<div style="font-size:9pt;color:#555;margin-bottom:6px">步速×閘位加成矩陣（ppt）— 點擊數值可修改</div>`;
+  h+=`<div style="font-size:9pt;color:#555;margin-bottom:6px">${T('步速×閘位加成矩陣（ppt）— 點擊數值可修改','Pace × draw bonus matrix (ppt) — click a value to edit')}</div>`;
+  const colPace=T('步速','Pace'), colInner=T('內閘','Inner'), colMid=T('中閘','Mid'), colOuter=T('外閘','Outer');
   h+=`<table style="font-size:9pt;border-collapse:collapse"><thead><tr>
-    <th style="padding:5px 12px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c;text-align:left">步速</th>
-    <th style="padding:5px 18px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">內閘(1–${dimVal})</th>
-    <th style="padding:5px 18px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">中閘</th>
-    <th style="padding:5px 18px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">外閘(≥${domVal})</th>
+    <th style="padding:5px 12px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c;text-align:left">${colPace}</th>
+    <th style="padding:5px 18px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${colInner}(1–${dimVal})</th>
+    <th style="padding:5px 18px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${colMid}</th>
+    <th style="padding:5px 18px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${colOuter}(≥${domVal})</th>
   </tr></thead><tbody>`;
   paces.forEach((p,i)=>{
     const v=pd[p]; const bg=i%2===0?'#fff':'#f9f9f9';
+    const paceLbl=PACE_LABELS[p]?_lbl(PACE_LABELS[p]):p;
     const fmt=(x,pos)=>{
       const col=x>0?'#27ae60':x<0?'#e74c3c':'#888';
-      const label={inner:'內閘',mid:'中閘',outer:'外閘'}[pos];
-      return `<span style="font-weight:bold;color:${col};cursor:pointer;border-bottom:1px dashed ${col}88;padding:0 2px" onclick="editParam('pace_draw.${p}.${pos}','${PACE_ZH[p]||p}-${label}','int',this)">${x>0?'+':''}${x}</span>`;
+      const label={inner:colInner,mid:colMid,outer:colOuter}[pos];
+      return `<span style="font-weight:bold;color:${col};cursor:pointer;border-bottom:1px dashed ${col}88;padding:0 2px" onclick="editParam('pace_draw.${p}.${pos}','${paceLbl}-${label}','int',this)">${x>0?'+':''}${x}</span>`;
     };
     h+=`<tr>
-      <td style="padding:5px 12px;background:${bg};font-weight:bold;color:#1a3a5c">${PACE_ZH[p]||p}</td>
+      <td style="padding:5px 12px;background:${bg};font-weight:bold;color:#1a3a5c">${paceLbl}</td>
       <td style="text-align:center;padding:5px 18px;background:${bg}">${fmt(v.inner,'inner')}</td>
       <td style="text-align:center;padding:5px 18px;background:${bg}">${fmt(v.mid,'mid')}</td>
       <td style="text-align:center;padding:5px 18px;background:${bg}">${fmt(v.outer,'outer')}</td>
@@ -1946,19 +2156,22 @@ function renderModelPace(cfg){
 function renderModelGoing(cfg){
   const el=document.getElementById('mTab-going');if(!el)return;
   const gm=cfg.going_map||{};
-  let h=`<p style="font-size:9pt;color:#555;margin-bottom:10px;line-height:1.6">${GOING_MAP_INFO._overview}</p>`;
+  let h=`<p style="font-size:9pt;color:#555;margin-bottom:10px;line-height:1.6">${_lbl(GOING_MAP_INFO._overview)}</p>`;
   h+=`<table style="width:100%;font-size:9pt;border-collapse:collapse"><thead><tr>
-    <th style="width:150px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">場地狀況</th>
-    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">數值</th>
-    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">含義</th>
+    <th style="width:150px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${T('場地狀況','Going')}</th>
+    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${T('數值','Value')}</th>
+    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${T('含義','Meaning')}</th>
   </tr></thead><tbody>`;
+  const valueSfx=T(' 場地數值',' going value');
   Object.entries(gm).sort((a,b)=>a[1]-b[1]).forEach(([k,v],i)=>{
     const bg=i%2===0?'#fff':'#f9f9f9';
-    const vc=`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('going_map.${k}','${GOING_ZH[k]||k} 場地數值','int',this)">${v}</span>`;
+    const goingLbl=GOING_LABELS[k]?_lbl(GOING_LABELS[k]):k;
+    const vc=`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('going_map.${k}','${goingLbl}${valueSfx}','int',this)">${v}</span>`;
+    const exp=GOING_MAP_INFO._explain[k]?_lbl(GOING_MAP_INFO._explain[k]):'';
     h+=`<tr>
-      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#333">${GOING_ZH[k]||k}</td>
+      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#333">${goingLbl}</td>
       <td style="text-align:center;padding:5px 8px;background:${bg}">${vc}</td>
-      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${GOING_MAP_INFO._explain[k]||''}</td>
+      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${exp}</td>
     </tr>`;
   });
   h+='</tbody></table>';
@@ -1979,21 +2192,23 @@ function renderModelLayoff(cfg){
     ['trainer_form_days',     cfg.trainer_form_days??365],
     ['rating_trend_window',   cfg.rating_trend_window??3],
   ];
-  let h=`<p style="font-size:9pt;color:#555;margin-bottom:10px;line-height:1.6">針對長時間缺賽的馬匹，按休賽天數施加不同強度的懲罰，以反映狀態不確定性。懲罰值（ppt）直接從模型機率輸出中扣除；同時包含練馬師狀態與評分趨勢的計算窗口設定。</p>`;
+  let h=`<p style="font-size:9pt;color:#555;margin-bottom:10px;line-height:1.6">${T('針對長時間缺賽的馬匹，按休賽天數施加不同強度的懲罰，以反映狀態不確定性。懲罰值（ppt）直接從模型機率輸出中扣除；同時包含練馬師狀態與評分趨勢的計算窗口設定。','For horses returning from long layoffs, apply penalties scaled by absence to reflect form uncertainty. Penalties (ppt) are subtracted from the model probability. Also configures the trainer-form and rating-trend lookback windows.')}</p>`;
+  const tHdrParam=T('參數','Parameter'), tHdrVal=T('值','Value'), tHdrExp=T('說明','Description');
   h+=`<table style="width:100%;font-size:9pt;border-collapse:collapse"><thead><tr>
-    <th style="width:130px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">參數</th>
-    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">值</th>
-    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">說明</th>
+    <th style="width:130px;text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrParam}</th>
+    <th style="width:72px;text-align:center;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrVal}</th>
+    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #c5d5e8;background:#f0f4fa;color:#1a3a5c">${tHdrExp}</th>
   </tr></thead><tbody>`;
   rows.forEach(([k,v],i)=>{
     const info=LAYOFF_PARAM_INFO[k];
     if(!info){h+=`<tr><td>${k}</td><td>${v}</td><td></td></tr>`;return;}
     const bg=i%2===0?'#fff':'#f9f9f9';
-    const vc=`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('${info.key}','${info.zh}','${info.type}',this)">${v}</span>`;
+    const lbl=_lbl(info.label);
+    const vc=`<span style="font-weight:600;color:#1a3a5c;cursor:pointer;border-bottom:1px dashed #a0b4cc;padding:0 2px" onclick="editParam('${info.key}','${lbl}','${info.type}',this)">${v}</span>`;
     h+=`<tr>
-      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#1a3a5c;white-space:nowrap">${info.zh}</td>
+      <td style="padding:5px 8px;background:${bg};font-weight:600;color:#1a3a5c;white-space:nowrap">${lbl}</td>
       <td style="text-align:center;padding:5px 8px;background:${bg}">${vc}</td>
-      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${info.explain}</td>
+      <td style="padding:5px 8px;background:${bg};color:#555;line-height:1.55">${_lbl(info.explain)}</td>
     </tr>`;
   });
   h+='</tbody></table>';
@@ -2010,10 +2225,10 @@ let _batchLog=[];     // ring buffer of last 40 lines
 
 function _fmtElapsed(secs){
   if(secs==null||secs<0)return'—';
-  if(secs<60)return`${secs}秒`;
+  if(secs<60)return lang==='en'?`${secs}s`:`${secs}秒`;
   const m=Math.floor(secs/60),s=secs%60;
-  if(m<60)return`${m}分${s.toString().padStart(2,'0')}秒`;
-  return`${Math.floor(m/60)}時${(m%60).toString().padStart(2,'0')}分`;
+  if(m<60)return lang==='en'?`${m}m${s.toString().padStart(2,'0')}s`:`${m}分${s.toString().padStart(2,'0')}秒`;
+  return lang==='en'?`${Math.floor(m/60)}h${(m%60).toString().padStart(2,'0')}m`:`${Math.floor(m/60)}時${(m%60).toString().padStart(2,'0')}分`;
 }
 function _fmtETA(elapsed,done,total){
   if(!done||done<=0)return'—';
@@ -2024,7 +2239,7 @@ function _fmtETA(elapsed,done,total){
 
 async function loadJobsPane(){
   const el=document.getElementById('jobsPane');if(!el)return;
-  el.innerHTML=_loadingHtml('載入作業…');
+  el.innerHTML=_loadingHtml(T('載入作業…','Loading jobs…'));
   const d=await api('/api/jobs/status');
   if(!d)return;
   if(d.backtest){Object.assign(_batchJob,d.backtest);}
@@ -2056,10 +2271,10 @@ function _renderBatchSection(){
   const pct=j.total>0?Math.round(doneCnt/j.total*100):0;
   const barCol=j.failed?.length?'#e74c3c':'#27ae60';
   const dotCol=isRunning?'#27ae60':isStopping?'#f0a030':'#aaa';
-  const statusLabel=isRunning?'執行中':isStopping?'停止中':'閒置';
+  const statusLabel=isRunning?T('執行中','Running'):isStopping?T('停止中','Stopping'):T('閒置','Idle');
 
-  const startBtn=(!j.active)?`<button onclick="startBatchBacktest()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #27ae60;background:#f0fff4;color:#27ae60;cursor:pointer">▶ 開始</button>`:'';
-  const stopBtn=(j.active&&!j.stopping)?`<button onclick="stopBatchBacktest()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer">■ 停止</button>`:'';
+  const startBtn=(!j.active)?`<button onclick="startBatchBacktest()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #27ae60;background:#f0fff4;color:#27ae60;cursor:pointer">▶ ${T('開始','Start')}</button>`:'';
+  const stopBtn=(j.active&&!j.stopping)?`<button onclick="stopBatchBacktest()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer">■ ${T('停止','Stop')}</button>`:'';
 
   let progressHtml='';
   if(j.total>0){
@@ -2071,15 +2286,15 @@ function _renderBatchSection(){
           </div>
           <span style="font-size:9pt;color:#555;white-space:nowrap">${doneCnt}/${j.total}</span>
         </div>
-        ${j.current?`<div style="font-size:9pt;color:#555">處理中：<b style="color:#1a3a5c">${j.current}</b></div>`:''}
+        ${j.current?`<div style="font-size:9pt;color:#555">${T('處理中：','Processing: ')}<b style="color:#1a3a5c">${j.current}</b></div>`:''}
         ${elapsed!=null?`<div style="font-size:9pt;color:#888">⏱ ${_fmtElapsed(elapsed)} &ensp; ETA ${_fmtETA(elapsed,doneCnt,j.total)}</div>`:''}
-        ${(j.failed||[]).length?`<div style="font-size:8.5pt;color:#e74c3c;margin-top:2px">⚠ 失敗 ${j.failed.length} 個：${j.failed.slice(-3).join(', ')}</div>`:''}
+        ${(j.failed||[]).length?`<div style="font-size:8.5pt;color:#e74c3c;margin-top:2px">⚠ ${T('失敗','Failed')} ${j.failed.length}${T(' 個','')}: ${j.failed.slice(-3).join(', ')}</div>`:''}
       </div>`;
   }
 
   const queueHtml=j.queue?.length?`
     <div style="margin-top:6px">
-      <div style="font-size:8.5pt;color:#888;margin-bottom:3px">待處理 (${(j.queue||[]).filter(d=>!(j.done||[]).includes(d)&&!(j.failed||[]).includes(d)).length} 個)：</div>
+      <div style="font-size:8.5pt;color:#888;margin-bottom:3px">${T('待處理','Pending')} (${(j.queue||[]).filter(d=>!(j.done||[]).includes(d)&&!(j.failed||[]).includes(d)).length})${T('：',': ')}</div>
       <div style="display:flex;flex-wrap:wrap;gap:3px;max-height:64px;overflow:hidden">
         ${(j.queue||[]).map(d=>{
           const isDone=(j.done||[]).includes(d);
@@ -2103,7 +2318,7 @@ function _renderBatchSection(){
 
   return`
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-      <b style="font-size:10pt;color:#1a3a5c">⚙ 批次回測</b>
+      <b style="font-size:10pt;color:#1a3a5c">⚙ ${T('批次回測','Batch backtest')}</b>
       ${modelPill}
       <span style="font-size:9pt;display:flex;align-items:center">${_dot(dotCol)}${statusLabel}</span>
       <span style="margin-left:auto;display:flex;gap:6px">${startBtn}${stopBtn}</span>
@@ -2117,10 +2332,10 @@ function _renderScraperSection(){
   const isStopping=j.active&&j.stopping;
   const elapsed=j.started_at&&j.active?Math.round((Date.now()-new Date(j.started_at).getTime())/1000):null;
   const dotCol=isRunning?'#2d6aa0':isStopping?'#f0a030':'#aaa';
-  const statusLabel=isRunning?`執行中${j.current_task?` — ${j.current_task}`:''}`:isStopping?'停止中':'閒置';
+  const statusLabel=isRunning?`${T('執行中','Running')}${j.current_task?` — ${j.current_task}`:''}`:isStopping?T('停止中','Stopping'):T('閒置','Idle');
 
-  const startBtn=(!j.active)?`<button onclick="startScraper()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #2d6aa0;background:#f0f4ff;color:#2d6aa0;cursor:pointer">▶ 抓取</button>`:'';
-  const stopBtn=(j.active&&!j.stopping)?`<button onclick="stopScraper()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer">■ 停止</button>`:'';
+  const startBtn=(!j.active)?`<button onclick="startScraper()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #2d6aa0;background:#f0f4ff;color:#2d6aa0;cursor:pointer">▶ ${T('抓取','Scrape')}</button>`:'';
+  const stopBtn=(j.active&&!j.stopping)?`<button onclick="stopScraper()" style="font-size:9pt;padding:2px 10px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer">■ ${T('停止','Stop')}</button>`:'';
 
   const logHtml=_scraperLog.length?`
     <div style="margin-top:6px;background:#1e1e1e;border-radius:4px;padding:5px 8px;max-height:80px;overflow-y:auto" id="scraperLogBox">
@@ -2129,7 +2344,7 @@ function _renderScraperSection(){
 
   return`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <b style="font-size:10pt;color:#1a3a5c">🌐 資料抓取</b>
+      <b style="font-size:10pt;color:#1a3a5c">🌐 ${T('資料抓取','Data scraper')}</b>
       <span style="font-size:9pt;display:flex;align-items:center">${_dot(dotCol)}${statusLabel}</span>
       <span style="margin-left:auto;display:flex;gap:6px">${startBtn}${stopBtn}</span>
     </div>
@@ -2151,29 +2366,29 @@ function _scrollLogBox(id){
 
 async function startBatchBacktest(){
   const model=modelConfigCache?.config?.name;
-  if(!model){alert('請先選擇策略');return;}
+  if(!model){alert(T('請先選擇策略','Pick a strategy first'));return;}
   const r=await fetch('/api/jobs/backtest/start',{
     method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify({model})
   });
-  if(!r.ok){const e=await r.json().catch(()=>({}));alert('啟動失敗：'+(e.detail||r.status));return;}
+  if(!r.ok){const e=await r.json().catch(()=>({}));alert(T('啟動失敗：','Start failed: ')+(e.detail||r.status));return;}
 }
 
 async function stopBatchBacktest(){
   const r=await fetch('/api/jobs/backtest/stop',{method:'POST',headers:{'Authorization':'Bearer '+token}});
-  if(!r.ok){const e=await r.json().catch(()=>({}));alert('停止失敗：'+(e.detail||r.status));return;}
+  if(!r.ok){const e=await r.json().catch(()=>({}));alert(T('停止失敗：','Stop failed: ')+(e.detail||r.status));return;}
   _batchJob.stopping=true;
   _renderJobsPane();
 }
 
 async function startScraper(){
   const r=await fetch('/api/jobs/scraper/start',{method:'POST',headers:{'Authorization':'Bearer '+token}});
-  if(!r.ok){const e=await r.json().catch(()=>({}));alert('啟動失敗：'+(e.detail||r.status));return;}
+  if(!r.ok){const e=await r.json().catch(()=>({}));alert(T('啟動失敗：','Start failed: ')+(e.detail||r.status));return;}
 }
 
 async function stopScraper(){
   const r=await fetch('/api/jobs/scraper/stop',{method:'POST',headers:{'Authorization':'Bearer '+token}});
-  if(!r.ok){const e=await r.json().catch(()=>({}));alert('停止失敗：'+(e.detail||r.status));return;}
+  if(!r.ok){const e=await r.json().catch(()=>({}));alert(T('停止失敗：','Stop failed: ')+(e.detail||r.status));return;}
   _scraperJob.stopping=true;
   _renderJobsPane();
 }
@@ -2245,7 +2460,7 @@ function fmtRunning(raw){
 
 function _statusBadge(status){
   if(!status) return '';
-  const map={validated:['#e8f5e9','#2e7d32','✓ 已驗證'],needs_tuning:['#fff3e0','#e65100','⚙ 需調校'],not_working:['#ffebee','#c62828','✗ 未成立']};
+  const map={validated:['#e8f5e9','#2e7d32','✓ '+T('已驗證','Validated')],needs_tuning:['#fff3e0','#e65100','⚙ '+T('需調校','Needs tuning')],not_working:['#ffebee','#c62828','✗ '+T('未成立','Not supported')]};
   const c=map[status]; if(!c) return '';
   return`<span style="display:inline-block;font-size:7.5pt;padding:1px 7px;border-radius:10px;background:${c[0]};color:${c[1]};border:1px solid ${c[1]}44;font-weight:600;flex-shrink:0">${c[2]}</span>`;
 }
@@ -2327,13 +2542,15 @@ function renderEricPage(d, notes){
           :'';
         const currentNote=hypNotes[hyp.id];
         const noteHtml=_noteDisplay('hyp',hyp.id,currentNote);
-        const validationHtml=hyp.validation
-          ?`<div style="margin-top:3px;font-size:8pt;color:#555;line-height:1.5;background:#fafafa;border-left:3px solid #ccc;padding:4px 8px;border-radius:0 3px 3px 0">${hyp.validation.replace(/\n/g,'<br>')}</div>`
+        const hypText = lang === 'en' ? (hyp.text_en || hyp.text) : (hyp.text || hyp.text_en);
+        const hypVal  = lang === 'en' ? (hyp.validation_en || hyp.validation) : (hyp.validation || hyp.validation_en);
+        const validationHtml=hypVal
+          ?`<div style="margin-top:3px;font-size:8pt;color:#555;line-height:1.5;background:#fafafa;border-left:3px solid #ccc;padding:4px 8px;border-radius:0 3px 3px 0">${hypVal.replace(/\n/g,'<br>')}</div>`
           :'';
         h+=`<div style="display:flex;gap:6px;padding:4px 6px;border-bottom:1px solid #f3f3f3;align-items:flex-start">
           <span class="hyp-pill" style="flex-shrink:0;margin-top:2px">${hyp.source || ''} ${hyp.id}</span>
           <div style="flex:1;min-width:0">
-            <span style="font-size:9.5pt;color:#333;line-height:1.55">${hyp.text}${pills}</span>
+            <span style="font-size:9.5pt;color:#333;line-height:1.55">${hypText}${pills}</span>
             ${validationHtml}
             ${noteHtml}
           </div>
@@ -2346,6 +2563,177 @@ function renderEricPage(d, notes){
 
   h+='</div>';
   el.innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Scheduler page
+//
+//  Lists schedules from /api/schedules, lets the user add/toggle/delete and
+//  trigger one immediately. Cron expressions are 5-field (min hr dom mon dow).
+//  Each fire result is broadcast over /ws/progress as 'schedule_fired' — the
+//  WS handler logs it; we also re-fetch the list on every fire to refresh
+//  the last_fired_at column.
+// ═══════════════════════════════════════════════════════════════════════════
+let _schedCache = null;
+let _schedActions = [];
+
+async function loadSchedules(){
+  const el = document.getElementById('schedContent');
+  if(!el) return;
+  el.innerHTML = _loadingHtml(T('載入排程…','Loading schedules…'));
+  const d = await api('/api/schedules');
+  if(!d) return;
+  _schedCache = d.schedules || [];
+  _schedActions = d.available_actions || [];
+  _renderSchedules();
+}
+
+function _schedStatusBadge(s){
+  const st = s.last_fire_status;
+  if(!st) return `<span style="font-size:8pt;color:#aaa">${T('未執行','never')}</span>`;
+  const map = {
+    ok:      ['#d4edda','#155724','✓'],
+    skipped: ['#fff3cd','#856404','⊝'],
+    error:   ['#f8d7da','#721c24','✗'],
+  };
+  const [bg, fg, icon] = map[st] || ['#eee','#555','?'];
+  return `<span style="display:inline-block;font-size:8pt;padding:1px 6px;border-radius:8px;background:${bg};color:${fg};font-weight:600" title="${s.last_skip_reason||''}">${icon} ${st}</span>`;
+}
+
+function _renderSchedules(){
+  const el = document.getElementById('schedContent');
+  if(!el) return;
+  const rows = _schedCache.map(s => {
+    const args = Object.entries(s.args||{}).map(([k,v])=>`${k}=${v}`).join(', ') || '—';
+    const lastAt = s.last_fired_at || '—';
+    const safeId = s.id.replace(/'/g,"\\'");
+    return `<tr style="${s.enabled?'':'opacity:0.55'}">
+      <td style="padding:5px 8px">${s.name}</td>
+      <td style="padding:5px 8px;font-family:monospace;font-size:9pt">${s.cron}</td>
+      <td style="padding:5px 8px;font-family:monospace;font-size:9pt;color:#555">${s.action}</td>
+      <td style="padding:5px 8px;font-size:8.5pt;color:#777">${args}</td>
+      <td style="padding:5px 8px;text-align:center">${_schedStatusBadge(s)}</td>
+      <td style="padding:5px 8px;font-size:8.5pt;color:#888">${lastAt}</td>
+      <td style="padding:5px 8px;text-align:right;white-space:nowrap">
+        <button onclick="_runSchedNow('${safeId}')" style="font-size:8.5pt;padding:2px 8px;border:1px solid #1a3a5c;background:#fff;color:#1a3a5c;border-radius:3px;cursor:pointer" title="${T('立即執行','Run now')}">▶</button>
+        <button onclick="_toggleSched('${safeId}',${!s.enabled})" style="font-size:8.5pt;padding:2px 8px;border:1px solid #888;background:#fff;color:#555;border-radius:3px;cursor:pointer;margin-left:3px">${s.enabled?T('停用','Off'):T('啟用','On')}</button>
+        <button onclick="_deleteSched('${safeId}','${s.name.replace(/'/g,"\\'")}')" style="font-size:8.5pt;padding:2px 8px;border:1px solid #c0392b;background:#fff;color:#c0392b;border-radius:3px;cursor:pointer;margin-left:3px">${T('刪除','Delete')}</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const actionOptions = _schedActions.map(a=>`<option value="${a}">${a}</option>`).join('');
+
+  el.innerHTML = `
+    <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:14px;margin-bottom:14px">
+      <h5 style="font-size:11pt;color:#1a3a5c;margin-bottom:10px">${T('新增排程','Add schedule')}</h5>
+      <div style="display:grid;grid-template-columns:1.5fr 1.2fr 1fr 2fr auto;gap:8px;align-items:end">
+        <div>
+          <label style="font-size:8pt;color:#888;display:block;margin-bottom:2px">${T('名稱','Name')}</label>
+          <input id="schedName" type="text" placeholder="${T('例：每晚抓賽果','e.g. Nightly results scrape')}" style="width:100%;padding:5px 8px;font-size:9pt;border:1px solid #ddd;border-radius:3px">
+        </div>
+        <div>
+          <label style="font-size:8pt;color:#888;display:block;margin-bottom:2px">Cron <span style="font-size:7pt;color:#aaa">(min hr dom mon dow)</span></label>
+          <input id="schedCron" type="text" placeholder="30 23 * * *" style="width:100%;padding:5px 8px;font-size:9pt;font-family:monospace;border:1px solid #ddd;border-radius:3px">
+        </div>
+        <div>
+          <label style="font-size:8pt;color:#888;display:block;margin-bottom:2px">${T('動作','Action')}</label>
+          <select id="schedAction" onchange="_renderSchedArgsHint()" style="width:100%;padding:5px 8px;font-size:9pt;border:1px solid #ddd;border-radius:3px">${actionOptions}</select>
+        </div>
+        <div>
+          <label style="font-size:8pt;color:#888;display:block;margin-bottom:2px">${T('參數 (JSON)','Args (JSON)')}</label>
+          <input id="schedArgs" type="text" placeholder='{}' style="width:100%;padding:5px 8px;font-size:9pt;font-family:monospace;border:1px solid #ddd;border-radius:3px">
+        </div>
+        <button onclick="_addSched()" style="padding:6px 14px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:9pt;white-space:nowrap">${T('新增','Add')}</button>
+      </div>
+      <div id="schedArgsHint" style="font-size:8pt;color:#888;margin-top:6px"></div>
+      <div style="font-size:8pt;color:#888;margin-top:4px">${T('Cron 範例','Cron examples')}: <code>30 23 * * *</code> = ${T('每日 23:30','daily at 23:30')}; <code>*/15 * * * *</code> = ${T('每 15 分鐘','every 15 min')}; <code>0 18 * * 3,6</code> = ${T('週三、六 18:00','Wed/Sat at 18:00')}</div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;overflow:hidden">
+      <table style="width:100%;font-size:9.5pt">
+        <thead><tr style="background:#f0f4fa;color:#1a3a5c">
+          <th style="padding:7px 8px;text-align:left">${T('名稱','Name')}</th>
+          <th style="padding:7px 8px;text-align:left">Cron</th>
+          <th style="padding:7px 8px;text-align:left">${T('動作','Action')}</th>
+          <th style="padding:7px 8px;text-align:left">${T('參數','Args')}</th>
+          <th style="padding:7px 8px;text-align:center">${T('上次','Last')}</th>
+          <th style="padding:7px 8px;text-align:left">${T('時間','At')}</th>
+          <th style="padding:7px 8px;text-align:right">${T('操作','Actions')}</th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="7" style="padding:18px;text-align:center;color:#888">${T('尚無排程 — 在上方新增','No schedules yet — add one above')}</td></tr>`}</tbody>
+      </table>
+    </div>`;
+  _renderSchedArgsHint();
+}
+
+function _renderSchedArgsHint(){
+  const act = document.getElementById('schedAction')?.value;
+  const hints = {
+    scraper:         T('不需參數','No args needed'),
+    batch_backtest:  T("需 model；可選 dates: {\"model\":\"均衡基礎策略\"}", 'needs model; optional dates: {"model":"均衡基礎策略"}'),
+    single_backtest: T("需 model 和 date: {\"model\":\"...\",\"date\":\"2026-06-01\"}", 'needs model and date: {"model":"...","date":"2026-06-01"}'),
+  };
+  const el = document.getElementById('schedArgsHint');
+  if(el) el.textContent = hints[act] || '';
+}
+
+async function _addSched(){
+  const name   = document.getElementById('schedName').value.trim();
+  const cron   = document.getElementById('schedCron').value.trim();
+  const action = document.getElementById('schedAction').value;
+  const argsRaw= document.getElementById('schedArgs').value.trim() || '{}';
+  if(!name || !cron || !action){ alert(T('請填寫名稱、Cron 與動作','Name, cron and action are required')); return; }
+  let args;
+  try{ args = JSON.parse(argsRaw); }
+  catch(e){ alert(T('參數必須為合法 JSON：','Args must be valid JSON: ')+e.message); return; }
+  const r = await fetch('/api/schedules',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({name,cron,action,args,enabled:true}),
+  });
+  if(!r.ok){
+    const j = await r.json().catch(()=>({}));
+    alert(T('新增失敗：','Add failed: ')+(j.detail||r.status));
+    return;
+  }
+  document.getElementById('schedName').value = '';
+  document.getElementById('schedCron').value = '';
+  document.getElementById('schedArgs').value = '';
+  await loadSchedules();
+}
+
+async function _toggleSched(id, enabled){
+  await fetch('/api/schedules/'+encodeURIComponent(id),{
+    method:'PATCH',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({enabled}),
+  });
+  await loadSchedules();
+}
+
+async function _deleteSched(id, name){
+  if(!confirm(T(`確認刪除排程「${name}」？`,`Delete schedule "${name}"?`))) return;
+  await fetch('/api/schedules/'+encodeURIComponent(id),{
+    method:'DELETE',
+    headers:{'Authorization':'Bearer '+token},
+  });
+  await loadSchedules();
+}
+
+async function _runSchedNow(id){
+  document.getElementById('runLog').classList.add('active');
+  const r = await fetch('/api/schedules/'+encodeURIComponent(id)+'/run',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token},
+  });
+  // The WS handler will surface success in the run log; just refresh the table.
+  if(!r.ok){
+    const j = await r.json().catch(()=>({}));
+    const det = (typeof j.detail === 'object') ? (j.detail.reason||j.detail.status) : j.detail;
+    appendRunLog('✗ '+T('排程失敗: ','Schedule failed: ')+det, 'err');
+  }
+  setTimeout(loadSchedules, 600);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2403,7 +2791,7 @@ async function _fetchAndRenderDash(){
 async function _fetchAndRenderBetAudit(model){
   const el=document.getElementById('dashBetAudit');
   if(!el)return;
-  el.innerHTML=`<div style="font-size:9pt;color:#888;padding:8px">載入賠率上限分析…</div>`;
+  el.innerHTML=`<div style="font-size:9pt;color:#888;padding:8px">${T('載入賠率上限分析…','Loading odds-cap analysis…')}</div>`;
   const d=await api('/api/models/'+encodeURIComponent(model)+'/bet-audit');
   if(!d){el.innerHTML='';return;}
   if(dashModel!==model)return;   // user navigated away
@@ -2429,19 +2817,19 @@ function _renderBetAudit(d){
   // Verdict
   let verdict = '';
   if(!b.count){
-    verdict = `<span style="color:#27ae60">✓ 此上限沒有攔截任何下注</span>`;
+    verdict = `<span style="color:#27ae60">✓ ${T('此上限沒有攔截任何下注','This cap blocked no bets')}</span>`;
   } else if(b.roi < p.roi - 0.05){
-    verdict = `<span style="color:#27ae60">✓ 上限合理 — 攔截宗 ROI (${pct(b.roi)}) 顯著差於下注宗 (${pct(p.roi)})</span>`;
+    verdict = `<span style="color:#27ae60">✓ ${T(`上限合理 — 攔截宗 ROI (${pct(b.roi)}) 顯著差於下注宗 (${pct(p.roi)})`,`Cap looks right — blocked-bet ROI (${pct(b.roi)}) is materially worse than placed-bet ROI (${pct(p.roi)})`)}</span>`;
   } else if(b.roi > p.roi + 0.05){
-    verdict = `<span style="color:#e74c3c">⚠ 上限可能過嚴 — 攔截宗 ROI (${pct(b.roi)}) 反而優於下注宗 (${pct(p.roi)})</span>`;
+    verdict = `<span style="color:#e74c3c">⚠ ${T(`上限可能過嚴 — 攔截宗 ROI (${pct(b.roi)}) 反而優於下注宗 (${pct(p.roi)})`,`Cap may be too strict — blocked-bet ROI (${pct(b.roi)}) is actually better than placed-bet ROI (${pct(p.roi)})`)}</span>`;
   } else {
-    verdict = `<span style="color:#856404">≈ 攔截宗與下注宗 ROI 相近，調整上限可能影響不大</span>`;
+    verdict = `<span style="color:#856404">≈ ${T('攔截宗與下注宗 ROI 相近，調整上限可能影響不大','Blocked and placed ROI are similar; adjusting the cap likely has little effect')}</span>`;
   }
 
   const sweepRows = (d.sweep||[]).map(s=>{
     const isBest = best && Math.abs(s.max_odds-best.max_odds)<0.01 && best.max_odds!=null;
     const isCur  = s.current;
-    const badge = isCur && isBest ? ' ★當前/最佳' : isCur ? ' (當前)' : isBest ? ' ★最佳' : '';
+    const badge = isCur && isBest ? ' '+T('★當前/最佳','★ current / best') : isCur ? ' '+T('(當前)','(current)') : isBest ? ' '+T('★最佳','★ best') : '';
     const bgCol = isCur ? '#fff3cd' : isBest ? '#d4edda' : '';
     return `<tr style="background:${bgCol}">
       <td style="padding:4px 8px;font-weight:${isCur||isBest?'bold':'normal'}">${s.label}${badge}</td>
@@ -2471,39 +2859,41 @@ function _renderBetAudit(d){
     <td style="padding:3px 8px;font-size:8.5pt;text-align:center">${s.won?'<span style="color:#27ae60">✓</span>':''}</td>
   </tr>`).join('');
 
+  const tCount=T('注數','Bets'), tHit=T('命中','Hits'), tHitR=T('命中率','Hit %'), tNet=T('淨 (u)','Net (u)');
+  const tBetsSfx=T(' 注',' bets'), tHitW=T('命中','Won');
   el.innerHTML = `
     <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <b style="font-size:11pt;color:#1a3a5c">高賠率攔截審計</b>
-        <span style="font-size:9pt;color:#666">當前 bet_max_odds = <b>${cap}x</b> · edge 閾值 = <b>${d.bet_edge_threshold}</b></span>
+        <b style="font-size:11pt;color:#1a3a5c">${T('高賠率攔截審計','High-odds block audit')}</b>
+        <span style="font-size:9pt;color:#666">${T('當前','Current')} bet_max_odds = <b>${cap}x</b> · ${T('edge 閾值','edge threshold')} = <b>${d.bet_edge_threshold}</b></span>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
         <div style="background:#f8f9fa;padding:10px;border-radius:4px;border-left:3px solid #1a3a5c">
-          <div style="font-size:8.5pt;color:#666">已下注 (≤${cap}x)</div>
-          <div style="font-size:14pt;font-weight:bold">${p.count} 注</div>
-          <div style="font-size:8.5pt">命中 ${p.winners} (${pct(p.hit_rate||0)}) · ROI <span style="${roiCls(p.roi||0)}">${pct(p.roi||0)}</span> · ${sgn(p.units_net||0)}u</div>
+          <div style="font-size:8.5pt;color:#666">${T('已下注','Placed')} (≤${cap}x)</div>
+          <div style="font-size:14pt;font-weight:bold">${p.count}${tBetsSfx}</div>
+          <div style="font-size:8.5pt">${tHitW} ${p.winners} (${pct(p.hit_rate||0)}) · ROI <span style="${roiCls(p.roi||0)}">${pct(p.roi||0)}</span> · ${sgn(p.units_net||0)}u</div>
         </div>
         <div style="background:#f8f9fa;padding:10px;border-radius:4px;border-left:3px solid #856404">
-          <div style="font-size:8.5pt;color:#666">攔截 (>${cap}x)</div>
-          <div style="font-size:14pt;font-weight:bold">${b.count} 注</div>
-          <div style="font-size:8.5pt">命中 ${b.winners} (${pct(b.hit_rate||0)}) · ROI <span style="${roiCls(b.roi||0)}">${pct(b.roi||0)}</span> · ${sgn(b.units_net||0)}u</div>
+          <div style="font-size:8.5pt;color:#666">${T('攔截','Blocked')} (>${cap}x)</div>
+          <div style="font-size:14pt;font-weight:bold">${b.count}${tBetsSfx}</div>
+          <div style="font-size:8.5pt">${tHitW} ${b.winners} (${pct(b.hit_rate||0)}) · ROI <span style="${roiCls(b.roi||0)}">${pct(b.roi||0)}</span> · ${sgn(b.units_net||0)}u</div>
         </div>
       </div>
 
       <div style="font-size:9.5pt;margin-bottom:14px;padding:8px;background:#f8f9fa;border-radius:4px">${verdict}</div>
 
       <div style="margin-bottom:14px">
-        <b style="font-size:10pt;color:#1a3a5c">上限敏感性分析</b>
-        <div style="font-size:8.5pt;color:#888;margin-bottom:6px">假設 bet_max_odds 設為不同值，所有歷史候選下注的 ROI 模擬</div>
+        <b style="font-size:10pt;color:#1a3a5c">${T('上限敏感性分析','Cap sensitivity sweep')}</b>
+        <div style="font-size:8.5pt;color:#888;margin-bottom:6px">${T('假設 bet_max_odds 設為不同值，所有歷史候選下注的 ROI 模擬','Simulated ROI for all historical candidate bets under different bet_max_odds caps')}</div>
         <table style="width:100%;font-size:9pt;border-collapse:collapse">
           <thead><tr style="background:#f0f0f0">
-            <th style="padding:4px 8px;text-align:left">上限</th>
-            <th style="padding:4px 8px;text-align:right">注數</th>
-            <th style="padding:4px 8px;text-align:right">命中</th>
-            <th style="padding:4px 8px;text-align:right">命中率</th>
+            <th style="padding:4px 8px;text-align:left">${T('上限','Cap')}</th>
+            <th style="padding:4px 8px;text-align:right">${tCount}</th>
+            <th style="padding:4px 8px;text-align:right">${tHit}</th>
+            <th style="padding:4px 8px;text-align:right">${tHitR}</th>
             <th style="padding:4px 8px;text-align:right">ROI</th>
-            <th style="padding:4px 8px;text-align:right">淨 (u)</th>
+            <th style="padding:4px 8px;text-align:right">${tNet}</th>
           </tr></thead>
           <tbody>${sweepRows}</tbody>
         </table>
@@ -2511,15 +2901,15 @@ function _renderBetAudit(d){
 
       ${bucketRows ? `
       <div style="margin-bottom:14px">
-        <b style="font-size:10pt;color:#1a3a5c">攔截賠率分布</b>
+        <b style="font-size:10pt;color:#1a3a5c">${T('攔截賠率分布','Blocked odds distribution')}</b>
         <table style="width:100%;font-size:9pt;border-collapse:collapse;margin-top:6px">
           <thead><tr style="background:#f0f0f0">
-            <th style="padding:4px 8px;text-align:left">賠率區間</th>
-            <th style="padding:4px 8px;text-align:right">注數</th>
-            <th style="padding:4px 8px;text-align:right">命中</th>
-            <th style="padding:4px 8px;text-align:right">命中率</th>
+            <th style="padding:4px 8px;text-align:left">${T('賠率區間','Odds range')}</th>
+            <th style="padding:4px 8px;text-align:right">${tCount}</th>
+            <th style="padding:4px 8px;text-align:right">${tHit}</th>
+            <th style="padding:4px 8px;text-align:right">${tHitR}</th>
             <th style="padding:4px 8px;text-align:right">ROI</th>
-            <th style="padding:4px 8px;text-align:right">淨 (u)</th>
+            <th style="padding:4px 8px;text-align:right">${tNet}</th>
           </tr></thead>
           <tbody>${bucketRows}</tbody>
         </table>
@@ -2527,15 +2917,15 @@ function _renderBetAudit(d){
 
       ${sampleRows ? `
       <div>
-        <b style="font-size:10pt;color:#1a3a5c">攔截樣本 (最高賠率)</b>
+        <b style="font-size:10pt;color:#1a3a5c">${T('攔截樣本 (最高賠率)','Blocked samples (highest odds)')}</b>
         <table style="width:100%;font-size:9pt;border-collapse:collapse;margin-top:6px">
           <thead><tr style="background:#f0f0f0">
-            <th style="padding:3px 8px;text-align:left">日期</th>
-            <th style="padding:3px 8px;text-align:left">場</th>
-            <th style="padding:3px 8px;text-align:left">馬</th>
-            <th style="padding:3px 8px;text-align:right">賠率</th>
+            <th style="padding:3px 8px;text-align:left">${T('日期','Date')}</th>
+            <th style="padding:3px 8px;text-align:left">${T('場','Race')}</th>
+            <th style="padding:3px 8px;text-align:left">${T('馬','Horse')}</th>
+            <th style="padding:3px 8px;text-align:right">${T('賠率','Odds')}</th>
             <th style="padding:3px 8px;text-align:right">Edge</th>
-            <th style="padding:3px 8px;text-align:center">中</th>
+            <th style="padding:3px 8px;text-align:center">${T('中','Won')}</th>
           </tr></thead>
           <tbody>${sampleRows}</tbody>
         </table>
@@ -2549,27 +2939,27 @@ function _renderDashStatus(data){
   const datesRun=s.dates_run||0;
   const lastDate=s.per_date?.length?s.per_date[s.per_date.length-1].date:null;
   const activeBadge=data.active
-    ?`<span style="background:#d4edda;color:#155724;padding:2px 9px;border-radius:12px;font-size:8.5pt;margin-left:6px">● 使用中</span>`
-    :`<span style="background:#e2e3e5;color:#555;padding:2px 9px;border-radius:12px;font-size:8.5pt;margin-left:6px">○ 未使用</span>`;
+    ?`<span style="background:#d4edda;color:#155724;padding:2px 9px;border-radius:12px;font-size:8.5pt;margin-left:6px">● ${T('使用中','Active')}</span>`
+    :`<span style="background:#e2e3e5;color:#555;padding:2px 9px;border-radius:12px;font-size:8.5pt;margin-left:6px">○ ${T('未使用','Inactive')}</span>`;
   const st=data.stale||{};
   const effectiveRun = st.needs_rerun ? 0 : datesRun;
   const safeId=data.name.replace(/[^a-zA-Z0-9]/g,'_');
   const staleBar = st.stale ? `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:5px;margin-bottom:8px;background:${st.needs_rerun?'#f5f5f5':'#fff3cd'};border:1px solid ${st.needs_rerun?'#ddd':'#f0c040'}">
     <span style="font-size:10pt;color:${st.needs_rerun?'#999':'#856404'}">${st.needs_rerun?'📭':'🔄'}</span>
-    <span style="font-size:9.5pt;flex:1;color:${st.needs_rerun?'#999':'#856404'}">${st.needs_rerun?'回測數據已失效，請重新執行完整回測':st.reason}</span>
-    ${st.needs_retally?`<button id="retallyBtn_${safeId}" class="retally-btn" onclick="runRetally('${data.name.replace(/'/g,"\\'")}')">重新計算</button>`:''}
+    <span style="font-size:9.5pt;flex:1;color:${st.needs_rerun?'#999':'#856404'}">${st.needs_rerun?T('回測數據已失效，請重新執行完整回測','Backtest data is stale — please re-run the full backtest'):st.reason}</span>
+    ${st.needs_retally?`<button id="retallyBtn_${safeId}" class="retally-btn" onclick="runRetally('${data.name.replace(/'/g,"\\'")}')">${T('重新計算','Recalculate')}</button>`:''}
   </div>` : '';
   const meta=[
-    `已執行: <b>${effectiveRun}</b> 日${st.needs_rerun?` <span style="font-size:8pt;color:#999">(共${datesRun}日已失效)</span>`:''}`,
-    lastDate?`最後執行: <b>${lastDate}</b>`:null,
-    data.bet_edge_threshold!=null?`下注閾值: <b>${data.bet_edge_threshold}</b>`:null,
-    data.bet_max_odds!=null?`最高賠率: <b>${data.bet_max_odds}x</b>`:null,
-    data.features_disabled?.length?`<span style="color:#e74c3c">停用特徵: ${data.features_disabled.length}個</span>`:null,
-    data.parent?`派生自: <b>${data.parent}</b>`:null,
-    data.created?`建立: ${data.created}`:null,
+    `${T('已執行','Runs')}: <b>${effectiveRun}</b> ${T('日','d')}${st.needs_rerun?` <span style="font-size:8pt;color:#999">(${T(`共${datesRun}日已失效`,`${datesRun} day(s) total are stale`)})</span>`:''}`,
+    lastDate?`${T('最後執行','Last run')}: <b>${lastDate}</b>`:null,
+    data.bet_edge_threshold!=null?`${T('下注閾值','Bet threshold')}: <b>${data.bet_edge_threshold}</b>`:null,
+    data.bet_max_odds!=null?`${T('最高賠率','Max odds')}: <b>${data.bet_max_odds}x</b>`:null,
+    data.features_disabled?.length?`<span style="color:#e74c3c">${T('停用特徵','Disabled features')}: ${data.features_disabled.length}${T('個','')}</span>`:null,
+    data.parent?`${T('派生自','Derived from')}: <b>${data.parent}</b>`:null,
+    data.created?`${T('建立','Created')}: ${data.created}`:null,
   ].filter(Boolean);
   const switchBtn = (!data.active && _activeModelName)
-    ? `<button onclick="switchToActiveModel()" style="padding:3px 11px;font-size:8.5pt;background:#1a3a5c;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px" title="切換至 ${_activeModelName}">↩ 切換至使用中策略</button>`
+    ? `<button onclick="switchToActiveModel()" style="padding:3px 11px;font-size:8.5pt;background:#1a3a5c;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px" title="${T('切換至','Switch to')} ${_activeModelName}">↩ ${T('切換至使用中策略','Switch to active strategy')}</button>`
     : '';
   document.getElementById('dashStatus').innerHTML=`<div class="dash-status">
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:5px">
@@ -2577,8 +2967,8 @@ function _renderDashStatus(data){
       <span style="font-size:9pt;color:#888">v${data.version||'?'} · ${data.strategy_type||''}</span>
       ${switchBtn}
     </div>
-    <div style="font-size:10pt;color:#555;margin-bottom:5px">${data.description||''}</div>
-    ${data.notes?`<div style="font-size:9pt;color:#888;font-style:italic;margin-bottom:4px">📝 ${data.notes}</div>`:''}
+    <div style="font-size:10pt;color:#555;margin-bottom:5px">${lang==='en'?(data.description_en||data.description||''):(data.description||data.description_en||'')}</div>
+    ${(data.notes||data.notes_en)?`<div style="font-size:9pt;color:#888;font-style:italic;margin-bottom:4px">📝 ${lang==='en'?(data.notes_en||data.notes||''):(data.notes||data.notes_en||'')}</div>`:''}
     ${staleBar}
     <div style="font-size:9pt;color:#888;display:flex;gap:14px;flex-wrap:wrap">${meta.map(m=>`<span>${m}</span>`).join('')}</div>
   </div>`;
@@ -2591,18 +2981,18 @@ function _renderDashStatCards(data){
   if(st.needs_rerun){
     document.getElementById('dashStats').innerHTML=
       `<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px;font-size:11pt;background:#f8f8f8;border-radius:6px;border:1px solid #e0e0e0">
-        暫無有效數據 — 請重新執行完整回測
+        ${T('暫無有效數據 — 請重新執行完整回測','No valid data — please re-run the full backtest')}
       </div>`;
     return;
   }
   if(!s.dates_run){
     document.getElementById('dashStats').innerHTML=
       `<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:20px;font-size:11pt">
-        尚未執行任何回測
+        ${T('尚未執行任何回測','No backtest has been run yet')}
       </div>`;
     return;
   }
-  const staleWarn=st.needs_retally?` <span style="font-size:8pt;color:#856404;font-weight:normal">(待更新)</span>`:'';
+  const staleWarn=st.needs_retally?` <span style="font-size:8pt;color:#856404;font-weight:normal">${T('(待更新)','(needs retally)')}</span>`:'';
   const acc=s.top1_pct!=null?s.top1_pct.toFixed(1)+'%':'—';
   const accCls=s.top1_pct!=null?(s.top1_pct>=35?'good':s.top1_pct>=25?'':'bad'):'';
   const roi=s.roi_units!=null?(s.roi_units>=0?'+':'')+s.roi_units.toFixed(2):'—';
@@ -2613,29 +3003,29 @@ function _renderDashStatCards(data){
   const perDayRoi=s.dates_run>1?((s.roi_units||0)/s.dates_run).toFixed(2):null;
   document.getElementById('dashStats').innerHTML=`
     <div class="stat-card ${accCls}">
-      <div class="stat-label">預測命中率</div>
+      <div class="stat-label">${T('預測命中率','Prediction hit rate')}</div>
       <div class="stat-value">${acc}</div>
-      <div class="stat-sub">首選馬奪冠比率</div>
+      <div class="stat-sub">${T('首選馬奪冠比率','Top-1 pick winning %')}</div>
     </div>
     <div class="stat-card ${roiCls}">
-      <div class="stat-label">累計盈虧（單位）${staleWarn}</div>
+      <div class="stat-label">${T('累計盈虧（單位）','Cumulative P&L (u)')}${staleWarn}</div>
       <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${roi}</div>
-      <div class="stat-sub">${s.units_staked?'投注 '+s.units_staked.toFixed(0)+' 單位':''}</div>
+      <div class="stat-sub">${s.units_staked?T('投注 ','Staked ')+s.units_staked.toFixed(0)+T(' 單位',' u'):''}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">下注場次${staleWarn}</div>
+      <div class="stat-label">${T('下注場次','Bets placed')}${staleWarn}</div>
       <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${betsPlaced}</div>
-      <div class="stat-sub">${s.dates_run} 日回測</div>
+      <div class="stat-sub">${s.dates_run} ${T('日回測','day backtest')}</div>
     </div>
     <div class="stat-card ${winCls}">
-      <div class="stat-label">下注命中率${staleWarn}</div>
+      <div class="stat-label">${T('下注命中率','Bet hit rate')}${staleWarn}</div>
       <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${winPct}</div>
-      <div class="stat-sub">${betsWon} 勝 / ${betsPlaced} 注</div>
+      <div class="stat-sub">${betsWon} ${T('勝','wins')} / ${betsPlaced} ${T('注','bets')}</div>
     </div>
     ${perDayRoi!=null?`<div class="stat-card ${!st.needs_retally&&parseFloat(perDayRoi)>=0?'good':!st.needs_retally?'bad':''}">
-      <div class="stat-label">平均每日盈虧${staleWarn}</div>
+      <div class="stat-label">${T('平均每日盈虧','Average daily P&L')}${staleWarn}</div>
       <div class="stat-value" style="${st.needs_retally?'color:#856404':''}">${parseFloat(perDayRoi)>=0?'+':''}${perDayRoi}</div>
-      <div class="stat-sub">單位 / 日</div>
+      <div class="stat-sub">${T('單位 / 日','u / day')}</div>
     </div>`:''}`;
 }
 
@@ -2651,8 +3041,8 @@ function _renderDashCharts(data){
 
   const st=data.stale||{};
   const perDate=(data.summary||{}).per_date||[];
-  const noData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:10pt">暫無數據</div>';
-  const invalidData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10pt">暫無有效數據</div>';
+  const noData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:10pt">'+T('暫無數據','No data')+'</div>';
+  const invalidData='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10pt">'+T('暫無有效數據','No valid data')+'</div>';
   if(st.needs_rerun){
     document.getElementById('chartPnl').innerHTML=invalidData;
     document.getElementById('chartCumPnl').innerHTML=invalidData;
@@ -2684,12 +3074,13 @@ function _renderDashCharts(data){
   // Greyed colours for needs_retally P&L (predictions valid, bet analysis stale)
   const pnlColor=st.needs_retally?(v=>v>=0?'#a8d5b5':'#f0a0a0'):(v=>v>=0?'#27ae60':'#e74c3c');
   const lineCol=st.needs_retally?'#aaa':(cumPnls[cumPnls.length-1]>=0?'#27ae60':'#e74c3c');
-  const retallySuffix=st.needs_retally?' (待更新)':'';
+  const retallySuffix=st.needs_retally?' '+T('(待更新)','(needs retally)'):'';
+  const unitsLbl=T('單位','u');
 
   // Per-date P&L bars
   dashChartPnl=echarts.init(document.getElementById('chartPnl'));
   dashChartPnl.setOption({
-    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>${p[0].value>=0?'+':''}${p[0].value} 單位${retallySuffix}`},
+    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>${p[0].value>=0?'+':''}${p[0].value} ${unitsLbl}${retallySuffix}`},
     xAxis:{type:'category',data:dates,axisLabel:axLabel},
     yAxis:{type:'value',axisLabel:{fontSize:9}},
     series:[{type:'bar',data:pnls.map(v=>({value:v,itemStyle:{color:pnlColor(v)}}))}],
@@ -2701,7 +3092,7 @@ function _renderDashCharts(data){
   const lastCum=cumPnls[cumPnls.length-1];
   dashChartCumPnl=echarts.init(document.getElementById('chartCumPnl'));
   dashChartCumPnl.setOption({
-    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>累計: ${p[0].value>=0?'+':''}${p[0].value} 單位${retallySuffix}`},
+    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>${T('累計','Cum')}: ${p[0].value>=0?'+':''}${p[0].value} ${unitsLbl}${retallySuffix}`},
     xAxis:{type:'category',data:dates,axisLabel:axLabel},
     yAxis:{type:'value',axisLabel:{fontSize:9}},
     series:[{type:'line',data:cumPnls,smooth:true,
@@ -2716,7 +3107,7 @@ function _renderDashCharts(data){
   // Per-date accuracy bars (always valid regardless of stale type)
   dashChartAcc=echarts.init(document.getElementById('chartAccuracy'));
   dashChartAcc.setOption({
-    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>命中率: ${p[0].value??'—'}%`},
+    tooltip:{trigger:'axis',formatter:p=>`${p[0].name}<br>${T('命中率','Hit %')}: ${p[0].value??'—'}%`},
     xAxis:{type:'category',data:dates,axisLabel:axLabel},
     yAxis:{type:'value',axisLabel:{fontSize:9},max:100,min:0},
     series:[{type:'bar',data:accs.map(v=>v==null?{value:0,itemStyle:{color:'#eee'}}:{value:v,itemStyle:{color:v>=35?'#27ae60':v>=20?'#f0a030':'#e74c3c'}})}],
@@ -2734,7 +3125,7 @@ function _goRaceDate(dateStr,modelName){
   document.querySelector('[data-page="races"]')?.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   document.getElementById('page-races')?.classList.add('show');
-  document.getElementById('pageTitle').textContent='賽事';
+  document.getElementById('pageTitle').textContent=T('賽事','Races');
   setCookie('last_page','races',365);
   setCookie('race_date',dateStr,365);
   loadRaces(dateStr);
@@ -2749,9 +3140,9 @@ function _renderDashIssues(data){
 
   // Staleness is always the primary issue
   if(st.needs_rerun){
-    issues.push({lvl:'error',icon:'🔴',text:`模型參數已更改，所有回測結果已失效。${st.reason||''} 請重新執行完整回測。`});
+    issues.push({lvl:'error',icon:'🔴',text:T(`模型參數已更改，所有回測結果已失效。${st.reason||''} 請重新執行完整回測。`,`Model parameters changed — all backtest results are stale. ${st.reason||''} Please re-run the full backtest.`)});
   } else if(st.needs_retally){
-    issues.push({lvl:'warn',icon:'⚠️',text:`下注參數已更改，下注盈虧分析待重新計算。${st.reason||''} 預測準確率仍有效。`});
+    issues.push({lvl:'warn',icon:'⚠️',text:T(`下注參數已更改，下注盈虧分析待重新計算。${st.reason||''} 預測準確率仍有效。`,`Bet parameters changed — bet P&L analysis needs to be recalculated. ${st.reason||''} Prediction accuracy is still valid.`)});
   }
 
   if(st.needs_rerun){
@@ -2820,7 +3211,7 @@ function _renderDashIssues(data){
   }
 
   document.getElementById('dashIssues').innerHTML=issues.length
-    ?`<div style="font-size:10pt;font-weight:bold;color:#1a3a5c;margin-bottom:7px">狀態診斷</div>
+    ?`<div style="font-size:10pt;font-weight:bold;color:#1a3a5c;margin-bottom:7px">${T('狀態診斷','Diagnostics')}</div>
        <ul class="issue-list">${issues.map(i=>`<li class="issue-item ${i.lvl}"><span>${i.icon}</span><span>${i.text}</span></li>`).join('')}</ul>`
     :'';
 }

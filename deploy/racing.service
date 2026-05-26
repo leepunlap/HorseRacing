@@ -12,8 +12,8 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-User=root
-Group=root
+User=blee
+Group=blee
 WorkingDirectory=/var/www/horseracing
 
 Environment="DEEPSEEK_API_KEY=sk-b1950b929b034da9be789a946335740d"
