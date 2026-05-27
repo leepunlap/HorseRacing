@@ -89,6 +89,23 @@ def _race_date(conn: sqlite3.Connection, race_id: int) -> str | None:
     return val
 
 
+def _renormalise_per_race(probs: np.ndarray, group_sizes) -> np.ndarray:
+    """Divide each race's prob vector by its sum so each group sums to 1.0.
+    Falls back to uniform 1/n if a group sums to 0 (every horse calibrated
+    to ~0 — happens when the field is unusually weak in model terms)."""
+    out = np.asarray(probs, dtype=float).copy()
+    start = 0
+    for g in group_sizes:
+        end = start + g
+        s = float(out[start:end].sum())
+        if s > 1e-12:
+            out[start:end] = out[start:end] / s
+        else:
+            out[start:end] = 1.0 / float(g)
+        start = end
+    return out
+
+
 def _conn() -> sqlite3.Connection:
     c = sqlite3.connect(DB_PATH)
     c.execute("PRAGMA journal_mode = WAL")
@@ -367,6 +384,14 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
                     cal = calibration.fit(cal_input, outcomes_h,
                                           mode=cal_mode or "isotonic")
                     cal_probs = cal.transform(blended)
+                    # Isotonic / Platt operate per-row and don't preserve
+                    # per-race-sum=1. Without this step the calibrator
+                    # collapses non-favourite horses to ~0 and pushes the
+                    # favourite toward ~1, producing the "one huge edge,
+                    # rest zero" display bug. Renormalise inside each
+                    # race-group, falling back to uniform if the group
+                    # sums to zero.
+                    cal_probs = _renormalise_per_race(cal_probs, gr_te)
                 else:
                     cal_probs = blended
             except Exception as exc:
