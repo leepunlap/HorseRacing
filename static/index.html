@@ -2598,17 +2598,42 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
                + `</span>`;
         }).join('<br>')
       : '—';
-    // Stack the same top-4 horses' odds in the 賠率 column so each row in
-    // 推介 lines up with its price next door. Falls back to the bet
-    // strategy's settled odds_at_bet (or live odds) when we have no
-    // model picks at all (e.g. predictions missing for this race).
-    const oddsHtml = topPicks.length
+    // Stack the same top-4 horses' prices + model prob in three columns
+    // so each row of 推介 lines up horizontally with its 獨贏 / 位置 / 模型.
+    // Bet horse(s) bolded in every column. Falls back to single-cell
+    // values when we have no top-4 (predictions missing for this race).
+    const stackHtml = (getter) => topPicks.length
       ? topPicks.map(h => {
           const onBet = betBrandSet.has(h.brand);
-          const oddsTxt = h.odds == null ? '—' : Number(h.odds).toFixed(1);
-          return `<span style="font-variant-numeric:tabular-nums;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">${oddsTxt}</span>`;
+          const txt = getter(h);
+          return `<span style="font-variant-numeric:tabular-nums;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">${txt}</span>`;
         }).join('<br>')
-      : (displayOdds == null ? '—' : Number(displayOdds).toFixed(1));
+      : '—';
+    const winHtml   = stackHtml(h => h.odds == null ? '—' : Number(h.odds).toFixed(1));
+    const placeHtml = stackHtml(h => h.place_odds == null ? '—' : Number(h.place_odds).toFixed(1));
+    const modelHtml = stackHtml(h => h.calibrated_prob == null ? '—'
+                                                                : (h.calibrated_prob * 100).toFixed(1) + '%');
+    // 實際名次 / 投注 / 派彩 / 盈虧 also stack vertically — one row per
+    // top-4 horse. Stake/payout/pnl only appear on the bet horse's row(s);
+    // the rest stay blank so the eye lands on whatever the bet was. PnL
+    // class applied per-row so winning bets glow green inline.
+    const finishHtml = stackHtml(h => h.position == null ? '—' : escapeHtml(String(h.position)));
+    const stakeHtml = topPicks.length
+      ? topPicks.map(h => betBrandSet.has(h.brand)
+          ? `<b>${fmtMoney(bet.stake)}</b>` : '').join('<br>')
+      : (bet.stake == null ? '—' : fmtMoney(bet.stake));
+    const payoutHtml = topPicks.length
+      ? topPicks.map(h => betBrandSet.has(h.brand)
+          ? (isSettled ? `<b>${fmtMoney(bet.payout)}</b>` : '—') : '').join('<br>')
+      : (isSettled ? fmtMoney(bet.payout) : '—');
+    const pnlHtml = topPicks.length
+      ? topPicks.map(h => {
+          if (!betBrandSet.has(h.brand)) return '';
+          if (!isSettled) return '—';
+          const cls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
+          return `<b class="${cls}">${fmtMoney(bet.pnl)}</b>`;
+        }).join('<br>')
+      : (isSettled ? fmtMoney(bet.pnl) : '—');
     const pm = isSettled ? (pmByBet[bet.id] || null) : null;
     const tagChips = pm && pm.tags && pm.tags.length
       ? '<div class="pm-chips" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
@@ -2639,11 +2664,13 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
         <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(_poolLabel(bet.pool, lang))}</span></td>
         <td class="h-name">${comboHtml}</td>
         <td class="small" style="max-width:170px;line-height:1.3">${tipHtml}</td>
-        <td class="num" style="line-height:1.3">${oddsHtml}</td>
-        <td class="num">${isSettled ? escapeHtml(positions) : '—'}</td>
-        <td class="num">${fmtMoney(bet.stake)}</td>
-        <td class="num">${isSettled ? fmtMoney(bet.payout) : '—'}</td>
-        <td class="num ${isSettled ? rowPnlCls : ''}">${isSettled ? fmtMoney(bet.pnl) : '—'}</td>
+        <td class="num" style="line-height:1.3">${winHtml}</td>
+        <td class="num" style="line-height:1.3">${placeHtml}</td>
+        <td class="num" style="line-height:1.3">${modelHtml}</td>
+        <td class="num" style="line-height:1.3">${isSettled ? finishHtml : '—'}</td>
+        <td class="num" style="line-height:1.3">${stakeHtml}</td>
+        <td class="num" style="line-height:1.3">${payoutHtml}</td>
+        <td class="num" style="line-height:1.3">${pnlHtml}</td>
         <td>${isSettled
           ? (won
               ? `<span class="pill good">${t('命中', 'WON')}</span>`
@@ -2672,9 +2699,11 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           <thead><tr>
             <th>${t('場次', 'race')}</th>
             <th>${t('彩池', 'pool')}</th>
-            <th>${t('組合', 'combination')}</th>
+            <th>${t('下注馬', 'bet horse')}</th>
             <th>${t('推介 4 項', 'top 4')}</th>
-            <th class="num">${t('賠率', 'odds')}</th>
+            <th class="num">${t('獨贏', 'win')}</th>
+            <th class="num">${t('位置', 'place')}</th>
+            <th class="num">${t('模型', 'model')}</th>
             <th class="num">${t('實際名次', 'finish')}</th>
             <th class="num">${t('投注', 'stake')}</th>
             <th class="num">${t('派彩', 'payout')}</th>

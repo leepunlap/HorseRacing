@@ -89,6 +89,47 @@ def _race_date(conn: sqlite3.Connection, race_id: int) -> str | None:
     return val
 
 
+def _odds_for(conn: sqlite3.Connection, race_id: int, brand: str,
+              snapshot_basis: str | None) -> tuple[float | None, object]:
+    """Return (odds, position) for (race_id, brand).
+
+    Prefers the most recent `odds_snapshots.win_odds` with ts <= snapshot_basis
+    (joined via results.horse_no since odds_snapshots.brand is not populated),
+    falling back to `results.odds`. Position always comes from `results`.
+    """
+    row = conn.execute(
+        "SELECT odds, position, horse_no FROM results "
+        "WHERE race_id = ? AND brand = ?",
+        (race_id, brand),
+    ).fetchone()
+    if row is None:
+        return (None, None)
+    results_odds = _coerce_odds(row[0])
+    position = row[1]
+    horse_no = row[2]
+    snap_odds = None
+    if horse_no is not None:
+        if snapshot_basis is None:
+            snap_row = conn.execute(
+                "SELECT win_odds FROM odds_snapshots "
+                "WHERE race_id = ? AND horse_no = ? AND win_odds IS NOT NULL "
+                "ORDER BY ts DESC LIMIT 1",
+                (race_id, horse_no),
+            ).fetchone()
+        else:
+            snap_row = conn.execute(
+                "SELECT win_odds FROM odds_snapshots "
+                "WHERE race_id = ? AND horse_no = ? AND win_odds IS NOT NULL "
+                "  AND ts <= ? "
+                "ORDER BY ts DESC LIMIT 1",
+                (race_id, horse_no, snapshot_basis),
+            ).fetchone()
+        if snap_row is not None:
+            snap_odds = _coerce_odds(snap_row[0])
+    odds = snap_odds if snap_odds is not None else results_odds
+    return (odds, position)
+
+
 def _renormalise_per_race(probs: np.ndarray, group_sizes) -> np.ndarray:
     """Divide each race's prob vector by its sum so each group sums to 1.0.
     Falls back to uniform 1/n if a group sums to 0 (every horse calibrated
@@ -104,6 +145,28 @@ def _renormalise_per_race(probs: np.ndarray, group_sizes) -> np.ndarray:
             out[start:end] = 1.0 / float(g)
         start = end
     return out
+
+
+def _fallback_degenerate_to_blended(cal_probs: np.ndarray, blended: np.ndarray,
+                                    group_sizes) -> np.ndarray:
+    """Per-race rescue: if isotonic collapsed too many horses to EPS, the
+    surviving 1/k-uniform output is useless. Detect each race-group with
+    any horse below 1e-6 mass and overwrite it with `blended` (the upstream
+    softmaxed prob, still well-distributed). Operates row-wise on the
+    flattened arrays the walk-forward loop already produces."""
+    cp = np.asarray(cal_probs, dtype=float).copy()
+    bl = np.asarray(blended, dtype=float)
+    start = 0
+    for g in group_sizes:
+        end = start + g
+        block = cp[start:end]
+        if g > 1 and float(block.min()) < 1e-6:
+            # Substitute blended; renormalise to be safe.
+            blk = bl[start:end].copy()
+            s = float(blk.sum())
+            cp[start:end] = blk / s if s > 1e-12 else np.full(g, 1.0 / g)
+        start = end
+    return cp
 
 
 def _conn() -> sqlite3.Connection:
@@ -392,6 +455,16 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
                     # race-group, falling back to uniform if the group
                     # sums to zero.
                     cal_probs = _renormalise_per_race(cal_probs, gr_te)
+                    # Second-order check: even after renormalising, isotonic
+                    # may have crushed too many horses to the EPS floor —
+                    # the survivors end up at exactly 1/k (uniform among
+                    # whatever isotonic kept) and the rest at 1e-9. That
+                    # produces a useless "tie among k horses" prediction
+                    # which downstream picks treat as arbitrary. Detect it
+                    # per-race and revert that race to its blended_prob
+                    # vector, which still carries the per-race softmax.
+                    cal_probs = _fallback_degenerate_to_blended(
+                        cal_probs, blended, gr_te)
                 else:
                     cal_probs = blended
             except Exception as exc:
@@ -402,12 +475,7 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
         snapshot_basis = d + "T23:59:59"
         pi_te = _market_implied(conn, keys_te)  # reuse the same vector both for blend and for persistence
         for (race_id, brand), fp, mp, bp, cp in zip(keys_te, f_probs, pi_te, blended, cal_probs):
-            row = conn.execute(
-                "SELECT odds, position FROM results WHERE race_id = ? AND brand = ?",
-                (race_id, brand),
-            ).fetchone()
-            odds_v = _coerce_odds(row[0]) if row else None
-            position = row[1] if row else None
+            odds_v, position = _odds_for(conn, race_id, brand, snapshot_basis)
             edge = (cp * odds_v) if odds_v is not None else None
             conn.execute(
                 """
