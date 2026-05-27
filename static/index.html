@@ -2649,12 +2649,14 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           return `<b class="${cls}">${fmtMoney(bet.pnl)}</b>`;
         }).join('<br>')
       : (isSettled ? fmtMoney(bet.pnl) : '—');
-    // 結果 column: pill per top-4 row. Bet horse's row shows the
-    // actual outcome (命中 / 失敗 / 未派彩); non-bet rows show an em-dash
-    // to keep the 4-row stack aligned with the other columns.
+    // 結果 column: same 4-row stack. Wrap every row in `.pill` so the
+    // bet row's coloured pill and the non-bet placeholder share identical
+    // height/padding — otherwise the plain em-dash sat shorter than the
+    // pill row and broke vertical alignment with the other 4-row stacks.
+    const placeholderPill = '<span class="pill muted" style="opacity:0.4">—</span>';
     const resultHtml = topPicks.length
       ? topPicks.map(h => {
-          if (!betBrandSet.has(h.brand)) return dash;
+          if (!betBrandSet.has(h.brand)) return placeholderPill;
           if (!isSettled) return `<span class="pill muted">${t('未派彩', 'pending')}</span>`;
           return won
             ? `<span class="pill good">${t('命中', 'WON')}</span>`
