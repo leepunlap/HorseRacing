@@ -606,17 +606,21 @@ def h115_late_pace(c):
     Per-horse furlong splits are not published by HKJC, so we use the race-level
     figure from `sectionals` as a proxy for "the late pace of races this horse
     has competed in." It correlates with how hard the late stage was generally.
+
+    Note: sectionals.race_id is unpopulated (the v1 scraper didn't backfill
+    it), so we match on (date, course, distance) directly.
     """
     if c.conn is None or not c.history:
         return None
     vals: list[float] = []
     for h in c.history:
-        d, venue, dist = h.get("date"), h.get("venue"), h.get("distance")
+        d, dist = h.get("date"), h.get("distance")
+        venue = _venue_code(h.get("venue"))  # was Chinese tag, need course code
         if not (d and dist):
             continue
         r = c.conn.execute(
-            "SELECT s.late_pace FROM sectionals s JOIN races ra ON ra.id = s.race_id "
-            "WHERE ra.date = ? AND ra.distance = ? AND (ra.course = ? OR ? IS NULL) "
+            "SELECT late_pace FROM sectionals "
+            "WHERE date = ? AND distance = ? AND (course = ? OR ? IS NULL) "
             "LIMIT 1",
             (d, dist, venue, venue),
         ).fetchone()
@@ -631,12 +635,13 @@ def h116_early_pace(c):
         return None
     vals: list[float] = []
     for h in c.history:
-        d, venue, dist = h.get("date"), h.get("venue"), h.get("distance")
+        d, dist = h.get("date"), h.get("distance")
+        venue = _venue_code(h.get("venue"))  # was Chinese tag, need course code
         if not (d and dist):
             continue
         r = c.conn.execute(
-            "SELECT s.early_pace FROM sectionals s JOIN races ra ON ra.id = s.race_id "
-            "WHERE ra.date = ? AND ra.distance = ? AND (ra.course = ? OR ? IS NULL) "
+            "SELECT early_pace FROM sectionals "
+            "WHERE date = ? AND distance = ? AND (course = ? OR ? IS NULL) "
             "LIMIT 1",
             (d, dist, venue, venue),
         ).fetchone()
