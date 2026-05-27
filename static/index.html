@@ -551,6 +551,8 @@ const state = {
   selectedStrategy: null,
   strategyHealth: null,
   strategyAudit: null,
+  dashBetStrategies: [],
+  dashBetStrategy: _ui.dashBetStrategy || null,  // PERSIST
   auditFrom: _ui.auditFrom || '2026-01-01',  // PERSIST
   auditTo: _ui.auditTo || '2026-05-24',      // PERSIST
   logs: [],
@@ -653,9 +655,9 @@ async function loadStrategyDetail(id) {
   state.selectedStrategy = state.strategies.find(s => s.id === id) || null;
   state.dashStrategy = id;
   saveUi({ dashStrategy: id });
-  // Fetch the summary + charts + (if not yet loaded) the feature catalog in
-  // parallel. The catalog feeds the bilingual feature-pill panel rendered
-  // alongside the dashboard.
+  // Fetch the summary + charts + bet-strategy list + (if not yet loaded)
+  // the feature catalog in parallel. The catalog feeds the bilingual
+  // feature-pill panel that now sits at the bottom of the page.
   const featuresPromise = state.features
     ? Promise.resolve(state.features)
     : api('/api/features').catch(() => null);
@@ -667,68 +669,21 @@ async function loadStrategyDetail(id) {
   ]);
   state.dashData = dash;
   state.dashCharts = charts;
-  state.betStrategies = betStrats || [];
-  // Fetch the cum-PnL curves for every ENABLED bet strategy so the chart
-  // can overlay them. Disabled ones are still in the list (UI checkbox)
-  // but their curves are loaded on-demand when re-enabled.
-  state.dashBetCurves = {};
-  const enabled = (state.betStrategies || []).filter(b => b.enabled);
-  await Promise.all(enabled.map(b =>
-    api(`/api/bet_strategies/${b.id}/curve`)
-      .then(c => { state.dashBetCurves[b.id] = c; })
-      .catch(() => {})
-  ));
+  state.dashBetStrategies = Array.isArray(betStrats) ? betStrats : [];
+  // Forget the previously-selected bet strategy if it isn't owned by this
+  // model strategy (avoids stale selections after switching strategies).
+  if (state.dashBetStrategy != null) {
+    const bsid = parseInt(state.dashBetStrategy);
+    if (!state.dashBetStrategies.some(b => b.id === bsid)) {
+      state.dashBetStrategy = null;
+      saveUi({ dashBetStrategy: null });
+    }
+  }
   if (features && !state.features) state.features = features;
   state.strategyHealth = dash && !dash.error
     ? { windows: dash.calibration_trend }
     : null;
   state.strategyAudit = null;
-  // Lazy-load the rule-kinds catalog once so the "add new" dropdown has options.
-  if (!state.betRuleKinds) {
-    state.betRuleKinds = await api('/api/bet_strategies/rule_kinds').catch(() => ({}));
-  }
-  render();
-}
-
-// ─── Bet-strategy handlers ──────────────────────────────────────────────
-async function toggleBetStrategy(bid, enabled) {
-  await api(`/api/bet_strategies/${bid}`, {
-    method: 'PATCH', body: JSON.stringify({ enabled }),
-  }).catch(e => alert('toggle failed: ' + e.message));
-  // Refresh the list + curves for this model
-  if (!state.dashStrategy) return;
-  state.betStrategies = await api(`/api/strategies/${state.dashStrategy}/bet_strategies`);
-  state.dashBetCurves = state.dashBetCurves || {};
-  if (enabled) {
-    state.dashBetCurves[bid] = await api(`/api/bet_strategies/${bid}/curve`);
-  } else {
-    delete state.dashBetCurves[bid];
-  }
-  render();
-}
-
-async function deleteBetStrategy(bid) {
-  if (!confirm(t('刪除此投注策略?(預測不變,只刪 bet_ledger 與設定)',
-                 'Delete this bet strategy? (predictions stay; only ledger + config removed)'))) return;
-  await api(`/api/bet_strategies/${bid}`, { method: 'DELETE' })
-    .catch(e => alert('delete failed: ' + e.message));
-  delete (state.dashBetCurves || {})[bid];
-  state.betStrategies = await api(`/api/strategies/${state.dashStrategy}/bet_strategies`);
-  render();
-}
-
-async function createBetStrategy(body) {
-  if (!state.dashStrategy) return;
-  const r = await api(`/api/strategies/${state.dashStrategy}/bet_strategies`, {
-    method: 'POST', body: JSON.stringify(body),
-  }).catch(e => { alert('create failed: ' + e.message); return null; });
-  if (!r) return;
-  // Run it immediately so it has bet_ledger rows + a curve to overlay
-  await api(`/api/bet_strategies/${r.id}/run`, { method: 'POST' })
-    .catch(e => alert('initial run failed: ' + e.message));
-  state.betStrategies = await api(`/api/strategies/${state.dashStrategy}/bet_strategies`);
-  state.dashBetCurves = state.dashBetCurves || {};
-  state.dashBetCurves[r.id] = await api(`/api/bet_strategies/${r.id}/curve`).catch(() => null);
   render();
 }
 
@@ -1043,125 +998,25 @@ function renderLog(el) {
 
 function renderStrategies() {
   const main = document.getElementById('main');
+  // Auto-pick the first strategy when none selected — the page is useless
+  // without a selection and the old "click a row" table is gone.
+  if (!state.selectedStrategy && state.strategies.length) {
+    state.dashStrategy = state.strategies[0].id;
+    state.selectedStrategy = state.strategies[0];
+    // Kick off the detail load; render() will rerun on completion.
+    loadStrategyDetail(state.strategies[0].id);
+  }
   const sel = state.selectedStrategy;
-  main.innerHTML = `
-    <div class="panel">
-      <h2>${t('策略', 'Strategies')}</h2>
-      ${state.strategies.length === 0 ? `<div class="empty">${t('（尚無策略）', '(no strategies yet)')}</div>` : `
-        <table>
-          <thead><tr>
-            <th>id</th>
-            <th>${t('名稱', 'name')}</th>
-            <th>${t('啟用', 'enabled')}</th>
-            <th>stage2</th><th>α</th><th>β</th>
-            <th>${t('校準', 'cal')}</th>
-            <th>edge≥</th>
-            <th>${t('最高賠率', 'max odds')}</th>
-            <th>kelly</th>
-            <th></th>
-          </tr></thead>
-          <tbody>${state.strategies.map(s => `
-            <tr ${sel?.id === s.id ? 'style="background:rgba(94,192,255,0.06)"' : ''}>
-              <td class="num">${s.id}</td>
-              <td><a href="#" data-strat="${s.id}">${escapeHtml(s.name || '')}</a></td>
-              <td>${s.enabled
-                  ? `<span class="pill good">${t('啟用', 'on')}</span>`
-                  : `<span class="pill muted">${t('停用', 'off')}</span>`}</td>
-              <td>${s.stage2_enabled ? t('是', 'yes') : t('否', 'no')}</td>
-              <td class="num">${s.stage2_alpha}</td>
-              <td class="num">${s.stage2_beta}</td>
-              <td>${escapeHtml(s.calibration || '')}</td>
-              <td class="num">${s.edge_threshold}</td>
-              <td class="num">${s.bet_max_odds}</td>
-              <td class="num">${s.kelly_fraction}</td>
-              <td><button data-strat="${s.id}" class="btn ghost">${t('檢視', 'view')}</button></td>
-            </tr>
-          `).join('')}</tbody>
-        </table>
-      `}
-    </div>
-
-    ${sel ? renderStrategyDashboard(sel) : ''}
-  `;
+  if (!sel) {
+    main.innerHTML = `<div class="panel"><div class="empty">${t('（尚無策略）', '(no strategies yet)')}</div></div>`;
+    return;
+  }
+  main.innerHTML = renderStrategyDashboard(sel);
 }
 
 // ─── Strategy feature-pill panel ────────────────────────────────────────────
 // Bilingual condensed view of which features this strategy uses (green) vs
 // disables (grey), grouped by the 15 catalogue categories. Pill labels follow
-// ─── Bet-strategies panel ───────────────────────────────────────────────
-// Lists every bet strategy layered on top of the selected model with a
-// checkbox to overlay its cumulative-PnL curve on the Performance chart,
-// row-level ROI / win-rate stats, a delete button, and an "add new"
-// form. Backed by /api/strategies/{model_id}/bet_strategies.
-function renderBetStrategiesPanel() {
-  const lang = state.lang;
-  const list = state.betStrategies || [];
-  const rulesAvail = state.betRuleKinds || {};   // lazy-loaded below
-  const palette = ['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd',
-                   '#8c564b','#e377c2','#7f7f7f','#17becf','#bcbd22'];
-  const nextColor = palette[list.length % palette.length];
-
-  const rows = list.map(b => {
-    const roiCls = (b.roi_pct >= 0) ? 'pos' : 'neg';
-    const wr = b.n_bets ? ((b.n_wins / b.n_bets * 100).toFixed(1) + '%') : '—';
-    const checked = b.enabled ? 'checked' : '';
-    const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
-    return `
-      <tr>
-        <td>
-          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" class="bet-toggle" data-bid="${b.id}" ${checked}>
-            <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${b.chart_color || '#888'}"></span>
-            <b>${escapeHtml(label)}</b>
-          </label>
-          <div class="small" style="color:var(--muted)">${escapeHtml(b.rule_kind)} · ${escapeHtml(JSON.stringify(b.params))}</div>
-        </td>
-        <td class="num">${b.n_bets}</td>
-        <td class="num">${b.n_wins} (${wr})</td>
-        <td class="num ${roiCls}">${b.roi_pct >= 0 ? '+' : ''}${b.roi_pct.toFixed(1)}%</td>
-        <td class="num">${b.pnl >= 0 ? '+' : ''}$${b.pnl.toFixed(0)}</td>
-        <td><button class="btn ghost danger bet-delete" data-bid="${b.id}">${t('刪除', 'delete')}</button></td>
-      </tr>`;
-  }).join('');
-
-  const ruleOpts = Object.keys(rulesAvail).map(k =>
-    `<option value="${k}">${escapeHtml(k)} — ${escapeHtml(rulesAvail[k].label || '')}</option>`
-  ).join('');
-
-  return `
-    <div class="panel">
-      <h2>${t('投注策略 (Bet strategies)', 'Bet strategies')}
-        <span class="small" style="font-weight:normal;color:var(--muted)">
-          ${list.length} ${t('項;打勾顯示於累積盈虧圖表', 'items; tick to overlay on cumulative-PnL chart')}
-        </span>
-      </h2>
-      <table>
-        <thead><tr>
-          <th>${t('名稱與規則', 'Name & rule')}</th>
-          <th class="num">${t('注數', 'Bets')}</th>
-          <th class="num">${t('勝 (命中率)', 'Wins (strike)')}</th>
-          <th class="num">ROI</th>
-          <th class="num">PnL</th>
-          <th></th>
-        </tr></thead>
-        <tbody>${rows || `<tr><td colspan="6" class="empty">${t('未有投注策略', 'no bet strategies yet')}</td></tr>`}</tbody>
-      </table>
-
-      <details style="margin-top:12px">
-        <summary style="cursor:pointer;color:var(--muted);font-size:13px">+ ${t('新增投注策略', 'add new bet strategy')}</summary>
-        <form id="betStrategyAddForm" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start">
-          <label>${t('名稱', 'Name')} <input name="name" required placeholder="e.g. flat_top1_field_le10"></label>
-          <label>${t('規則種類', 'Rule kind')} <select name="rule_kind" required>${ruleOpts}</select></label>
-          <label>${t('英文標籤', 'English label')} <input name="name_en"></label>
-          <label>${t('中文標籤', 'Chinese label')} <input name="name_zh"></label>
-          <label style="grid-column:1 / 3">${t('參數 (JSON)', 'Params (JSON)')} <input name="params" placeholder='{"stake": 500, "max_field": 10}'></label>
-          <label>${t('圖表顏色', 'Chart color')} <input type="color" name="chart_color" value="${nextColor}"></label>
-          <button type="submit" class="btn primary" style="align-self:end">${t('建立', 'Create')}</button>
-        </form>
-      </details>
-    </div>`;
-}
-
 // the global language toggle (state.lang). Each pill carries a tooltip with
 // the H-id + full description so users can hover to read context.
 function renderStrategyFeaturePanel(strategy) {
@@ -1287,10 +1142,8 @@ function renderPerformanceCharts(charts) {
       console.warn('ApexCharts not loaded');
       return;
     }
-    const _overlayCurves = Object.values(state.dashBetCurves || {})
-      .filter(c => c && c.points && c.points.length);
     _mountApexChart('apex-cumpnl',
-                    cumPnlChartOpts(charts.cumulative_pnl || [], _overlayCurves));
+                    cumPnlChartOpts(charts.cumulative_pnl || []));
     _mountApexChart('apex-reliability', reliabilityChartOpts(charts.reliability || []));
     _mountApexChart('apex-oddsbuckets', oddsBucketsChartOpts(charts.odds_buckets || []));
     _mountApexChart('apex-daily', dailyActivityChartOpts(charts.cumulative_pnl || []));
@@ -2125,9 +1978,32 @@ function renderStrategyDashboard(sel) {
     acc.top1 >= 0.30 ? 'good' : acc.top1 >= 0.15 ? 'warn' : 'bad';
   const top3Class = acc.top3 == null ? '' :
     acc.top3 >= 0.55 ? 'good' : acc.top3 >= 0.40 ? 'warn' : 'bad';
+  const strategies = state.strategies || [];
+  const betStrategies = state.dashBetStrategies || [];
+  const selBetId = state.dashBetStrategy;
+  const selectorBar = `
+    <div class="toolbar" style="margin-bottom:8px;align-items:center">
+      <label style="font-size:12px;color:var(--muted)">${t('策略', 'strategy')}:</label>
+      <select id="dashStratSel">
+        ${strategies.map(s => `
+          <option value="${s.id}" ${s.id === sel.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>
+        `).join('')}
+      </select>
+      <label style="font-size:12px;color:var(--muted);margin-left:12px">${t('投注策略', 'bet strategy')}:</label>
+      <select id="dashBetStratSel">
+        <option value="">${t('（全部）', '(all)')}</option>
+        ${betStrategies.map(b => `
+          <option value="${b.id}" ${b.id == selBetId ? 'selected' : ''}>${escapeHtml(b.name_zh || b.name)}</option>
+        `).join('')}
+      </select>
+      <span style="color:var(--muted);font-size:12px;margin-left:auto">
+        ${t('儀表', 'Dashboard')} · <code>${escapeHtml(sel.name)}</code>
+      </span>
+    </div>
+  `;
   return `
     <div class="panel">
-      <h2>${escapeHtml(sel.name)} · ${t('儀表', 'Dashboard')}</h2>
+      ${selectorBar}
       <div class="stat-row">
         <div class="stat-card ${top1Class}">
           <div class="label">${t('頭馬命中率', 'Top-1 accuracy')}</div>
@@ -2165,10 +2041,6 @@ function renderStrategyDashboard(sel) {
         </div>
       </div>
     </div>
-
-    ${renderStrategyFeaturePanel(d.strategy)}
-
-    ${renderBetStrategiesPanel()}
 
     <div class="panel">
       <h2>${t('表現圖表', 'Performance charts')}</h2>
@@ -2247,6 +2119,8 @@ function renderStrategyDashboard(sel) {
         <pre class="json">${escapeHtml(JSON.stringify(state.strategyAudit.block_reasons || {}, null, 2))}</pre>
       `) : `<div class="empty">${t('點擊「執行」以計算', 'click "run audit" to compute')}</div>`}
     </div>
+
+    ${renderStrategyFeaturePanel(d.strategy)}
   `;
 }
 
@@ -3597,35 +3471,22 @@ function wire() {
   const lmToggle = document.getElementById('lmToggle');
   if (lmToggle) lmToggle.addEventListener('click', toggleLiveMode);
 
-  // Bet-strategies panel wire-up: toggle = enable/disable + reload curves,
-  // delete = wipe ledger + remove, add form = POST a new bet strategy and
-  // immediately run it.
-  document.querySelectorAll('.bet-toggle').forEach(cb => {
-    cb.addEventListener('change', () => toggleBetStrategy(parseInt(cb.dataset.bid), cb.checked));
-  });
-  document.querySelectorAll('.bet-delete').forEach(btn => {
-    btn.addEventListener('click', () => deleteBetStrategy(parseInt(btn.dataset.bid)));
-  });
-  const af2 = document.getElementById('betStrategyAddForm');
-  if (af2) af2.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const fd = new FormData(af2);
-    const body = {
-      name: fd.get('name'),
-      name_en: fd.get('name_en') || undefined,
-      name_zh: fd.get('name_zh') || undefined,
-      rule_kind: fd.get('rule_kind'),
-      chart_color: fd.get('chart_color'),
-    };
-    try { body.params = fd.get('params') ? JSON.parse(fd.get('params')) : {}; }
-    catch (err) { alert('Invalid JSON in params: ' + err); return; }
-    createBetStrategy(body);
-  });
   document.querySelectorAll('[data-strat]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       loadStrategyDetail(parseInt(el.dataset.strat));
     });
+  });
+  // Strategy + bet-strategy selectors on the redesigned 策略 page.
+  const dashStratSel = document.getElementById('dashStratSel');
+  if (dashStratSel) dashStratSel.addEventListener('change', e => {
+    loadStrategyDetail(parseInt(e.target.value));
+  });
+  const dashBetSel = document.getElementById('dashBetStratSel');
+  if (dashBetSel) dashBetSel.addEventListener('change', e => {
+    state.dashBetStrategy = e.target.value === '' ? null : parseInt(e.target.value);
+    saveUi({ dashBetStrategy: state.dashBetStrategy });
+    render();
   });
   const af = document.getElementById('auditFrom');
   if (af) af.addEventListener('change', e => {
