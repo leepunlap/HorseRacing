@@ -93,6 +93,7 @@ percentage-point ROI vs the immediately preceding leader.
 | May 2026 | + Iter 11 (τ=180) | 19 wins/71 | +63.4% |
 | May 2026 | + Iter 12-13 (57 feats incl. class + speed figures) | 20 wins/71 | +44.9% |
 | May 2026 | + Iter 16-19 (66 feats incl. pedigree + field-relative) | **30 wins/71** | **+173.5%** |
+| May 2026 | + Iter 21+26 (70 feats incl. distance-delta + closing-kick) | **30 wins/71** | **+171.8%** |
 
 The single-split quick-eval numbers always over-state vs the walk-forward
 audit (daily retrain adds variance), but the *direction* of every change
