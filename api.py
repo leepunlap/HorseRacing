@@ -172,6 +172,13 @@ def register_actions(action_registry: dict[str, Callable], scraper_job: dict, is
 
         action_registry[action_key] = _make_action()
 
+    # Schedulable integrity check (runs the full DB scan, optional auto-heal).
+    def _integrity_action(args: dict) -> None:
+        from monitoring.integrity_check import run as _ic_run
+        scope = {"date": args.get("date")} if args.get("date") else {"scope": "full"}
+        _ic_run(scope, heal=bool(args.get("heal", True)))
+    action_registry["integrity_check"] = _integrity_action
+
 
 # ─── On-demand fire endpoints ────────────────────────────────────────────────
 
