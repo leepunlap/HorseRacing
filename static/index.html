@@ -313,6 +313,12 @@
                                                       line-height: 1.35; }
   .race-block table td.pnl-win { color: var(--good); font-weight: 600; }
   .race-block table td.pnl-lose { color: var(--bad); }
+  /* Inline pnl colour for stacked rows inside a single TD (本日下注 4-row
+     cell): the TD itself can't be win/lose because some rows are bet
+     wins, others bet losses, others non-bet em-dashes. Colour the inner
+     <b> element directly. */
+  .race-block table td b.pnl-win  { color: var(--good); font-weight: 700; }
+  .race-block table td b.pnl-lose { color: var(--bad);  font-weight: 700; }
   /* Predicted-rank cell tints: green when the actual winner was the model's
      top pick; lighter blue when the winner was in the model's top-3. */
   .race-block table td.pred-hit  { background: rgba(77,209,122,0.30) !important;
