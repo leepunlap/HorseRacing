@@ -504,6 +504,59 @@ CREATE TABLE IF NOT EXISTS strategy_runs (
 CREATE INDEX IF NOT EXISTS idx_runs_strategy ON strategy_runs(strategy_id);
 CREATE INDEX IF NOT EXISTS idx_runs_roi ON strategy_runs(roi_pct DESC);
 
+-- ─── Bet strategy (post-prediction rule on top of a model) ────────────────
+-- Each bet strategy reads predictions from `model_strategy_id` and decides
+-- which horse(s) to bet on, with what stake. Many bet strategies can share
+-- one model — they're cheap layers over an expensive walk-forward.
+--
+-- rule_kind values (handled by betting.bet_runner):
+--   flat_top1         — top-prob horse, flat stake
+--   kelly_top1        — top-prob horse, fractional Kelly
+--   flat_top1_filtered- top-prob horse but skip races failing params filter
+--                       (e.g. {"max_field":12,"min_prob":0.20})
+--   dutch_topN        — split stake across top-N for equal payoff
+--   place_top1        — top-prob horse as PLACE bet
+--   each_way_top1     — half WIN / half PLACE on top-prob
+--   market_fav        — bet lowest-odds horse (baseline; no model)
+--   market_blended    — re-rank model probs with Benter blend, then top
+CREATE TABLE IF NOT EXISTS bet_strategies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    name_en TEXT, name_zh TEXT,
+    model_strategy_id INTEGER NOT NULL REFERENCES strategies(id),
+    rule_kind TEXT NOT NULL,
+    params_json TEXT,                   -- JSON dict of per-rule knobs
+    enabled INTEGER DEFAULT 1,
+    chart_color TEXT,                   -- hex for SPA chart overlay
+    notes TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_betstrat_model ON bet_strategies(model_strategy_id);
+
+-- ─── Bet ledger (one row per placed bet per strategy) ─────────────────────
+-- bet_runner writes here. A race can contribute multiple rows for dutch /
+-- each-way / multi-horse strategies. PnL is settled when the race finishes
+-- (CAST(results.position AS INT) populated); unsettled bets have won = -1.
+CREATE TABLE IF NOT EXISTS bet_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bet_strategy_id INTEGER NOT NULL REFERENCES bet_strategies(id),
+    race_id INTEGER NOT NULL REFERENCES races(id),
+    race_date TEXT NOT NULL,
+    brand TEXT NOT NULL,
+    pool TEXT NOT NULL DEFAULT 'WIN',   -- WIN | PLACE
+    stake REAL NOT NULL,
+    odds_at_bet REAL,                   -- final close odds (results.odds) as proxy
+    won INTEGER DEFAULT -1,             -- 1=won, 0=lost, -1=unsettled
+    payout REAL DEFAULT 0,              -- realised cash back (= stake*odds if won, else 0)
+    pnl REAL DEFAULT 0,                 -- payout - stake
+    pick_rank INTEGER,                  -- this horse's rank within the race's predictions
+    reason TEXT,                        -- short tag, e.g. 'top_prob' / 'skipped_big_field'
+    computed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(bet_strategy_id, race_id, brand, pool)
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_strat ON bet_ledger(bet_strategy_id, race_date);
+CREATE INDEX IF NOT EXISTS idx_ledger_race ON bet_ledger(race_id);
+
 -- ─── Model experiment ledger ───────────────────────────────────────────────
 -- Every quick_eval run appends here. Lets us answer "what config got the
 -- best ROI on the 2026-01 split" with a SQL query instead of grepping

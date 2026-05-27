@@ -18,6 +18,7 @@ from typing import Callable
 from fastapi import APIRouter, HTTPException
 
 import json as _json
+import json    # alias kept for the bet-strategies endpoints (added 2026-05-27)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -356,6 +357,237 @@ def create_strategy(name: str, name_zh: str | None = None, name_en: str | None =
     finally:
         conn.close()
     return {"id": sid, "name": name}
+
+
+# ─── Bet strategies (post-prediction rules on top of a model) ─────────────────
+# Each bet_strategy reads predictions from a model strategy and applies a
+# rule_kind ('flat_top1', 'kelly_top1', 'dutch_topN', etc.) to produce one
+# or more bets per race (written to bet_ledger). Multiple bet strategies can
+# share one model — they're cheap layers over an expensive walk-forward.
+
+@router.get("/strategies/{model_strategy_id}/bet_strategies")
+def list_bet_strategies(model_strategy_id: int) -> list[dict]:
+    """All bet strategies layered on top of this model, plus their headline
+    aggregate metrics (n_bets / n_wins / ROI) computed from bet_ledger."""
+    if not DB_PATH.exists():
+        return []
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """
+            SELECT bs.id, bs.name, bs.name_en, bs.name_zh, bs.rule_kind,
+                   bs.params_json, bs.enabled, bs.chart_color, bs.notes,
+                   bs.created_at,
+                   COALESCE(SUM(bl.stake), 0)  AS stake,
+                   COALESCE(SUM(bl.payout), 0) AS payout,
+                   COALESCE(SUM(bl.pnl), 0)    AS pnl,
+                   COUNT(bl.id)                AS n_bets,
+                   COALESCE(SUM(bl.won = 1), 0) AS n_wins
+            FROM bet_strategies bs
+            LEFT JOIN bet_ledger bl ON bl.bet_strategy_id = bs.id
+            WHERE bs.model_strategy_id = ?
+            GROUP BY bs.id
+            ORDER BY bs.id
+            """,
+            (model_strategy_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+    out = []
+    for r in rows:
+        d = {
+            "id": r[0], "name": r[1], "name_en": r[2], "name_zh": r[3],
+            "rule_kind": r[4],
+            "params": json.loads(r[5] or "{}"),
+            "enabled": bool(r[6]),
+            "chart_color": r[7],
+            "notes": r[8],
+            "created_at": r[9],
+            "stake": round(r[10], 2),
+            "payout": round(r[11], 2),
+            "pnl": round(r[12], 2),
+            "n_bets": r[13],
+            "n_wins": r[14],
+            "roi_pct": round(100.0 * r[12] / r[10], 2) if r[10] > 0 else 0.0,
+            "strike_rate_pct": round(100.0 * r[14] / r[13], 2) if r[13] > 0 else 0.0,
+        }
+        out.append(d)
+    return out
+
+
+class BetStrategyIn(dict):
+    """Loose JSON body — FastAPI accepts dict directly."""
+    pass
+
+
+@router.post("/strategies/{model_strategy_id}/bet_strategies")
+def create_bet_strategy(model_strategy_id: int, body: dict) -> dict:
+    """Body: { name, name_en?, name_zh?, rule_kind, params?, chart_color? }"""
+    name = body.get("name")
+    rule_kind = body.get("rule_kind")
+    if not name or not rule_kind:
+        raise HTTPException(400, "name and rule_kind required")
+    from betting.bet_runner import RULES
+    if rule_kind not in RULES:
+        raise HTTPException(400, f"unknown rule_kind: {rule_kind}; valid: {list(RULES)}")
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO bet_strategies
+              (name, name_en, name_zh, model_strategy_id, rule_kind,
+               params_json, chart_color, notes, enabled)
+            VALUES (?,?,?,?,?,?,?,?,1)
+            """,
+            (name, body.get("name_en") or name, body.get("name_zh") or name,
+             model_strategy_id, rule_kind,
+             json.dumps(body.get("params") or {}),
+             body.get("chart_color") or "#888888",
+             body.get("notes")),
+        )
+        conn.commit()
+        bid = conn.execute("SELECT id FROM bet_strategies WHERE name = ?", (name,)).fetchone()[0]
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(409, f"bet strategy already exists: {exc}")
+    finally:
+        conn.close()
+    return {"id": bid, "name": name}
+
+
+@router.delete("/bet_strategies/{bet_strategy_id}")
+def delete_bet_strategy(bet_strategy_id: int) -> dict:
+    conn = _connect()
+    try:
+        conn.execute("DELETE FROM bet_ledger WHERE bet_strategy_id = ?", (bet_strategy_id,))
+        n = conn.execute("DELETE FROM bet_strategies WHERE id = ?", (bet_strategy_id,)).rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    if not n:
+        raise HTTPException(404, f"bet strategy {bet_strategy_id} not found")
+    return {"deleted": bet_strategy_id}
+
+
+@router.patch("/bet_strategies/{bet_strategy_id}")
+def update_bet_strategy(bet_strategy_id: int, body: dict) -> dict:
+    """Update enabled / name / chart_color / params / notes."""
+    allowed = {"enabled", "name_en", "name_zh", "chart_color", "notes", "params"}
+    sets = []; vals: list = []
+    for k, v in body.items():
+        if k not in allowed:
+            continue
+        if k == "params":
+            sets.append("params_json = ?"); vals.append(json.dumps(v))
+        elif k == "enabled":
+            sets.append("enabled = ?"); vals.append(1 if v else 0)
+        else:
+            sets.append(f"{k} = ?"); vals.append(v)
+    if not sets:
+        raise HTTPException(400, "no updatable fields in body")
+    vals.append(bet_strategy_id)
+    conn = _connect()
+    try:
+        n = conn.execute(
+            f"UPDATE bet_strategies SET {', '.join(sets)} WHERE id = ?", vals,
+        ).rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    if not n:
+        raise HTTPException(404, f"bet strategy {bet_strategy_id} not found")
+    return {"updated": bet_strategy_id, "fields": list(body.keys())}
+
+
+@router.post("/bet_strategies/{bet_strategy_id}/run")
+def run_bet_strategy(bet_strategy_id: int, date_from: str | None = None,
+                     date_to: str | None = None) -> dict:
+    """(Re)build this bet strategy's rows in bet_ledger. Wipes existing rows
+    in the date window first."""
+    from betting.bet_runner import run_for_bet_strategy
+    conn = _connect()
+    try:
+        return run_for_bet_strategy(conn, bet_strategy_id, date_from, date_to)
+    finally:
+        conn.close()
+
+
+@router.get("/bet_strategies/{bet_strategy_id}/curve")
+def bet_strategy_curve(bet_strategy_id: int,
+                       date_from: str | None = None,
+                       date_to: str | None = None) -> dict:
+    """Daily PnL curve for chart overlay: one point per race day with
+    stake / payout / pnl / cumulative_pnl / n_bets / n_wins."""
+    where = ["bet_strategy_id = ?"]
+    args: list = [bet_strategy_id]
+    if date_from:
+        where.append("race_date >= ?"); args.append(date_from)
+    if date_to:
+        where.append("race_date <= ?"); args.append(date_to)
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT race_date,
+                   COUNT(*)                    AS n_bets,
+                   SUM(won = 1)                AS n_wins,
+                   SUM(stake)                  AS stake,
+                   SUM(payout)                 AS payout,
+                   SUM(pnl)                    AS pnl
+            FROM bet_ledger
+            WHERE {' AND '.join(where)}
+            GROUP BY race_date
+            ORDER BY race_date
+            """,
+            args,
+        ).fetchall()
+        meta = conn.execute(
+            "SELECT name, name_en, name_zh, chart_color FROM bet_strategies WHERE id = ?",
+            (bet_strategy_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if meta is None:
+        raise HTTPException(404, "bet strategy not found")
+    points = []
+    cum = 0.0
+    for d, n_bets, n_wins, stake, payout, pnl in rows:
+        cum += float(pnl or 0)
+        points.append({
+            "date": d, "n_bets": n_bets, "n_wins": n_wins,
+            "stake": round(float(stake or 0), 2),
+            "payout": round(float(payout or 0), 2),
+            "pnl": round(float(pnl or 0), 2),
+            "cumulative_pnl": round(cum, 2),
+        })
+    return {
+        "id": bet_strategy_id,
+        "name": meta[0], "name_en": meta[1], "name_zh": meta[2],
+        "chart_color": meta[3],
+        "points": points,
+    }
+
+
+@router.get("/bet_strategies/rule_kinds")
+def list_rule_kinds() -> dict:
+    """Catalog of rule kinds + their expected params (for the UI dropdown)."""
+    return {
+        "flat_top1": {"params": {"stake": 500},
+                      "label": "Flat stake on top pick"},
+        "kelly_top1": {"params": {"bankroll": 10000, "kelly_frac": 0.25, "max_pct": 0.05},
+                       "label": "Fractional Kelly on top pick"},
+        "flat_top1_filtered": {"params": {"stake": 500, "min_prob": 0.20, "max_field": 12},
+                               "label": "Flat top — filter by min_prob and/or max_field"},
+        "dutch_topN": {"params": {"total_stake": 500, "n": 2},
+                       "label": "Dutch split across top-N (equal payoff)"},
+        "place_top1": {"params": {"stake": 500},
+                       "label": "Top pick as PLACE bet"},
+        "each_way_top1": {"params": {"stake": 500},
+                          "label": "Half WIN + half PLACE on top pick"},
+        "market_fav": {"params": {"stake": 500},
+                       "label": "Bet the market favourite (baseline; no model)"},
+        "market_blended_top1": {"params": {"stake": 500, "alpha": 1.5, "beta": 0.7},
+                                "label": "Top pick after Benter α/β re-rank"},
+    }
 
 
 # ─── Audit + CLV reports ──────────────────────────────────────────────────────
