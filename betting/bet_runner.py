@@ -175,6 +175,69 @@ def _rule_each_way_top1(rows, params):
     ]
 
 
+def _rule_wp_weighted_top1(rows, params):
+    """WIN+PLACE on top pick with confidence-weighted split.
+    Stake = `stake` total, distributed as `win_pct` to WIN and rest to PLACE.
+    Defaults to 60/40 WIN/PLACE — more aggressive than each_way (50/50)
+    because the top pick should win more often than just place."""
+    valid = [r for r in rows if r["prob"] is not None]
+    if not valid: return []
+    valid.sort(key=lambda r: (-r["prob"], r["brand"]))
+    top = valid[0]
+    total = float(params.get("stake", 500.0))
+    win_pct = float(params.get("win_pct", 0.6))
+    win_stake = round(total * win_pct, 2)
+    place_stake = round(total - win_stake, 2)
+    out = []
+    if win_stake > 0:
+        out.append({"brand": top["brand"], "pool": "WIN", "stake": win_stake,
+                    "pick_rank": 1, "reason": f"wp_split_{int(win_pct*100)}"})
+    if place_stake > 0:
+        out.append({"brand": top["brand"], "pool": "PLACE", "stake": place_stake,
+                    "pick_rank": 1, "reason": f"wp_split_{int((1-win_pct)*100)}"})
+    return out
+
+
+def _rule_win_top1_place_top2(rows, params):
+    """WIN on top1, PLACE on top2 — different-horse insurance.
+    If top1 wins → WIN payout. If top2 finishes top-3 → PLACE payout.
+    Covers more of the field than betting both pools on the same horse."""
+    valid = [r for r in rows if r["prob"] is not None]
+    if len(valid) < 2: return []
+    valid.sort(key=lambda r: (-r["prob"], r["brand"]))
+    win_stake = float(params.get("win_stake", 500.0))
+    place_stake = float(params.get("place_stake", 250.0))
+    return [
+        {"brand": valid[0]["brand"], "pool": "WIN", "stake": win_stake,
+         "pick_rank": 1, "reason": "win_on_top1"},
+        {"brand": valid[1]["brand"], "pool": "PLACE", "stake": place_stake,
+         "pick_rank": 2, "reason": "place_on_top2"},
+    ]
+
+
+def _rule_wp_top1_value_gated(rows, params):
+    """Each-way on top pick, but ONLY when the model edge clears a gate.
+    Lets the model abstain from low-conviction races. Default edge ≥ 1.10
+    (expected gross return ≥ 1.10× stake on the WIN leg)."""
+    valid = [r for r in rows if r["prob"] is not None
+             and r["odds"] and r["odds"] > 0]
+    if not valid: return []
+    valid.sort(key=lambda r: (-r["prob"], r["brand"]))
+    top = valid[0]
+    edge_min = float(params.get("edge_min", 1.10))
+    odds_max = float(params.get("odds_max", 25.0))
+    edge = top["prob"] * top["odds"]
+    if edge < edge_min or top["odds"] > odds_max:
+        return []
+    full = float(params.get("stake", 500.0))
+    return [
+        {"brand": top["brand"], "pool": "WIN",   "stake": full / 2,
+         "pick_rank": 1, "reason": f"value_gate_edge>={edge_min:.2f}"},
+        {"brand": top["brand"], "pool": "PLACE", "stake": full / 2,
+         "pick_rank": 1, "reason": f"value_gate_edge>={edge_min:.2f}"},
+    ]
+
+
 def _rule_market_fav(rows, params):
     valid = [r for r in rows if r["odds"] and r["odds"] > 0]
     if not valid: return []
@@ -309,6 +372,9 @@ RULES = {
     "dutch_topN": _rule_dutch_topN,
     "place_top1": _rule_place_top1,
     "each_way_top1": _rule_each_way_top1,
+    "wp_weighted_top1": _rule_wp_weighted_top1,
+    "win_top1_place_top2": _rule_win_top1_place_top2,
+    "wp_top1_value_gated": _rule_wp_top1_value_gated,
     "market_fav": _rule_market_fav,
     "market_blended_top1": _rule_market_blended_top1,
     # Exotics

@@ -291,6 +291,26 @@
   /* Assessment column: prose, allow wrapping (constrained width) */
   .race-block table td.assessment { max-width: 380px; white-space: normal;
                                     line-height: 1.4; color: var(--muted); font-size: 11.5px; }
+  /* Compact race table: 2-line stacked cells. The primary value is the
+     `<div>` directly inside the <td>; the secondary value sits inside
+     `.sub` and renders at a smaller, muted size below it. Lets a single
+     cell carry "main / detail" (e.g. odds / market p, jockey / trainer,
+     time / lbw, model p / edge) and brings the column count down from
+     17 → 9 without losing data. */
+  .race-block table.compact td { padding: 4px 6px; line-height: 1.25;
+                                 vertical-align: top; }
+  .race-block table.compact td .sub { font-size: 10.5px; color: var(--muted);
+                                      margin-top: 1px; }
+  .race-block table.compact td .sub.pnl-win { color: var(--good); font-weight: 600; }
+  .race-block table.compact td .sub.pnl-lose { color: var(--bad); font-weight: 600; }
+  .race-block table.compact td.h-name { max-width: 180px; }
+  .race-block table.compact td.assessment { max-width: 320px; }
+  .race-block table.compact td.assessment .bet-mark { color: var(--good);
+                                                       font-weight: 700;
+                                                       font-size: 11px;
+                                                       margin-bottom: 2px; }
+  .race-block table.compact td.assessment .drivers { color: var(--muted);
+                                                      line-height: 1.35; }
   .race-block table td.pnl-win { color: var(--good); font-weight: 600; }
   .race-block table td.pnl-lose { color: var(--bad); }
   /* Predicted-rank cell tints: green when the actual winner was the model's
@@ -2976,25 +2996,17 @@ function renderRaceBlock(r, data, sid) {
         ${r.has_results ? `<span class="pill muted">${t('已完賽', 'finished')}</span>` : ''}
       </div>
       <div class="race-body">
-        <table>
+        <table class="race-table compact">
           <thead><tr>
-            <th>${t('實際', 'actual')}</th>
-            <th>${t('預測', 'pred')}</th>
-            <th>${t('馬', 'horse')}</th>
-            <th>${t('騎師', 'jockey')}</th>
-            <th>${t('練馬師', 'trainer')}</th>
-            <th>${t('閘', 'dr')}</th>
-            <th>${t('賠率', 'odds')}</th>
-            <th>${t('市場', 'mkt p')}</th>
-            <th>${t('模型', 'cal p')}</th>
-            <th>edge</th>
-            <th>${t('時間', 'time')}</th>
-            <th>${t('頭馬距離', 'lbw')}</th>
-            <th>${t('沿途走位', 'running')}</th>
-            <th>${t('決策', 'bet')}</th>
-            <th>${t('評估', 'assessment')}</th>
-            <th class="num">${t('投注', 'stake')}</th>
-            <th class="num">${t('盈虧', 'pnl')}</th>
+            <th class="num" title="${t('實際名次 / 預測名次', 'actual / predicted')}">${t('名次', 'pos')}</th>
+            <th>${t('馬 / 閘', 'horse / draw')}</th>
+            <th>${t('騎師 / 練馬師', 'jockey / trainer')}</th>
+            <th class="num" title="${t('賠率 / 市場機率', 'odds / market p')}">${t('賠率', 'odds')}</th>
+            <th class="num" title="${t('模型機率 / edge', 'model p / edge')}">${t('模型', 'model')}</th>
+            <th class="num" title="${t('完成時間 / 頭馬距離', 'finish time / lengths behind')}">${t('時間', 'time')}</th>
+            <th class="small">${t('沿途走位', 'running')}</th>
+            <th>${t('決策 / 評估', 'bet / assessment')}</th>
+            <th class="num">${t('投注/盈虧', 'stake/pnl')}</th>
           </tr></thead>
           <tbody>${(r.horses || []).map(h => {
             const won = h.position == 1 || h.position === '1';
@@ -3016,25 +3028,40 @@ function renderRaceBlock(r, data, sid) {
               ? (h.position === 1 || h.position === '1' ? '—' : '')
               : escapeHtml(String(h.lbw));
             const runTxt = escapeHtml(String(h.running_style || h.running || '').trim() || '');
+            const posCell = h.position == null ? '—' : escapeHtml(String(h.position));
+            const predCell = pr == null ? '—' : `<small class="${predCls}" style="color:var(--muted)">→${pr}</small>`;
             return `
               <tr class="${cls}">
-                <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
-                <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
-                <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
-                <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
-                <td>${escapeHtml(i18n.trainer(h.trainer, lang))}</td>
-                <td class="num">${h.draw ?? '—'}</td>
-                <td class="num">${fmtNum(h.odds, 2)}</td>
-                <td class="num">${fmtPct(mkt)}</td>
-                <td class="num">${fmtPct(h.calibrated_prob)}</td>
-                <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
-                <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
-                <td class="num small">${lbwTxt}</td>
-                <td class="small" style="font-family:var(--mono)">${runTxt}</td>
-                <td class="${a.bet ? 'bet' : ''}">${a.bet ? '✓' : ''}</td>
-                <td class="assessment" title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</td>
-                <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>
-                <td class="num ${pnlCls}">${a.pnl == null ? '—' : fmtMoney(a.pnl)}</td>
+                <td class="num"><b>${posCell}</b> ${predCell}</td>
+                <td class="h-name">
+                  <div>${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code></div>
+                  <div class="sub">${t('閘', 'dr')} ${h.draw ?? '—'}</div>
+                </td>
+                <td>
+                  <div>${escapeHtml(i18n.jockey(h.jockey, lang))}</div>
+                  <div class="sub">${escapeHtml(i18n.trainer(h.trainer, lang))}</div>
+                </td>
+                <td class="num">
+                  <div>${fmtNum(h.odds, 2)}</div>
+                  <div class="sub">${fmtPct(mkt)}</div>
+                </td>
+                <td class="num">
+                  <div>${fmtPct(h.calibrated_prob)}</div>
+                  <div class="sub">edge ${h.edge == null ? '—' : fmtNum(h.edge, 2)}</div>
+                </td>
+                <td class="num" style="font-family:var(--mono);font-size:11px">
+                  <div>${escapeHtml(formatFinishTime(h.finish_time))}</div>
+                  <div class="sub">${lbwTxt || '—'}</div>
+                </td>
+                <td class="small" style="font-family:var(--mono);white-space:nowrap">${runTxt}</td>
+                <td class="assessment">
+                  ${a.bet ? `<div class="bet-mark">✓ ${t('下注', 'bet')}</div>` : ''}
+                  <div class="drivers small" title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</div>
+                </td>
+                <td class="num">
+                  <div>${a.stake == null ? '—' : fmtMoney(a.stake)}</div>
+                  <div class="sub ${pnlCls}">${a.pnl == null ? '' : fmtMoney(a.pnl)}</div>
+                </td>
               </tr>
             `;
           }).join('')}</tbody>
