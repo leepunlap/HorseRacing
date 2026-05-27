@@ -2643,6 +2643,22 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           return `<b class="${cls}">${fmtMoney(bet.pnl)}</b>`;
         }).join('<br>')
       : (isSettled ? fmtMoney(bet.pnl) : '—');
+    // 結果 column: pill per top-4 row. Bet horse's row shows the
+    // actual outcome (命中 / 失敗 / 未派彩); non-bet rows show an em-dash
+    // to keep the 4-row stack aligned with the other columns.
+    const resultHtml = topPicks.length
+      ? topPicks.map(h => {
+          if (!betBrandSet.has(h.brand)) return dash;
+          if (!isSettled) return `<span class="pill muted">${t('未派彩', 'pending')}</span>`;
+          return won
+            ? `<span class="pill good">${t('命中', 'WON')}</span>`
+            : `<span class="pill muted">${t('失敗', 'lost')}</span>`;
+        }).join('<br>')
+      : (isSettled
+          ? (won
+              ? `<span class="pill good">${t('命中', 'WON')}</span>`
+              : `<span class="pill muted">${t('失敗', 'lost')}</span>`)
+          : `<span class="pill muted">${t('未派彩', 'pending')}</span>`);
     const pm = isSettled ? (pmByBet[bet.id] || null) : null;
     const tagChips = pm && pm.tags && pm.tags.length
       ? '<div class="pm-chips" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
@@ -2681,11 +2697,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
         <td class="num" style="line-height:1.3">${stakeHtml}</td>
         <td class="num" style="line-height:1.3">${payoutHtml}</td>
         <td class="num" style="line-height:1.3">${pnlHtml}</td>
-        <td>${isSettled
-          ? (won
-              ? `<span class="pill good">${t('命中', 'WON')}</span>`
-              : `<span class="pill muted">${t('失敗', 'lost')}</span>`)
-          : `<span class="pill muted">${t('未派彩', 'pending')}</span>`}</td>
+        <td style="line-height:1.3">${resultHtml}</td>
         <td class="assessment small" style="max-width:380px;color:var(--muted)">
           ${commentaryCell}
         </td>
