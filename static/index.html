@@ -272,6 +272,18 @@
   .date-chip.active .meta { color: rgba(6,26,42,0.7); }
   .date-chip.has-pred { background: rgba(77,209,122,0.08); color: var(--good); }
   .date-chip.has-pred.active { background: var(--good); color: #021a09; }
+  /* Compact races-panel — drop padding + margins, inline title, shrink
+     cascade body height so the page header takes <80px instead of ~160px. */
+  .races-panel { padding: 8px 12px; margin-bottom: 10px; }
+  .races-panel .races-title { font-weight: 600; font-size: 13px;
+                              text-transform: uppercase; letter-spacing: 0.4px;
+                              color: var(--muted); margin-right: 8px; }
+  .races-panel .races-title code { color: var(--text); text-transform: none;
+                                   letter-spacing: 0; font-size: 12px; }
+  .races-panel .toolbar { margin-bottom: 4px; }
+  .races-panel .cascade-col { max-height: 96px; }
+  .races-panel .cascade-body { padding: 4px; }
+  .races-panel .cascade-hdr { padding: 3px 8px; }
   .race-block { border: 1px solid var(--border); border-radius: 6px;
                 margin-bottom: 16px; }
   .race-block .race-hdr {
@@ -380,11 +392,14 @@
 
   /* Bet-strategy mini-card selector — one card per bet strategy, click to
      switch state.dashBetStrategy. Selected card highlighted via accent border. */
-  .bet-mini-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .bet-mini-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
   .bet-mini-card { background: var(--panel); border: 1px solid var(--border);
-                   border-radius: 4px; padding: 8px 12px; min-width: 160px;
+                   border-radius: 4px; padding: 4px 9px; min-width: 130px;
                    cursor: pointer; transition: background 0.15s, border-color 0.15s;
                    user-select: none; }
+  .races-panel .bet-mini-card { padding: 3px 7px; min-width: 120px; }
+  .races-panel .bet-mini-card .bmc-name { font-size: 12px; margin-bottom: 2px; }
+  .races-panel .bet-mini-card .bmc-stats { font-size: 10px; }
   .bet-mini-card:hover { background: rgba(130,144,168,0.08); }
   .bet-mini-card.selected { border-color: var(--accent, #4a9eff);
                             background: rgba(74,158,255,0.08);
@@ -834,18 +849,25 @@ async function loadRaces() {
   } else {
     state.raceBetStrategies = [];
   }
+  // Drop any stale bet-strategy id that no longer belongs to the current
+  // model. Then auto-select the first available one if nothing is selected —
+  // mirrors the dashboard, which has no "(all)" fallback either.
+  if (state.raceBetStrategy != null) {
+    const bsid = parseInt(state.raceBetStrategy);
+    if (!state.raceBetStrategies.some(b => b.id === bsid)) {
+      state.raceBetStrategy = null;
+      saveUi({ raceBetStrategy: null });
+    }
+  }
+  if (state.raceBetStrategy == null && state.raceBetStrategies.length > 0) {
+    state.raceBetStrategy = state.raceBetStrategies[0].id;
+    saveUi({ raceBetStrategy: state.raceBetStrategy });
+  }
   // Fetch the selected date's race cards (if any selection)
   if (state.raceDate) {
     let dqs = sid != null ? `?strategy_id=${sid}` : '';
     if (state.raceBetStrategy) {
-      const bsid = parseInt(state.raceBetStrategy);
-      // Only attach if the selected bet strategy belongs to the current model.
-      if (state.raceBetStrategies.some(b => b.id === bsid)) {
-        dqs += (dqs ? '&' : '?') + `bet_strategy_id=${bsid}`;
-      } else {
-        state.raceBetStrategy = null;
-        saveUi({ raceBetStrategy: null });
-      }
+      dqs += (dqs ? '&' : '?') + `bet_strategy_id=${state.raceBetStrategy}`;
     }
     state.raceData = await api(`/api/races/${state.raceDate}${dqs}`)
       .catch(e => ({ races: [], error: e.message }));
@@ -2014,6 +2036,33 @@ function niceTicks(lo, hi, n = 4) {
   return out;
 }
 
+// Bet-strategy mini-card grid — one card per bet strategy with race-day
+// coverage, total bets and ROI. Each card carries data-bid (the strategy id)
+// and data-bmc-ctx (the calling page, "dash" or "race") so a single click
+// handler in wire() can dispatch to the right state field + refresh.
+function renderBetMiniCards(list, selectedId, ctx) {
+  if (!list || !list.length) return '';
+  const lang = state.lang;
+  const cards = list.map(b => {
+    const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
+    const roi = b.roi_pct ?? 0;
+    const roiCls = roi > 0 ? 'pos' : roi < 0 ? 'neg' : '';
+    const sign = roi > 0 ? '+' : '';
+    const isSel = b.id == selectedId;
+    return `
+      <div class="bet-mini-card ${isSel ? 'selected' : ''}"
+           data-bid="${b.id}" data-bmc-ctx="${ctx}"
+           style="border-left:3px solid ${b.chart_color || 'var(--muted)'}">
+        <div class="bmc-name">${escapeHtml(label)}</div>
+        <div class="bmc-stats">
+          <span class="bmc-cov">${b.race_days || 0} ${t('日', 'd')} · ${b.n_bets || 0} ${t('注', 'bets')}</span>
+          <span class="bmc-roi ${roiCls}">${sign}${roi.toFixed(1)}%</span>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="bet-mini-grid">${cards}</div>`;
+}
+
 function renderStrategyDashboard(sel) {
   const d = state.dashData;
   if (!d || d.error) {
@@ -2024,29 +2073,6 @@ function renderStrategyDashboard(sel) {
       </div>`;
   }
   const strategies = state.strategies || [];
-  const betStrategies = state.dashBetStrategies || [];
-  const selBetId = state.dashBetStrategy;
-  const lang = state.lang;
-  // Mini-card-per-bet-strategy selector. Each card shows the strategy
-  // name, race coverage (distinct race days), and ROI; clicking switches
-  // state.dashBetStrategy and re-fetches the charts.
-  const betCards = betStrategies.map(b => {
-    const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
-    const roiCls = b.roi_pct > 0 ? 'pos' : b.roi_pct < 0 ? 'neg' : '';
-    const sign = b.roi_pct > 0 ? '+' : '';
-    const isSel = b.id == selBetId;
-    const days = b.race_days || 0;
-    const nb = b.n_bets || 0;
-    return `
-      <div class="bet-mini-card ${isSel ? 'selected' : ''}" data-bid="${b.id}"
-           style="border-left:3px solid ${b.chart_color || 'var(--muted)'}">
-        <div class="bmc-name">${escapeHtml(label)}</div>
-        <div class="bmc-stats">
-          <span class="bmc-cov">${days} ${t('日', 'd')} · ${nb} ${t('注', 'bets')}</span>
-          <span class="bmc-roi ${roiCls}">${sign}${b.roi_pct.toFixed(1)}%</span>
-        </div>
-      </div>`;
-  }).join('');
   const selectorBar = `
     <div class="toolbar" style="margin-bottom:8px;align-items:center">
       <label style="font-size:12px;color:var(--muted)">${t('策略', 'strategy')}:</label>
@@ -2056,7 +2082,7 @@ function renderStrategyDashboard(sel) {
         `).join('')}
       </select>
     </div>
-    <div class="bet-mini-grid">${betCards}</div>
+    ${renderBetMiniCards(state.dashBetStrategies, state.dashBetStrategy, 'dash')}
   `;
   return `
     <div class="panel">
@@ -2163,24 +2189,11 @@ function renderRaces() {
     </select>
   `;
 
-  // Bet-strategy chooser: when set, highlights the selected strategy's
-  // bet_ledger picks instead of the model's flat-top-1 default. Only
-  // shown if the model has bet strategies attached.
-  const betList = state.raceBetStrategies || [];
-  const lang = state.lang;
-  const bsid = state.raceBetStrategy || '';
-  const betPicker = betList.length ? `
-    <label style="font-size:12px;color:var(--muted);margin-left:12px">
-      ${t('投注策略', 'bet strategy')}:
-    </label>
-    <select id="raceBetStrat">
-      <option value="">${t('（模型預設 flat top-1）', '(default — flat top-1)')}</option>
-      ${betList.map(b => {
-        const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
-        return `<option value="${b.id}" ${b.id == bsid ? 'selected' : ''}>${escapeHtml(label)} · ${b.roi_pct.toFixed(0)}% ROI</option>`;
-      }).join('')}
-    </select>
-  ` : '';
+  // Bet-strategy mini-card row (same shape as the Dashboard's selector via
+  // renderBetMiniCards). Always rendered when the model has any bet
+  // strategies — loadRaces auto-selects the first one if none is active.
+  const betPicker = renderBetMiniCards(state.raceBetStrategies,
+                                       state.raceBetStrategy, 'race');
 
   // Cascading date picker: Year → Month → Race day. Each column is its own
   // scrollable list; later columns are empty until the previous one is chosen.
@@ -2275,16 +2288,12 @@ function renderRaces() {
   const loadingCls = state.racesLoading ? ' is-loading' : '';
   const loadingTxt = t('載入中…', 'loading…');
   main.innerHTML = `
-    <div class="panel">
-      <h2>${t('賽事', 'Races')} ${state.raceDate ? `· ${state.raceDate}` : ''}</h2>
-      <div class="toolbar">
+    <div class="panel races-panel">
+      <div class="toolbar" style="margin-bottom:6px">
+        <span class="races-title">${t('賽事', 'Races')}${state.raceDate ? ` · <code>${state.raceDate}</code>` : ''}</span>
         ${stratPicker}
-        ${betPicker}
-        <div style="flex:1"></div>
-        <span style="font-size:11px;color:var(--muted)">
-          ${t('綠色 = 已有該策略預測', 'green = strategy has predictions')}
-        </span>
       </div>
+      ${betPicker}
       ${datePicker}
     </div>
     <div class="races-loading-wrap${loadingCls}" data-loading-text="${loadingTxt}">
@@ -3080,12 +3089,6 @@ function wireRaceControls() {
     saveUi({ raceStrategy: state.raceStrategy, raceBetStrategy: null });
     loadRaces();
   });
-  const betSel = document.getElementById('raceBetStrat');
-  if (betSel) betSel.addEventListener('change', () => {
-    state.raceBetStrategy = betSel.value === '' ? null : parseInt(betSel.value);
-    saveUi({ raceBetStrategy: state.raceBetStrategy });
-    loadRaces();
-  });
   // 馬評 commentary: lazy-fetch DeepSeek (or rule-based) text in place of
   // the placeholder. First call may take ~3s when DeepSeek is invoked;
   // subsequent calls are cached server-side.
@@ -3503,18 +3506,25 @@ function wire() {
   if (dashStratSel) dashStratSel.addEventListener('change', e => {
     loadStrategyDetail(parseInt(e.target.value));
   });
-  // Bet-strategy mini-card clicks: each .bet-mini-card carries its id in
-  // data-bid; switch state.dashBetStrategy, re-fetch the ledger-derived
-  // charts, and re-render so the selected card highlight + chart series
-  // both update in one frame.
+  // Bet-strategy mini-card clicks. data-bmc-ctx tells us which page's
+  // state field to update + how to refresh; the helper renderBetMiniCards
+  // emits one of "dash" / "race" per card.
   document.querySelectorAll('.bet-mini-card').forEach(card => {
     card.addEventListener('click', async () => {
       const bid = parseInt(card.dataset.bid);
-      if (state.dashBetStrategy === bid) return;
-      state.dashBetStrategy = bid;
-      saveUi({ dashBetStrategy: bid });
-      await refreshDashCharts();
-      render();
+      const ctx = card.dataset.bmcCtx;
+      if (ctx === 'dash') {
+        if (state.dashBetStrategy === bid) return;
+        state.dashBetStrategy = bid;
+        saveUi({ dashBetStrategy: bid });
+        await refreshDashCharts();
+        render();
+      } else if (ctx === 'race') {
+        if (state.raceBetStrategy === bid) return;
+        state.raceBetStrategy = bid;
+        saveUi({ raceBetStrategy: bid });
+        loadRaces();
+      }
     });
   });
   const af = document.getElementById('auditFrom');
