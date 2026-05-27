@@ -378,6 +378,25 @@
   .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .sparkline { height: 40px; width: 100%; }
 
+  /* Bet-strategy mini-card selector — one card per bet strategy, click to
+     switch state.dashBetStrategy. Selected card highlighted via accent border. */
+  .bet-mini-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .bet-mini-card { background: var(--panel); border: 1px solid var(--border);
+                   border-radius: 4px; padding: 8px 12px; min-width: 160px;
+                   cursor: pointer; transition: background 0.15s, border-color 0.15s;
+                   user-select: none; }
+  .bet-mini-card:hover { background: rgba(130,144,168,0.08); }
+  .bet-mini-card.selected { border-color: var(--accent, #4a9eff);
+                            background: rgba(74,158,255,0.08);
+                            box-shadow: 0 0 0 1px var(--accent, #4a9eff) inset; }
+  .bet-mini-card .bmc-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .bet-mini-card .bmc-stats { display: flex; justify-content: space-between;
+                              align-items: center; gap: 8px; font-size: 11px; }
+  .bet-mini-card .bmc-cov { color: var(--muted); font-family: var(--mono); }
+  .bet-mini-card .bmc-roi { font-family: var(--mono); font-weight: 600; }
+  .bet-mini-card .bmc-roi.pos { color: var(--good); }
+  .bet-mini-card .bmc-roi.neg { color: var(--bad); }
+
   /* Performance charts */
   .chart-summary { display: flex; flex-wrap: wrap; gap: 18px; padding: 8px 12px;
                    margin-bottom: 12px; background: rgba(94,192,255,0.04);
@@ -606,6 +625,15 @@ function connectWs() {
       const m = JSON.parse(evt.data);
       if (m.type === 'scraper_log') pushLog(m.text || JSON.stringify(m));
       else if (m.type === 'lifecycle') pushLog(`[lifecycle] ${m.phase} pid=${m.pid || ''}`);
+      else if (m.type === 'race_settled') {
+        pushLog(`[race_settled] ${m.date} ${m.course} R${m.race_no}`);
+        // If the user is on the 賽事 page viewing the just-settled date,
+        // reload the data so the row flips from "未派彩" to 命中/失敗 + pnl.
+        // Skip otherwise so we don't fight other tabs.
+        if (state.tab === 'races' && state.raceDate === m.date) {
+          loadRaces().catch(() => {});
+        }
+      }
     } catch (e) { pushLog(`[ws-bad-json] ${evt.data}`); }
   };
   ws.onerror = () => pushLog('[ws] error');
@@ -668,6 +696,7 @@ async function loadStrategyDetail(id) {
     api(`/api/strategies/${id}/bet_strategies`).catch(() => []),
   ]);
   state.dashData = dash;
+  state.dashModelCharts = charts;            // raw model-level audit, kept for re-merges
   state.dashCharts = charts;
   state.dashBetStrategies = Array.isArray(betStrats) ? betStrats : [];
   // Forget the previously-selected bet strategy if it isn't owned by this
@@ -679,12 +708,47 @@ async function loadStrategyDetail(id) {
       saveUi({ dashBetStrategy: null });
     }
   }
+  // The selector no longer offers an "all" option, so default to the first
+  // available bet strategy if none is currently selected.
+  if (state.dashBetStrategy == null && state.dashBetStrategies.length > 0) {
+    state.dashBetStrategy = state.dashBetStrategies[0].id;
+    saveUi({ dashBetStrategy: state.dashBetStrategy });
+  }
   if (features && !state.features) state.features = features;
   state.strategyHealth = dash && !dash.error
     ? { windows: dash.calibration_trend }
     : null;
   state.strategyAudit = null;
+  // If a bet strategy is selected, layer its ledger-derived series on top.
+  await refreshDashCharts();
   render();
+}
+
+// Recompute state.dashCharts based on state.dashBetStrategy. With no bet
+// strategy selected, show the model-level audit unchanged. With one selected,
+// fetch /api/bet_strategies/{id}/charts and overlay its ledger-derived series
+// (cumulative_pnl, odds_buckets, segments, bankroll_path, totals) onto the
+// model charts — leaves predictions-only series (reliability, kelly_scenarios,
+// threshold_sweeps, top_n_scenarios) intact since they don't depend on which
+// bet rule fires.
+async function refreshDashCharts() {
+  const base = state.dashModelCharts || {};
+  const bsid = state.dashBetStrategy;
+  if (bsid == null) {
+    state.dashCharts = base;
+    return;
+  }
+  const bs = await api(`/api/bet_strategies/${bsid}/charts`).catch(() => null);
+  if (!bs || bs.error) { state.dashCharts = base; return; }
+  state.dashCharts = {
+    ...base,
+    cumulative_pnl: bs.cumulative_pnl,
+    odds_buckets:   bs.odds_buckets,
+    segments:       bs.segments,
+    bankroll_path:  bs.bankroll_path,
+    totals:         bs.totals,
+    _bet_strategy:  { id: bsid, name: bs.name, name_en: bs.name_en, name_zh: bs.name_zh },
+  };
 }
 
 async function runStrategyAudit(id) {
@@ -1959,28 +2023,30 @@ function renderStrategyDashboard(sel) {
         <div class="empty">${d?.error ? escapeHtml(d.error) : t('載入中…', 'loading…')}</div>
       </div>`;
   }
-  const cov = d.coverage || {};
-  const a = d.audit_summary || {};
-  const latest = (d.calibration_trend || [])[d.calibration_trend.length - 1];
-  const roiPct = a.roi != null ? (a.roi * 100).toFixed(2) + '%' : '—';
-  const winRate = a.win_rate != null ? (a.win_rate * 100).toFixed(1) + '%' : '—';
-  const eceText = latest?.ece != null ? latest.ece.toFixed(4) : '—';
-  const eceClass = latest?.ece != null && latest.ece < 0.05 ? 'good'
-                 : latest?.ece != null && latest.ece < 0.10 ? 'warn' : (latest ? 'bad' : '');
-  const roiClass = a.roi != null && a.roi > 0 ? 'good' : a.roi != null && a.roi < -0.05 ? 'bad' : 'warn';
-  const acc = d.accuracy || {};
-  const top1Pct = acc.top1 != null ? (acc.top1 * 100).toFixed(1) + '%' : '—';
-  const top3Pct = acc.top3 != null ? (acc.top3 * 100).toFixed(1) + '%' : '—';
-  const baselinePct = acc.random_baseline_top1 != null
-    ? (acc.random_baseline_top1 * 100).toFixed(1) + '%' : '—';
-  // Traffic-light: top-1 ≥ 30% green (HK syndicate-class), 15-30% warn, <15% bad
-  const top1Class = acc.top1 == null ? '' :
-    acc.top1 >= 0.30 ? 'good' : acc.top1 >= 0.15 ? 'warn' : 'bad';
-  const top3Class = acc.top3 == null ? '' :
-    acc.top3 >= 0.55 ? 'good' : acc.top3 >= 0.40 ? 'warn' : 'bad';
   const strategies = state.strategies || [];
   const betStrategies = state.dashBetStrategies || [];
   const selBetId = state.dashBetStrategy;
+  const lang = state.lang;
+  // Mini-card-per-bet-strategy selector. Each card shows the strategy
+  // name, race coverage (distinct race days), and ROI; clicking switches
+  // state.dashBetStrategy and re-fetches the charts.
+  const betCards = betStrategies.map(b => {
+    const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
+    const roiCls = b.roi_pct > 0 ? 'pos' : b.roi_pct < 0 ? 'neg' : '';
+    const sign = b.roi_pct > 0 ? '+' : '';
+    const isSel = b.id == selBetId;
+    const days = b.race_days || 0;
+    const nb = b.n_bets || 0;
+    return `
+      <div class="bet-mini-card ${isSel ? 'selected' : ''}" data-bid="${b.id}"
+           style="border-left:3px solid ${b.chart_color || 'var(--muted)'}">
+        <div class="bmc-name">${escapeHtml(label)}</div>
+        <div class="bmc-stats">
+          <span class="bmc-cov">${days} ${t('日', 'd')} · ${nb} ${t('注', 'bets')}</span>
+          <span class="bmc-roi ${roiCls}">${sign}${b.roi_pct.toFixed(1)}%</span>
+        </div>
+      </div>`;
+  }).join('');
   const selectorBar = `
     <div class="toolbar" style="margin-bottom:8px;align-items:center">
       <label style="font-size:12px;color:var(--muted)">${t('策略', 'strategy')}:</label>
@@ -1989,57 +2055,12 @@ function renderStrategyDashboard(sel) {
           <option value="${s.id}" ${s.id === sel.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>
         `).join('')}
       </select>
-      <label style="font-size:12px;color:var(--muted);margin-left:12px">${t('投注策略', 'bet strategy')}:</label>
-      <select id="dashBetStratSel">
-        <option value="">${t('（全部）', '(all)')}</option>
-        ${betStrategies.map(b => `
-          <option value="${b.id}" ${b.id == selBetId ? 'selected' : ''}>${escapeHtml(b.name_zh || b.name)}</option>
-        `).join('')}
-      </select>
-      <span style="color:var(--muted);font-size:12px;margin-left:auto">
-        ${t('儀表', 'Dashboard')} · <code>${escapeHtml(sel.name)}</code>
-      </span>
     </div>
+    <div class="bet-mini-grid">${betCards}</div>
   `;
   return `
     <div class="panel">
       ${selectorBar}
-      <div class="stat-row">
-        <div class="stat-card ${top1Class}">
-          <div class="label">${t('頭馬命中率', 'Top-1 accuracy')}</div>
-          <div class="value">${top1Pct}</div>
-          <div class="sub">${t('隨機基準', 'baseline')} ${baselinePct} · ${acc.races_with_winner || 0} ${t('場有效', 'races')}</div>
-        </div>
-        <div class="stat-card ${top3Class}">
-          <div class="label">${t('前三命中率', 'Top-3 accuracy')}</div>
-          <div class="value">${top3Pct}</div>
-          <div class="sub">${t('頭馬落在預測前三', 'winner in model top-3')}</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">${t('頭馬 log-loss', 'Winner log-loss')}</div>
-          <div class="value">${acc.winner_log_loss != null ? acc.winner_log_loss.toFixed(3) : '—'}</div>
-          <div class="sub">${t('越低越好', 'lower is better')}</div>
-        </div>
-        <div class="stat-card ${eceClass}">
-          <div class="label">ECE ${t('（最新窗口）', '(latest)')}</div>
-          <div class="value">${eceText}</div>
-          <div class="sub">${latest?.sample_count || 0} ${t('樣本', 'samples')}${latest && latest.ece < 0.05 ? ' · ' + t('優秀', 'elite') : ''}</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Brier</div>
-          <div class="value">${latest?.brier != null ? latest.brier.toFixed(4) : '—'}</div>
-        </div>
-        <div class="stat-card ${roiClass}">
-          <div class="label">ROI ${t('（全期）', '(full window)')}</div>
-          <div class="value">${roiPct}</div>
-          <div class="sub">${a.placed || 0} ${t('注', 'bets')} · ${a.wins || 0} ${t('勝', 'wins')} (${winRate})</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">${t('資料覆蓋', 'coverage')}</div>
-          <div class="value">${cov.race_days || 0} ${t('日', 'days')}</div>
-          <div class="sub">${cov.from || '—'} → ${cov.to || '—'}<br>${cov.predictions || 0} ${t('項預測', 'predictions')}</div>
-        </div>
-      </div>
     </div>
 
     <div class="panel">
@@ -3482,11 +3503,19 @@ function wire() {
   if (dashStratSel) dashStratSel.addEventListener('change', e => {
     loadStrategyDetail(parseInt(e.target.value));
   });
-  const dashBetSel = document.getElementById('dashBetStratSel');
-  if (dashBetSel) dashBetSel.addEventListener('change', e => {
-    state.dashBetStrategy = e.target.value === '' ? null : parseInt(e.target.value);
-    saveUi({ dashBetStrategy: state.dashBetStrategy });
-    render();
+  // Bet-strategy mini-card clicks: each .bet-mini-card carries its id in
+  // data-bid; switch state.dashBetStrategy, re-fetch the ledger-derived
+  // charts, and re-render so the selected card highlight + chart series
+  // both update in one frame.
+  document.querySelectorAll('.bet-mini-card').forEach(card => {
+    card.addEventListener('click', async () => {
+      const bid = parseInt(card.dataset.bid);
+      if (state.dashBetStrategy === bid) return;
+      state.dashBetStrategy = bid;
+      saveUi({ dashBetStrategy: bid });
+      await refreshDashCharts();
+      render();
+    });
   });
   const af = document.getElementById('auditFrom');
   if (af) af.addEventListener('change', e => {

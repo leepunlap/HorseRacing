@@ -38,8 +38,13 @@ def _race_posttime(conn: sqlite3.Connection, race_id: int) -> datetime | None:
 async def run_forever(broadcast=None) -> None:
     """Main calendar loop. Survives errors; cancelled by lifespan teardown."""
     from live.decision_loop import race_loop  # local to avoid circular at import
+    from live.post_settle import settle_loop   # post-race auto-scrape + settle
 
+    # `watched` covers the pre-race decision loop (T-10 → T-0);
+    # `settled_watched` is a separate set so the post-race settle task can
+    # be armed independently even after the decision loop window closes.
     watched: set[int] = set()
+    settled_watched: set[int] = set()
     try:
         while True:
             try:
@@ -55,8 +60,6 @@ async def run_forever(broadcast=None) -> None:
                 conn.close()
                 now = datetime.now()
                 for race_id, course, race_no, post_time in rows:
-                    if race_id in watched:
-                        continue
                     if not post_time:
                         continue
                     try:
@@ -64,9 +67,16 @@ async def run_forever(broadcast=None) -> None:
                     except Exception:
                         continue
                     secs_until_post = (pt - now).total_seconds()
-                    if -60 < secs_until_post <= 600:
+                    # Pre-race decision loop window (T-10 → T-0).
+                    if race_id not in watched and -60 < secs_until_post <= 600:
                         watched.add(race_id)
                         asyncio.create_task(race_loop(race_id, course, race_no, pt, broadcast))
+                    # Post-race auto-settle: arm at T+3 min so HKJC has had
+                    # time to publish the photo-confirmed result. The loop
+                    # itself does the polling + giving-up.
+                    if race_id not in settled_watched and secs_until_post <= -180:
+                        settled_watched.add(race_id)
+                        asyncio.create_task(settle_loop(race_id, course, race_no, pt, broadcast))
             except Exception as exc:
                 if broadcast is not None:
                     try:
