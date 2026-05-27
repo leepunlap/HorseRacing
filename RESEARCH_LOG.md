@@ -14,31 +14,50 @@ flat $500 stake**. No edge gate. No Kelly sizing. Win bets only.
 
 ---
 
-## TL;DR — current deployed config
+## TL;DR — current deployed config (as of commit 723a042)
 
 * Model: `XGBoost rank:ndcg`, `max_depth=4`, `eta=0.05`, `subsample=0.85`,
   `colsample_bytree=0.8`, `num_boost_round=400`.
-* Features: 53 of 174 (the rest are all-null / constant on HKJC-only data).
+* **Features: 70 of 188 active** — pruned dead ones (all-null / constant
+  on HKJC-only data), revived three broken ones (H074 class, H095
+  trackwork, H115/H116 sectionals), added eight new ones across four
+  iterations (Iter 13 speed figures, Iter 18 pedigree, Iter 19
+  field-relative, Iter 21+26 form-change / closing-kick).
 * Stage-2 Benter blend: **off** (the market blend pulls picks toward
-  favourites and erodes ROI — see Iter 5 below).
+  favourites and erodes ROI — see Iter 5).
+* **Time-decay weighting τ=180d** (per-race-group, exp(−Δdays/180)).
+  Stored as `strategies.time_decay_tau`; read by `walk_forward` and
+  multiplied into the XGBoost DMatrix as `weight`.
 * Per-race selection: rank by `calibrated_prob` (ranking by edge = `prob ×
   odds` collapsed top-1 to ~3% — see Iter 8).
 * Persisted in `predictions.recommendation` ('bet' / 'skip' with
   `decision_reason='not_top_prob'`) by `betting/select_bets.py`.
+* `--low-conf-thresh` hybrid routing is shipped but **disabled by
+  default** (Iter 14: helped the old model, hurts the new one).
 
-Walk-forward audit (the conservative one, daily retrain) on May 2026:
-**71 races / 20 wins (28.2%) / +$5,800 / +16.3% ROI**.
+**Walk-forward May 2026: 30 wins / 71 races (42.3%) / +$61,000 /
++171.8% ROI.**
 
-Single-split quick eval on the same window: top1 35.3%, ROI +88%.
-The single-split number is optimistic because the train/test boundary is
-fixed; walk-forward retrains daily and is closer to live behaviour.
+Single-split quick-eval on same window: top1 44.7%, ROI +166.7%.
+Single-split numbers normally over-state vs walk-forward (daily retrain
+adds variance); on the latest config the two are within ~5pp.
 
 ---
 
 ## Cross-validated leaderboard
 
-Test window = end of training boundary → 2026-05-24. Same model config.
+Test window = end of training boundary → 2026-05-24. Deployed config
+(70 features + τ=180d + tuned hyperparams, single-split quick-eval).
 
+| Split | n_races | top1 | ROI |
+|---|---|---|---|
+| 2025-09-01 | 619 | 35.2% | +78.9% |
+| 2025-11-01 | 497 | 38.8% | +113.5% |
+| 2026-01-01 | 375 | 40.5% | +130.7% |
+| 2026-03-01 | 235 | 44.7% | +166.7% |
+| 2026-05-24 | 71 (May only, walk-forward) | 42.3% | **+171.8%** |
+
+Older cross-val (before Iter 16-26 — 53 features + τ=180) for reference:
 | Split | n_races | top1 | ROI |
 |---|---|---|---|
 | 2025-07-01 | 648 | 30.1% | +35.1% |
@@ -46,10 +65,6 @@ Test window = end of training boundary → 2026-05-24. Same model config.
 | 2025-11-01 | 497 | 34.6% | +64.7% |
 | 2026-01-01 | 375 | 33.6% | +62.8% |
 | 2026-03-01 | 235 | 35.3% | +88.0% |
-
-With τ=180d time-decay weighting (Iter 10, not yet deployed in
-walk-forward). Without decay the same windows yield +36 / +60 / +57 / +58 /
-+66 ROI.
 
 ---
 
@@ -246,42 +261,61 @@ The empty / sparse tables drive a lot of the dead features in Iter 1.
 
 ## To Do
 
-### Next iterations
+### Done in this session (Iter 11-26, commits 14fdd17 → 723a042)
 
-* [ ] **Iter 11 — deploy τ=180d in `walk_forward`** and verify May 2026
-  walk-forward ROI. Code change: add a `time_decay_tau` strategy field +
-  read it in `walk_forward._load_matrix`, build the per-group weight array.
-  Expected lift: +5 to +20pp ROI on the May 2026 audit.
-* [ ] **Iter 12 — per-class sub-models.** Split training by class bucket
-  (G/L, C1-2, C3-5) and train one model per bucket. The pace and class
-  dynamics differ; a unified model averages over them.
-* [ ] **Iter 13 — speed-figure feature.** We have `time_sec` per race and
-  per horse. Compute a Beyer-style figure: subtract the race's daily-track
-  variant from each horse's time, normalise per distance bucket. Whitepaper
-  item #9 — every serious model embeds this either directly or implicitly.
-* [ ] **Iter 14 — losing-day analysis.** May 13 (1/9 strike), May 20 (1/9),
-  May 24 (2/11): what features did the picks share on those days? Look for
-  systematic patterns (specific jockey-trainer combo, distance, going).
-* [ ] **Iter 15 — LightGBM swap.** Same target / features / data, just
-  swap the booster. LightGBM regularises differently (leaf-wise growth).
-* [ ] **Iter 16 — back-fill `per_horse_sectionals` + `odds_snapshots`.**
-  These unlock ~20 dead features (Cat 10 pace + Cat 14 market).
-* [ ] **Iter 17 — custom profit-shaped loss.** XGBoost custom objective
-  that mimics betting PnL rather than rank correlation. Whitepaper item
-  #28.
-* [ ] **Iter 18 — sample weighting by class / distance** (not just by
-  recency) — emphasises the bucket of races we care about.
+* [x] **Iter 11** — τ=180d deployed in walk_forward (May 2026 +63.4%)
+* [x] **Iter 12** — per-class sub-models tested; h074_class fix landed
+  (per-class won when h074 was broken; tied once h074 worked)
+* [x] **Iter 13** — speed-figure features H175/176/177 from time_sec
+  + par-time per (distance, course) bucket
+* [x] **Iter 14** — losing-day analysis; hybrid routing shipped
+  (--low-conf-thresh, off by default — hurts the new model)
+* [x] **Iter 15** — LightGBM swap; XGBoost wins by 20-30pp ROI
+* [x] **Iter 16** — H115/H116 revived (sectionals.race_id was always NULL)
+* [x] **Iter 18** — H095 trackwork revived (was SUM of always-NULL distance);
+  cleaned `horse_pedigree` columns (scraper appended 'Dam' to every sire);
+  added H178 sire_winrate + H179 sire_dist_winrate
+* [x] **Iter 19** — field-relative H180/181/182/183 — H181 became #1
+  most-important feature by XGBoost gain (20.79). +97pp ROI lift.
+* [x] **Iter 21** — distance-delta H184/H185 + jockey-horse pair H186
+* [x] **Iter 22** — 10-seed ensemble (lost — racing variance is in
+  data, not booster init)
+* [x] **Iter 23** — τ re-sweep (180 still optimal even with new features)
+* [x] **Iter 24** — XGBoost hyperparam re-tune (depth=4 / eta=0.05
+  still optimal)
+* [x] **Iter 26** — closing-kick features H187/H188 from race_history.running
+
+### Open / scaffolded but not measured
+
+* [ ] **Iter 27 — alternative label schemes.** `--label-scheme` flag
+  added in `scripts/quick_eval.py` (ramp / ramp8 / binary / podium /
+  steep). Hypothesis: binary winner-only might align better with the
+  one-bet-per-race objective. Not yet measured.
+* [ ] **Iter 28 — peer-corrected speed figure.** Current H175-177 use
+  par-time per (distance, course). Extend with going adjustment and
+  class adjustment — a 70-second 1200m in C5 isn't comparable to a
+  70-second 1200m in C2.
+* [ ] **Iter 29 — custom profit-shaped loss.** XGBoost custom objective
+  mimicking betting PnL rather than rank correlation. Whitepaper #28.
+* [ ] **Iter 30 — back-fill `per_horse_sectionals`.** Would unlock ~20
+  dead Cat 10 pace features.
+* [ ] **Iter 31 — H186 jockey×horse coverage is sparse (42%).** Either
+  expand history depth or compose with global jockey×trainer stats.
+* [ ] **Iter 32 — investigate why May 2025-07 / 09 splits show lower
+  ROI than 2026 splits** (+78% / +35% vs +130% / +166%). Are recent
+  meetings genuinely more predictable, or is the model overfitting to
+  the more-recent training data?
 
 ### Engineering follow-ups (not blocking research)
 
-* [ ] Add `time_decay_tau` as a column on `strategies` so the deployed
-  config is fully captured in DB.
+* [x] `time_decay_tau` column on `strategies` — done in Iter 11.
 * [ ] Persist quick-eval results to a `model_experiments` table so the
   full sweep history is queryable in the SPA.
 * [ ] Expose top-1 / top-3 / ROI per test window on the Strategy
   Dashboard (currently only ECE / Brier / log-loss surface there).
-* [ ] HKJC odds poller needs to start (currently 0 snapshots). Once it
-  runs the `live` mode can take over for actual race-day predictions.
+* [x] **HKJC odds poller live** — Iter 17ish: rewrote `scrapers/odds_poller.py`
+  for the GraphQL endpoint with change-log semantics. Currently
+  capturing tonight's HV meeting in `odds_snapshots`.
 * [ ] `per_horse_sectionals` scraper is referenced in `db_v2.py` but
   never returned rows. Investigate whether HKJC publishes per-horse
   sectional times any more (Plan §3.1 ⓪).
