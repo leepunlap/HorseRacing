@@ -7,21 +7,27 @@ Polling cadence: every 30 seconds during a race-day window of T-60→T-0 around
 each scheduled race post-time. Outside that window the loop sleeps 60s and
 re-checks the calendar.
 
-Data source: HKJC tote WIN/PLACE odds endpoint —
-https://racing.hkjc.com/racing/info/meeting/Odds/WP/<date>/<course>/<raceNo>
-which returns a JSON-ish blob. We extract per-horse win_odds, place_odds and
-the WIN pool total per race, and append rows to `odds_snapshots`.
+Data source: HKJC's GraphQL `racing` query at
+https://info.cld.hkjc.com/graphql/base/ — the legacy
+/racing/info/meeting/Odds/WP/<date>/<course>/<raceNo> URL was retired in May
+2026 and silently returns 404 (which is why pre-2026-05-27 odds_snapshots
+were empty even though the poller was running).
 
-Activation: app.py imports `start_poller`.
+Storage rule (change-log): we only INSERT a row when the latest stored
+snapshot for that (race, horse) has a DIFFERENT win_odds, place_odds, or
+pool_total. A horse whose price stays flat for an hour produces ONE row in
+the table, not 120 — letting drift queries do `ORDER BY ts` and read the
+actual price-move sequence without dedup.
+
+Activation: app.py imports `run_forever`.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-import re
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -31,9 +37,56 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "racing.db"
 
 
-HKJC_ODDS_URL = (
-    "https://racing.hkjc.com/racing/info/meeting/Odds/WP/{date}/{course}/{race_no}"
-)
+HKJC_GRAPHQL_URL = "https://info.cld.hkjc.com/graphql/base/"
+# HKJC validates query strings byte-for-byte against a whitelist of registered
+# operations — reformatting the query (changing whitespace, dropping fields)
+# yields `Internal server error - WHITELIST_ERROR`. The string below is copied
+# verbatim from bet.hkjc.com's main.js bundle (the public SPA's `racing`
+# query). DO NOT reformat.
+HKJC_RACING_QUERY = """query racing($date: String, $venueCode: String, $oddsTypes: [OddsType], $raceNo: Int) {
+          raceMeetings(date: $date, venueCode: $venueCode)
+          {
+            pmPools(oddsTypes: $oddsTypes, raceNo: $raceNo) {
+              id
+              status
+              sellStatus
+              oddsType
+              lastUpdateTime
+              guarantee
+              minTicketCost
+              name_en
+              name_ch
+              leg {
+                number
+                races
+              }
+              cWinSelections {
+                composite
+                name_ch
+                name_en
+                starters
+              }
+              oddsNodes {
+                combString
+                oddsValue
+                hotFavourite
+                oddsDropValue
+                bankerOdds {
+                  combString
+                  oddsValue
+                }
+              }
+            }
+          }
+      }"""
+# HKJC rejects requests without the bet.hkjc.com Origin (WHITELIST_ERROR).
+HKJC_HEADERS = {
+    "Content-Type": "application/json",
+    "Accept-Encoding": "gzip",
+    "Origin": "https://bet.hkjc.com",
+    "Referer": "https://bet.hkjc.com/",
+    "User-Agent": "Mozilla/5.0",
+}
 
 
 def _conn() -> sqlite3.Connection:
@@ -50,39 +103,6 @@ def _is_race_day(now: datetime) -> bool:
     return now.weekday() in (2, 6)
 
 
-async def _fetch_odds(date_str: str, course: str, race_no: int) -> list[dict[str, Any]] | None:
-    url = HKJC_ODDS_URL.format(date=date_str.replace("-", "/"), course=course, race_no=race_no)
-    try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            text = r.text
-        # The endpoint sometimes wraps JSON in a callback; strip non-JSON prefix.
-        m = re.search(r"\{.*\}", text, re.S)
-        if not m:
-            return None
-        data = json.loads(m.group(0))
-    except Exception:
-        return None
-
-    horses = data.get("oddsNodes") or data.get("data", {}).get("oddsNodes") or []
-    out: list[dict[str, Any]] = []
-    for h in horses:
-        try:
-            out.append({
-                "horse_no": int(h.get("horseNo") or h.get("no") or 0),
-                "brand": h.get("brandNo") or h.get("brand"),
-                "win_odds": _f(h.get("winOdds") or h.get("win")),
-                "place_odds": _f(h.get("placeOdds") or h.get("place")),
-            })
-        except Exception:
-            continue
-    pool_total = _f(data.get("winPool") or data.get("pool"))
-    for row in out:
-        row["pool_total"] = pool_total
-    return out
-
-
 def _f(v: Any) -> float | None:
     try:
         f = float(v)
@@ -91,22 +111,109 @@ def _f(v: Any) -> float | None:
         return None
 
 
-async def _poll_once(date_str: str) -> int:
-    """Poll all known races for `date_str`; return rows written."""
+async def _fetch_odds(date_str: str, course: str, race_no: int) -> list[dict[str, Any]] | None:
+    """Fetch WIN + PLACE odds for one race via HKJC's GraphQL."""
+    body = {
+        "operationName": "racing",
+        "variables": {
+            "date": date_str, "venueCode": course,
+            "oddsTypes": ["WIN", "PLA"], "raceNo": race_no,
+        },
+        "query": HKJC_RACING_QUERY,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            r = await client.post(HKJC_GRAPHQL_URL, headers=HKJC_HEADERS, json=body)
+            r.raise_for_status()
+            data = r.json()
+    except Exception:
+        return None
+
+    meetings = (data.get("data") or {}).get("raceMeetings") or []
+    if not meetings:
+        return None
+    pools = meetings[0].get("pmPools") or []
+    win_by_horse: dict[int, float | None] = {}
+    pla_by_horse: dict[int, float | None] = {}
+    for pool in pools:
+        kind = pool.get("oddsType")
+        nodes = pool.get("oddsNodes") or []
+        for n in nodes:
+            try:
+                horse_no = int(n.get("combString", "0"))
+            except (TypeError, ValueError):
+                continue
+            v = _f(n.get("oddsValue"))
+            if kind == "WIN":
+                win_by_horse[horse_no] = v
+            elif kind == "PLA":
+                pla_by_horse[horse_no] = v
+    horses = sorted(set(win_by_horse) | set(pla_by_horse))
+    if not horses:
+        return None
+    return [{
+        "horse_no": h,
+        "brand": None,                      # GraphQL pmPools doesn't carry brand
+        "win_odds": win_by_horse.get(h),
+        "place_odds": pla_by_horse.get(h),
+        "pool_total": None,                 # not exposed by this query
+    } for h in horses]
+
+
+def _latest_per_horse(conn: sqlite3.Connection, race_id: int) -> dict[int, tuple]:
+    """Return {horse_no: (win_odds, place_odds, pool_total)} from the most
+    recent snapshot per horse for this race. Used to skip writes when the
+    price hasn't changed."""
+    rows = conn.execute(
+        """
+        SELECT horse_no, win_odds, place_odds, pool_total
+        FROM odds_snapshots
+        WHERE race_id = ? AND id IN (
+            SELECT MAX(id) FROM odds_snapshots WHERE race_id = ? GROUP BY horse_no
+        )
+        """,
+        (race_id, race_id),
+    ).fetchall()
+    return {r[0]: (r[1], r[2], r[3]) for r in rows}
+
+
+def _changed(new: dict, last: tuple | None) -> bool:
+    """True if any of (win, place, pool) differs from the last stored row."""
+    if last is None:
+        return True
+    last_win, last_pla, last_pool = last
+    return (
+        new.get("win_odds") != last_win
+        or new.get("place_odds") != last_pla
+        or new.get("pool_total") != last_pool
+    )
+
+
+async def _poll_once(date_str: str) -> tuple[int, int]:
+    """Poll all known races for `date_str`. Returns (rows_written, rows_skipped).
+
+    A snapshot is written only when the price (win, place, or pool) has moved
+    vs the most recent row for that horse. Static prices produce zero rows,
+    which keeps `odds_snapshots` to a true change-log size.
+    """
     if not DB_PATH.exists():
-        return 0
+        return 0, 0
     conn = _conn()
     races = conn.execute(
         "SELECT id, course, race_no FROM races WHERE date = ? ORDER BY course, race_no",
         (date_str,),
     ).fetchall()
     now = datetime.now().isoformat()
-    written = 0
+    written = skipped = 0
     for race_id, course, race_no in races:
         snapshot = await _fetch_odds(date_str, course, race_no)
         if not snapshot:
             continue
+        last = _latest_per_horse(conn, race_id)
         for h in snapshot:
+            if not _changed(h, last.get(h["horse_no"])):
+                skipped += 1
+                continue
             try:
                 conn.execute(
                     """
@@ -123,7 +230,7 @@ async def _poll_once(date_str: str) -> int:
                 continue
     conn.commit()
     conn.close()
-    return written
+    return written, skipped
 
 
 async def run_forever(broadcast=None) -> None:  # broadcast: optional Broadcaster
@@ -139,11 +246,12 @@ async def run_forever(broadcast=None) -> None:  # broadcast: optional Broadcaste
             if _is_race_day(now):
                 today = now.strftime("%Y-%m-%d")
                 try:
-                    n = await _poll_once(today)
-                    if n and broadcast is not None:
+                    n, s = await _poll_once(today)
+                    if (n or s) and broadcast is not None:
                         await broadcast.broadcast({
                             "type": "scraper_log",
-                            "text": f"[odds_poller] {n} snapshots @ {now.strftime('%H:%M:%S')}",
+                            "text": (f"[odds_poller] {n} changes / {s} unchanged "
+                                     f"@ {now.strftime('%H:%M:%S')}"),
                             "task": "odds_poller",
                         })
                 except Exception as exc:
