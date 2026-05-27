@@ -295,10 +295,21 @@ FEATURES: list[Feature] = [
     Feature("H183", 5, "場數", "Field size",
             "Number of runners in this race (smaller=more model confidence)",
             "B9", "h183_field_size"),
+    # ─── Form-change features (added 2026-05-27 Iter 21) ──────────────
+    Feature("H184", 3, "距離變化", "Distance delta",
+            "Today's distance minus horse's avg historical distance "
+            "(positive = stepping up; negative = dropping back)", "B9",
+            "h184_distance_delta"),
+    Feature("H185", 3, "距離變化z分", "Distance delta z-score",
+            "Distance delta normalised by horse's own distance variance",
+            "B9", "h185_distance_delta_z"),
+    Feature("H186", 4, "騎師×馬匹勝率", "Jockey × horse WR",
+            "Win rate when this jockey rode this horse historically",
+            "B9", "h186_jockey_horse_wr"),
 ]
 
-assert len(FEATURES) == 183, f"expected 183 features, got {len(FEATURES)}"
-assert len({f.id for f in FEATURES}) == 183, "duplicate feature ids"
+assert len(FEATURES) == 186, f"expected 186 features, got {len(FEATURES)}"
+assert len({f.id for f in FEATURES}) == 186, "duplicate feature ids"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

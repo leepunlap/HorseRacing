@@ -1124,6 +1124,47 @@ def h183_field_size(c):
     return float(len(c.field)) if c.field else None
 
 
+# ─── Form-change features (H184-186) ──────────────────────────────────
+
+def h184_distance_delta(c):
+    """Today's distance − horse's avg historical distance."""
+    d_today = c.race.get("distance")
+    if d_today is None or not c.history:
+        return None
+    dists = [h.get("distance") for h in c.history if h.get("distance")]
+    if not dists:
+        return None
+    return float(d_today) - sum(dists) / len(dists)
+
+
+def h185_distance_delta_z(c):
+    """Distance delta divided by the horse's own distance stdev. Robust to
+    horses that have always raced at the same distance (returns 0)."""
+    d_today = c.race.get("distance")
+    if d_today is None or not c.history:
+        return None
+    dists = [h.get("distance") for h in c.history if h.get("distance")]
+    if len(dists) < 3:
+        return None
+    mean = sum(dists) / len(dists)
+    var = sum((d - mean) ** 2 for d in dists) / len(dists)
+    if var <= 0:
+        return 0.0
+    return (float(d_today) - mean) / (var ** 0.5)
+
+
+def h186_jockey_horse_wr(c):
+    """Win-rate this jockey has when riding this specific horse."""
+    jockey = c.entry.get("jockey")
+    if not jockey or not c.history:
+        return None
+    rides = [h for h in c.history if (h.get("jockey") or "") == jockey]
+    if len(rides) < 2:
+        return None
+    wins = sum(1 for h in rides if (h.get("position") or 99) == 1)
+    return wins / len(rides)
+
+
 def h179_sire_dist_winrate(c):
     sire = _sire_for_brand(c, c.entry["brand"])
     dist = c.race.get("distance")
