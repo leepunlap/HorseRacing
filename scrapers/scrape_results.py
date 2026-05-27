@@ -155,18 +155,21 @@ class ResultsScraper(BaseScraper):
                 break
             if not force:
                 already = conn.execute(
-                    "SELECT 1 FROM results WHERE race_id = ? LIMIT 1", (race_id,)
+                    "SELECT 1 FROM results WHERE race_id = ? AND position IS NOT NULL "
+                    "AND position != '' LIMIT 1",
+                    (race_id,),
                 ).fetchone()
                 if already:
                     continue
             try:
-                rows_added += self._scrape_race(date_str, course, race_no, race_id)
+                rows_added += self._scrape_race(date_str, course, race_no, race_id, force)
             except Exception as exc:
                 log(f"[{self.name}] {date_str}/{course}/R{race_no}: {exc}")
         return rows_added
 
     # ─── per-race fetch + parse + write ───────────────────────────────────────
-    def _scrape_race(self, date_str: str, course: str, race_no: int, race_id: int) -> int:
+    def _scrape_race(self, date_str: str, course: str, race_no: int,
+                     race_id: int, force: bool = False) -> int:
         url_date = date_str.replace("-", "/")
         url = (
             "https://racing.hkjc.com/racing/information/English/Racing/LocalResults.aspx"
@@ -174,7 +177,11 @@ class ResultsScraper(BaseScraper):
         )
         cache_key = f"{date_str}_{course}_R{race_no}"
         try:
-            body = self.fetch(url, cache_key=cache_key)
+            # --force-refresh must bust the raw HTML cache too. The race-card
+            # page is re-served by HKJC pre-race as a placeholder; if we ever
+            # cached one of those, every subsequent re-parse keeps reading
+            # zero results regardless of how late HKJC publishes.
+            body = self.fetch(url, cache_key=cache_key, force_refresh=force)
         except RuntimeError:
             return 0
         if not body:

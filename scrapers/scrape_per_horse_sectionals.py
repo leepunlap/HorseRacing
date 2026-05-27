@@ -161,6 +161,7 @@ class PerHorseSectionalScraper(BaseScraper):
         return 0
 
     def _scrape_meeting(self, date_str: str, course: str, force: bool) -> int:
+        self._force = force
         conn = self.db()
         races = conn.execute(
             "SELECT id, race_no FROM races WHERE date=? AND course=? ORDER BY race_no",
@@ -191,7 +192,8 @@ class PerHorseSectionalScraper(BaseScraper):
         url = self.URL.format(dmy=dmy, course=course, rn=race_no)
         cache_key = f"{date_str}_{course}_R{race_no}"
         try:
-            body = self.fetch(url, cache_key=cache_key)
+            body = self.fetch(url, cache_key=cache_key,
+                              force_refresh=getattr(self, "_force", False))
         except RuntimeError:
             return 0
         if not body or "Sectional Time" not in body:
