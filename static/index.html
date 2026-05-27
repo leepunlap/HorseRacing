@@ -2592,14 +2592,23 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           const nm = escapeHtml(i18n.horse(h, lang));
           const onBet = betBrandSet.has(h.brand);
           const gate = h.draw ?? '—';
-          const oddsTxt = h.odds == null ? '—' : Number(h.odds).toFixed(1);
           return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">`
                + `<span style="display:inline-block;min-width:1.6em;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${gate}</span> `
-               + `${nm} `
-               + `<span style="color:var(--muted);font-variant-numeric:tabular-nums">@${oddsTxt}</span>`
+               + `${nm}`
                + `</span>`;
         }).join('<br>')
       : '—';
+    // Stack the same top-4 horses' odds in the 賠率 column so each row in
+    // 推介 lines up with its price next door. Falls back to the bet
+    // strategy's settled odds_at_bet (or live odds) when we have no
+    // model picks at all (e.g. predictions missing for this race).
+    const oddsHtml = topPicks.length
+      ? topPicks.map(h => {
+          const onBet = betBrandSet.has(h.brand);
+          const oddsTxt = h.odds == null ? '—' : Number(h.odds).toFixed(1);
+          return `<span style="font-variant-numeric:tabular-nums;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">${oddsTxt}</span>`;
+        }).join('<br>')
+      : (displayOdds == null ? '—' : Number(displayOdds).toFixed(1));
     const pm = isSettled ? (pmByBet[bet.id] || null) : null;
     const tagChips = pm && pm.tags && pm.tags.length
       ? '<div class="pm-chips" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
@@ -2630,7 +2639,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
         <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(_poolLabel(bet.pool, lang))}</span></td>
         <td class="h-name">${comboHtml}</td>
         <td class="small" style="max-width:170px;line-height:1.3">${tipHtml}</td>
-        <td class="num">${displayOdds == null ? '—' : Number(displayOdds).toFixed(1)}</td>
+        <td class="num" style="line-height:1.3">${oddsHtml}</td>
         <td class="num">${isSettled ? escapeHtml(positions) : '—'}</td>
         <td class="num">${fmtMoney(bet.stake)}</td>
         <td class="num">${isSettled ? fmtMoney(bet.payout) : '—'}</td>
