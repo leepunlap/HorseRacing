@@ -3004,7 +3004,8 @@ function renderRaceBlock(r, data, sid) {
             <th class="num">${t('閘', 'dr')}</th>
             <th>${t('騎師', 'jockey')}</th>
             <th>${t('練馬師', 'trainer')}</th>
-            <th class="num" title="${t('賠率 / 市場機率', 'odds / market p')}">${t('賠率', 'odds')}</th>
+            <th class="num">${t('獨贏', 'win')}</th>
+            <th class="num">${t('位置', 'place')}</th>
             <th class="num" title="${t('模型機率 / edge', 'model p / edge')}">${t('模型', 'model')}</th>
             <th class="num" title="${t('完成時間 / 頭馬距離', 'finish time / lengths behind')}">${t('時間', 'time')}</th>
             <th class="small">${t('沿途走位', 'running')}</th>
@@ -3039,10 +3040,8 @@ function renderRaceBlock(r, data, sid) {
                 <td class="num">${h.draw ?? '—'}</td>
                 <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
                 <td>${escapeHtml(i18n.trainer(h.trainer, lang))}</td>
-                <td class="num">
-                  <div>${fmtNum(h.odds, 2)}</div>
-                  <div class="sub">${fmtPct(mkt)}</div>
-                </td>
+                <td class="num">${fmtNum(h.odds, 2)}</td>
+                <td class="num">${fmtNum(h.place_odds, 2)}</td>
                 <td class="num">
                   <div>${fmtPct(h.calibrated_prob)}</div>
                   <div class="sub">edge ${h.edge == null ? '—' : fmtNum(h.edge, 2)}</div>

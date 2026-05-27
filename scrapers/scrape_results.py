@@ -386,11 +386,20 @@ class ResultsScraper(BaseScraper):
         rows: list[dict] = []
         seen: set[tuple] = set()
         for table in soup.find_all("table"):
+            # HKJC publishes multi-horse pools (PLACE for 3 finishers, QPL
+            # for 3 pairs, TRIO when split) as a single block where only the
+            # first row carries the pool name; subsequent rows have an empty
+            # first cell. Carry the pool across rows so we capture all
+            # placed-horse PLACE dividends instead of just the winner.
+            current_pool: str | None = None
             for tr in table.find_all("tr"):
                 tds = [td.get_text(" ", strip=True) for td in tr.find_all("td")]
                 if len(tds) < 3:
                     continue
-                pool = POOL_MAP.get(tds[0].upper().strip())
+                first = tds[0].upper().strip()
+                if first:
+                    current_pool = POOL_MAP.get(first)
+                pool = current_pool
                 if not pool:
                     continue
                 combo = re.sub(r"\s+", "", tds[1].strip())

@@ -1641,8 +1641,11 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
             # Horse rows joined with optional predictions and horse profile.
             # `live_odds` LEFT JOIN against the most recent odds_snapshots row
             # (keyed by horse_no) so pre-race displays surface the latest tote
-            # odds when results.odds is still null. The COALESCE in the SELECT
-            # makes `odds` always reflect whatever is freshest.
+            # odds when results.odds is still null. `place_div` LEFT JOIN to
+            # the dividends table so historical placed horses (top-3 finishers)
+            # surface a derived PLACE multiplier (dividend / 10, since HKJC
+            # quotes per $10 stake). Together they let one `place_odds` column
+            # work for both live and settled races.
             live_join = (
                 "LEFT JOIN ("
                 "  SELECT date, course, race_no, horse_no, win_odds, place_odds, "
@@ -1652,6 +1655,9 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                 "                AND o2.race_no=o1.race_no AND o2.horse_no=o1.horse_no)"
                 ") lo ON lo.date = r.date AND lo.course = r.course "
                 "        AND lo.race_no = r.race_no AND lo.horse_no = r.horse_no "
+                "LEFT JOIN dividends pd ON pd.date = r.date AND pd.course = r.course "
+                "        AND pd.race_no = r.race_no AND pd.pool = 'PLACE' "
+                "        AND pd.combination = r.brand "
             )
             if strategy_id is not None:
                 horse_rows = conn.execute(
@@ -1660,7 +1666,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                            r.act_wt, r.decl_wt,
                            COALESCE(r.odds, lo.win_odds) AS odds,
                            lo.win_odds AS live_win_odds,
-                           lo.place_odds AS live_place_odds,
+                           COALESCE(lo.place_odds, pd.dividend / 10.0) AS place_odds,
                            r.finish_time, r.lbw,
                            r.running_style, r.position, r.horse_no,
                            h.age, h.sex, h.rating,
@@ -1679,7 +1685,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                     (strategy_id, race_id),
                 ).fetchall()
                 cols = ("brand","horse_name","jockey","trainer","draw","act_wt",
-                        "decl_wt","odds","live_win_odds","live_place_odds",
+                        "decl_wt","odds","live_win_odds","place_odds",
                         "finish_time","lbw","running_style","position","horse_no",
                         "age","sex","rating","horse_name_en","horse_name_zh",
                         "fundamental_prob","market_implied_prob","blended_prob",
@@ -1691,7 +1697,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                            r.act_wt, r.decl_wt,
                            COALESCE(r.odds, lo.win_odds) AS odds,
                            lo.win_odds AS live_win_odds,
-                           lo.place_odds AS live_place_odds,
+                           COALESCE(lo.place_odds, pd.dividend / 10.0) AS place_odds,
                            r.finish_time, r.lbw,
                            r.running_style, r.position, r.horse_no,
                            h.age, h.sex, h.rating,
@@ -1704,7 +1710,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                     (race_id,),
                 ).fetchall()
                 cols = ("brand","horse_name","jockey","trainer","draw","act_wt",
-                        "decl_wt","odds","live_win_odds","live_place_odds",
+                        "decl_wt","odds","live_win_odds","place_odds",
                         "finish_time","lbw","running_style","position","horse_no",
                         "age","sex","rating","horse_name_en","horse_name_zh")
             horses = [dict(zip(cols, h)) for h in horse_rows]
