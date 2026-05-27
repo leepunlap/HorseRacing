@@ -1074,6 +1074,56 @@ def h178_sire_winrate(c):
     return wr
 
 
+# ─── Field-relative features (H180-183) ─────────────────────────────
+# These compare a horse to the rest of the field in the SAME race. They
+# carry no signal across races on their own — only relative position
+# matters — but combined with absolute features (H009 rating, etc.) they
+# tell the model "this horse is the top-rated in a field of 14" which
+# is a different proposition from "rated 70 in some unknown field".
+
+def h180_field_rating_rank(c):
+    if not c.field: return None
+    ratings = [(_g(e, "rating"), e["brand"]) for e in c.field]
+    ratings = [(r, b) for r, b in ratings if r is not None]
+    if not ratings: return None
+    me = _g(c.entry, "rating")
+    if me is None: return None
+    # 1 = highest rating; ties resolved by alpha brand for stability
+    ratings.sort(key=lambda x: (-x[0], x[1]))
+    for idx, (r, b) in enumerate(ratings, start=1):
+        if b == c.entry["brand"]:
+            return float(idx)
+    return None
+
+
+def h181_field_rating_zscore(c):
+    if not c.field: return None
+    ratings = [_g(e, "rating") for e in c.field]
+    ratings = [r for r in ratings if r is not None]
+    me = _g(c.entry, "rating")
+    if me is None or len(ratings) < 3: return None
+    mean = sum(ratings) / len(ratings)
+    var = sum((r - mean) ** 2 for r in ratings) / len(ratings)
+    if var <= 0: return 0.0
+    return (me - mean) / (var ** 0.5)
+
+
+def h182_field_experience_rank(c):
+    if not c.field or not c.field_history: return None
+    me_runs = len(c.field_history.get(c.entry["brand"], []))
+    # Other horses' run counts
+    pairs = [(len(c.field_history.get(e["brand"], [])), e["brand"]) for e in c.field]
+    pairs.sort(key=lambda x: (-x[0], x[1]))
+    for idx, (n, b) in enumerate(pairs, start=1):
+        if b == c.entry["brand"]:
+            return float(idx)
+    return None
+
+
+def h183_field_size(c):
+    return float(len(c.field)) if c.field else None
+
+
 def h179_sire_dist_winrate(c):
     sire = _sire_for_brand(c, c.entry["brand"])
     dist = c.race.get("distance")

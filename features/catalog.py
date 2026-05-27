@@ -281,10 +281,24 @@ FEATURES: list[Feature] = [
     Feature("H179", 1, "父系距離勝率", "Sire × distance WR",
             "Sire's offspring win-rate at this race's distance bucket",
             "B5", "h179_sire_dist_winrate"),
+    # ─── Field-relative features (added 2026-05-27) ─────────────────
+    Feature("H180", 12, "場內評分排名", "Field rating rank",
+            "Horse's official rating position within this race's field "
+            "(1 = highest-rated; ties averaged)",
+            "B9", "h180_field_rating_rank"),
+    Feature("H181", 12, "場內評分Z分", "Field rating z-score",
+            "Z-score of horse's rating against the field mean", "B9",
+            "h181_field_rating_zscore"),
+    Feature("H182", 12, "場內出賽次數排名", "Field experience rank",
+            "Rank of race_count within the field (lower=more experienced)",
+            "B9", "h182_field_experience_rank"),
+    Feature("H183", 5, "場數", "Field size",
+            "Number of runners in this race (smaller=more model confidence)",
+            "B9", "h183_field_size"),
 ]
 
-assert len(FEATURES) == 179, f"expected 179 features, got {len(FEATURES)}"
-assert len({f.id for f in FEATURES}) == 179, "duplicate feature ids"
+assert len(FEATURES) == 183, f"expected 183 features, got {len(FEATURES)}"
+assert len({f.id for f in FEATURES}) == 183, "duplicate feature ids"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
