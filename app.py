@@ -47,6 +47,27 @@ STATIC_DIR = BASE_DIR / "static"
 DATA_DIR.mkdir(exist_ok=True)
 STATIC_DIR.mkdir(exist_ok=True)
 
+
+# ─── .env loader (secrets) ──────────────────────────────────────────────────
+# Reads `BASE_DIR/.env` (gitignored) before any module reads os.environ.
+# Holds DEEPSEEK_API_KEY for the betting.eval_reason narrator. We keep the
+# parser minimal (no python-dotenv dependency); honours KEY=value and
+# KEY="value with spaces".
+def _load_env_file() -> None:
+    env_path = BASE_DIR / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        k = k.strip()
+        v = v.strip().strip('"').strip("'")
+        # Don't overwrite values already exported in the shell — env always wins.
+        os.environ.setdefault(k, v)
+_load_env_file()
+
 HARDCODED_PASSWORD = "168888"
 TOKENS: set[str] = set()
 

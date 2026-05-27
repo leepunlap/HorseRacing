@@ -51,3 +51,7 @@ data/usable_features.json
 
 # Local Claude Code settings (machine-specific)
 .claude/settings.local.json
+
+# Secrets / API keys — never commit
+.env
+.env.*

@@ -2442,7 +2442,7 @@ function _renderBetsSummaryFromModel(data, strat, lang) {
         <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
         <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
         <td class="bet">✓</td>
-        <td class="assessment" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
+        <td class="assessment" title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</td>
         <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>
         <td class="num ${pnlCls}">${a.pnl == null ? '—' : fmtMoney(a.pnl)}</td>
       </tr>
@@ -2456,7 +2456,7 @@ function _renderBetsSummaryFromModel(data, strat, lang) {
         <span>${rows.length} ${t('注', 'bets')}</span>
         <span>${t('總投注', 'stake')}: ${fmtMoney(totalStake)}</span>
         <span class="${pnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
-        ${roi != null && settled ? `<span class="${pnlCls}">ROI: ${roi.toFixed(1)}%</span>` : ''}
+        ${roi != null && settled ? `<span class="${pnlCls}">${t('回報率', 'ROI')}: ${roi.toFixed(1)}%</span>` : ''}
       </div>
       <div class="race-body">
         <table>
@@ -2530,17 +2530,35 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
     const won = bet.won === 1;
     const rowPnlCls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
     const cls = won ? 'winner' : '';
+    // Pick the "primary" horse for the eval-reason fetch — singles use the
+    // sole horse; for combos we use the first listed (top-1 in any-order
+    // bets, or 1st-placed pick for ordered bets).
+    const primaryBrand = String(bet.brand || '').split(/[,>]/)[0] || '';
+    const ordered = String(bet.brand || '').includes('>');
+    const positions = String(bet.brand || '').split(ordered ? '>' : ',').map(b => {
+      const h = (r.horses || []).find(x => x.brand === b);
+      return h && h.position != null ? String(h.position) : '?';
+    }).join(ordered ? ' → ' : ' / ');
     return `
       <tr class="${cls}">
         <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
-        <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(bet.pool)}</span></td>
+        <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(_poolLabel(bet.pool, lang))}</span></td>
         <td class="h-name">${comboHtml}</td>
         <td class="num">${bet.odds_at_bet == null ? '—' : Number(bet.odds_at_bet).toFixed(1)}</td>
+        <td class="num">${escapeHtml(positions)}</td>
         <td class="num">${fmtMoney(bet.stake)}</td>
         <td class="num">${fmtMoney(bet.payout)}</td>
         <td class="num ${rowPnlCls}">${fmtMoney(bet.pnl)}</td>
-        <td>${won ? '<span class="pill good">WON</span>' : (bet.won === 0 ? '<span class="pill muted">lost</span>' : '<span class="pill muted">pending</span>')}</td>
-        <td class="assessment small" style="color:var(--muted)">${escapeHtml(bet.reason || '')}</td>
+        <td>${won
+          ? `<span class="pill good">${t('命中', 'WON')}</span>`
+          : (bet.won === 0
+              ? `<span class="pill muted">${t('失敗', 'lost')}</span>`
+              : `<span class="pill muted">${t('未派彩', 'pending')}</span>`)}</td>
+        <td class="assessment small" style="max-width:380px"
+            data-eval-race="${r.id}" data-eval-brand="${escapeHtml(primaryBrand)}">
+          <span class="eval-text" style="color:var(--muted)">${t('（按鈕載入 AI 馬評）', '(click to load AI commentary)')}</span>
+          <button class="btn ghost small eval-load-btn" style="font-size:11px;padding:2px 8px;margin-left:6px">${t('馬評', 'AI 馬評')}</button>
+        </td>
       </tr>`;
   }).join('');
   const ruleLabel = lang === 'zh' ? (bsMeta.name_zh || bsMeta.name)
@@ -2553,7 +2571,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
         <span>${items.length} ${t('注', 'bets')}</span>
         <span>${t('總投注', 'stake')}: ${fmtMoney(totalStake)}</span>
         <span class="${pnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
-        ${roi != null && settled ? `<span class="${pnlCls}">ROI: ${roi.toFixed(1)}%</span>` : ''}
+        ${roi != null && settled ? `<span class="${pnlCls}">${t('回報率', 'ROI')}: ${roi.toFixed(1)}%</span>` : ''}
         ${settled ? `<span class="meta">${anyWonCount}/${settled} ${t('命中', 'wins')}</span>` : ''}
       </div>
       <div class="race-body">
@@ -2563,11 +2581,12 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
             <th>${t('彩池', 'pool')}</th>
             <th>${t('組合', 'combination')}</th>
             <th class="num">${t('賠率', 'odds')}</th>
+            <th class="num">${t('實際名次', 'finish')}</th>
             <th class="num">${t('投注', 'stake')}</th>
             <th class="num">${t('派彩', 'payout')}</th>
             <th class="num">${t('盈虧', 'pnl')}</th>
             <th>${t('結果', 'result')}</th>
-            <th>${t('原因', 'reason')}</th>
+            <th>${t('馬評', 'AI commentary')}</th>
           </tr></thead>
           <tbody>${body}</tbody>
         </table>
@@ -2606,6 +2625,52 @@ const TRAINER_EN_ZH = {
   "K W Lui":"呂健威","M Newnham":"紐德安","P C Ng":"伍鵬志","P F Yiu":"姚本輝",
   "W K Mo":"巫偉傑","W Y So":"蘇偉賢","Y Ikee":"池江泰寿","Y S Tsui":"徐雨石",
 };
+// HKJC race-meta + pool-name localisation. When language is Chinese the
+// race header reads "沙田 / Class 4 → 第四班 / Good → 好" and the dividend
+// row shows 連贏 / 位置Q / 順序連贏 / 三重彩 / 四重彩 / 四連環 / 單T
+// instead of the English codes.
+const _COURSE_ZH = { ST: '沙田', HV: '跑馬地', CH: '從化' };
+function _courseLabel(code, lang) {
+  if (!code) return '';
+  return (lang === 'zh' ? _COURSE_ZH[code] : null) || code;
+}
+function _classLabel(raw, lang) {
+  if (!raw) return '';
+  const s = String(raw).trim().toUpperCase();
+  if (s.startsWith('G1')) return lang === 'zh' ? '一級賽 (G1)' : 'G1';
+  if (s.startsWith('G2')) return lang === 'zh' ? '二級賽 (G2)' : 'G2';
+  if (s.startsWith('G3')) return lang === 'zh' ? '三級賽 (G3)' : 'G3';
+  if (s.indexOf('LISTED') >= 0) return lang === 'zh' ? '表列賽' : 'Listed';
+  const m = s.replace('CLASS', '').replace('C', '').trim();
+  const n = parseInt(parseFloat(m));
+  if (n >= 1 && n <= 5) {
+    return lang === 'zh' ? `第 ${n} 班` : `Class ${n}`;
+  }
+  return raw;
+}
+function _goingLabel(raw, lang) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  if (lang !== 'zh') return s;
+  const map = {
+    'Good': '好', 'Good To Yielding': '好至黏軟', 'Good To Firm': '好至快',
+    'Yielding': '黏軟', 'Soft': '軟', 'Heavy': '大爛',
+    'Fast': '快', 'Wet Fast': '濕快', 'Wet Slow': '濕慢',
+    'Sloppy': '泥濘', 'Muddy': '爛地', 'Frozen': '凍地',
+  };
+  return map[s] || s;
+}
+const _POOL_ZH = {
+  'WIN': '獨贏', 'PLACE': '位置', 'QIN': '連贏', 'QPL': '位置Q',
+  'EXA': '順序連贏', 'TRI': '三重彩', 'TRIO': '單T',
+  'F4': '四重彩', 'QTT': '四連環',
+  'CWA': 'CWA', 'CWB': 'CWB', 'CWC': 'CWC', 'IWN': 'IWN',
+};
+function _poolLabel(pool, lang) {
+  if (!pool) return '';
+  return (lang === 'zh' ? _POOL_ZH[pool] : null) || pool;
+}
+
 function localiseName(name, lang, kind) {
   if (!name) return '';
   if (lang !== 'zh') return name;
@@ -2726,6 +2791,11 @@ function _analyseFromLedger(h, ledgerBets, bsMeta, lang) {
 // z-scores fall in [-3, +3]; we map z=3 → +9 (max) by multiplying ×3
 // and clamping. That keeps the number space tidy and visually
 // comparable across rows without exposing raw decimals.
+//
+// Returns RAW HTML (consumers must NOT escapeHtml it). The ↑ 上揚 /
+// Tailwinds prefix is wrapped in a green span and the ↓ 下挫 /
+// Headwinds prefix in a red span — labels only, factor text stays the
+// default cell colour.
 function _laymanDrivers(h, lang) {
   const drivers = h.feature_drivers || { top: [], bottom: [] };
   if (!drivers.top.length && !drivers.bottom.length) return '—';
@@ -2737,20 +2807,18 @@ function _laymanDrivers(h, lang) {
       score = Math.max(-9, Math.min(9, Math.round(d.z * 3)));
     }
     const sign = score > 0 ? '+' : '';
-    return `${String(nm)} (${sign}${score})`;
+    return `${escapeHtml(String(nm))} (${sign}${score})`;
   };
   const topAll = drivers.top.map(fmt);
   const botAll = drivers.bottom.map(fmt);
+  const upLabel = lang === 'zh' ? '↑ 上揚' : '↑ Tailwinds';
+  const dnLabel = lang === 'zh' ? '↓ 下挫' : '↓ Headwinds';
   const parts = [];
   if (topAll.length) {
-    parts.push(lang === 'zh'
-      ? `↑ 上揚: ${topAll.join(', ')}`
-      : `↑ Tailwinds: ${topAll.join(', ')}`);
+    parts.push(`<span style="color:#4dd17a;font-weight:600">${upLabel}:</span> ${topAll.join(', ')}`);
   }
   if (botAll.length) {
-    parts.push(lang === 'zh'
-      ? `↓ 下挫: ${botAll.join(', ')}`
-      : `↓ Headwinds: ${botAll.join(', ')}`);
+    parts.push(`<span style="color:#f06262;font-weight:600">${dnLabel}:</span> ${botAll.join(', ')}`);
   }
   return parts.join(' · ');
 }
@@ -2786,11 +2854,11 @@ function renderRaceBlock(r, data, sid) {
     return analyseHorse(h, strat, state.lang, h.brand === topBrand);
   };
 
+  const lang = state.lang;
   const dividends = (data.dividends || []).filter(d => d.course === r.course && d.race_no === r.race_no);
   const divChunks = dividends.map(d =>
-    `<span><b>${escapeHtml(d.pool)}</b> ${escapeHtml(d.combination)}: $${d.dividend}</span>`
+    `<span><b>${escapeHtml(_poolLabel(d.pool, lang))}</b> ${escapeHtml(d.combination)}: $${d.dividend}</span>`
   );
-  const lang = state.lang;
 
   // Predicted rank = position the model gave this horse (1 = top pick),
   // computed per race over horses that have a calibrated_prob. Horses
@@ -2803,10 +2871,10 @@ function renderRaceBlock(r, data, sid) {
   return `
     <div class="race-block">
       <div class="race-hdr">
-        <span class="race-num">${escapeHtml(r.course)} R${r.race_no}</span>
-        <span>${r.distance}m</span>
-        <span>${escapeHtml(r.class || '')}</span>
-        <span>${escapeHtml(r.going || '')}</span>
+        <span class="race-num">${escapeHtml(_courseLabel(r.course, lang))} R${r.race_no}</span>
+        <span>${r.distance}${lang === 'zh' ? '米' : 'm'}</span>
+        <span>${escapeHtml(_classLabel(r.class, lang))}</span>
+        <span>${escapeHtml(_goingLabel(r.going, lang))}</span>
         ${r.post_time ? `<span class="meta">${escapeHtml(r.post_time)}</span>` : ''}
         ${r.race_name ? `<span class="meta">${escapeHtml(r.race_name)}</span>` : ''}
         ${r.has_predictions ? `<span class="pill good">${t('已預測', 'predicted')}</span>` : ''}
@@ -2859,7 +2927,7 @@ function renderRaceBlock(r, data, sid) {
                 <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
                 <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
                 <td class="${a.bet ? 'bet' : ''}">${a.bet ? '✓' : ''}</td>
-                <td class="assessment" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
+                <td class="assessment" title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</td>
                 <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>
                 <td class="num ${pnlCls}">${a.pnl == null ? '—' : fmtMoney(a.pnl)}</td>
               </tr>
@@ -2885,6 +2953,33 @@ function wireRaceControls() {
     state.raceBetStrategy = betSel.value === '' ? null : parseInt(betSel.value);
     saveUi({ raceBetStrategy: state.raceBetStrategy });
     loadRaces();
+  });
+  // AI 馬評 buttons: lazy-fetch DeepSeek (or rule-based) commentary on
+  // click, render in place of the placeholder. First call may take ~3s
+  // when DeepSeek is invoked; subsequent calls are cached server-side.
+  document.querySelectorAll('.eval-load-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const cell = btn.closest('[data-eval-race]');
+      if (!cell) return;
+      const rid = cell.dataset.evalRace;
+      const brand = cell.dataset.evalBrand;
+      const span = cell.querySelector('.eval-text');
+      const lang = state.lang || 'zh';
+      btn.disabled = true; btn.textContent = '…';
+      span.textContent = t('（載入中…）', '(loading…)');
+      try {
+        const r = await api(`/api/horse_eval/${rid}/${encodeURIComponent(brand)}?lang=${lang}`);
+        span.textContent = r.text;
+        span.style.color = 'var(--text)';
+        if (r.source === 'deepseek') {
+          span.innerHTML = `<span class="pill" style="background:#1f4e79;color:white;font-size:9px">AI</span> ${escapeHtml(r.text)}`;
+        }
+        btn.remove();
+      } catch (e) {
+        span.textContent = '(' + e.message + ')';
+        btn.disabled = false; btn.textContent = t('重試', 'retry');
+      }
+    });
   });
   // Year click: clear month + date so the user makes a fresh choice; render
   // only (no API call) since the month list comes from data we already have.

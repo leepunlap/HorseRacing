@@ -768,6 +768,24 @@ def bet_strategy_curve(bet_strategy_id: int,
     }
 
 
+@router.get("/horse_eval/{race_id}/{brand}")
+def horse_eval(race_id: int, brand: str, lang: str = "zh",
+               force: bool = False) -> dict:
+    """馬評-style commentary on why this horse won / lost. Cached; first
+    call may take ~3 s when DEEPSEEK_API_KEY is set (DeepSeek round-trip).
+    Subsequent calls return immediately from horse_eval_text."""
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    from betting.eval_reason import generate
+    conn = _connect()
+    try:
+        text, source = generate(conn, race_id, brand, lang=lang, force_refresh=force)
+    finally:
+        conn.close()
+    return {"race_id": race_id, "brand": brand, "lang": lang,
+            "source": source, "text": text}
+
+
 @router.get("/bet_strategies/rule_kinds")
 def list_rule_kinds() -> dict:
     """Catalog of rule kinds + their expected params (for the UI dropdown).
