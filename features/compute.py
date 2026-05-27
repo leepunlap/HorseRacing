@@ -62,6 +62,146 @@ def _nan_stub(_ctx: FeatureContext) -> float | None:
     return None
 
 
+# ─── Helpers: parse race_history.running ("9 10 7") into integer list ────────
+def _running_positions(row: dict) -> list[int]:
+    """Split a race_history.running cell into a list of integer positions
+    (one per call). Returns [] if the row has no parseable running string."""
+    s = str(row.get("running") or "").strip()
+    if not s:
+        return []
+    out: list[int] = []
+    for tok in s.split():
+        try:
+            out.append(int(tok))
+        except ValueError:
+            continue
+    return out
+
+
+def _mean(xs: list[float]) -> float | None:
+    return sum(xs) / len(xs) if xs else None
+
+
+# ─── Cat-3 / Cat-5 gate / jump speed (derived from 1st-call positions) ───────
+def h037_jump_speed(c):
+    """Avg position at 1st call across history; lower → quicker out of the
+    gate. Same source signal as H056 — both pull from race_history.running's
+    first token, so they share an implementation."""
+    return _mean([rp[0] for rp in (_running_positions(h) for h in c.history) if rp])
+
+
+def h056_gate_break_speed(c):
+    return h037_jump_speed(c)
+
+
+# ─── Cat-10 pace family ──────────────────────────────────────────────────────
+def h113_e1_early(c):
+    """E1: avg position at 1st call. Lower = front-runner / early-pace bias."""
+    return _mean([rp[0] for rp in (_running_positions(h) for h in c.history) if rp])
+
+
+def h114_e2_early(c):
+    """E2: avg position at 2nd call. Combined with E1 gives the horse's
+    early-pace shape (acceleration into the middle of the race)."""
+    out: list[float] = []
+    for h in c.history:
+        rp = _running_positions(h)
+        if len(rp) >= 2:
+            out.append(rp[1])
+    return _mean(out)
+
+
+def h118_pace_survivor(c):
+    """Fraction of past races where the horse led at 1st call (pos ≤ 2)
+    AND placed top-3. Real pace survivors are rare — most front-runners fade."""
+    runs = 0
+    survived = 0
+    for h in c.history:
+        rp = _running_positions(h)
+        pos = h.get("position")
+        if not rp or pos is None:
+            continue
+        try:
+            pos_i = int(str(pos).strip())
+        except (TypeError, ValueError):
+            continue
+        runs += 1
+        if rp[0] <= 2 and pos_i <= 3:
+            survived += 1
+    return None if runs == 0 else survived / runs
+
+
+def h092_last_sec_residual(c):
+    """Compare the horse's most recent race's final-sectional split to the
+    field-average split for that same sectional. Negative = horse finished
+    faster than the field; positive = slower. NaN when per_horse_sectionals
+    has no data for the horse's most recent race."""
+    if not c.history or c.conn is None:
+        return None
+    last = c.history[-1]
+    venue = (last.get("venue") or "").upper()[:2]
+    if venue not in ("ST", "HV", "CH"):
+        return None
+    race_row = c.conn.execute(
+        "SELECT id FROM races WHERE date=? AND course=? LIMIT 1",
+        (last["date"], venue),
+    ).fetchone()
+    if not race_row:
+        return None
+    rid = race_row[0]
+    own = c.conn.execute(
+        "SELECT furlong_idx, split_time FROM per_horse_sectionals "
+        "WHERE race_id=? AND brand=? ORDER BY furlong_idx DESC LIMIT 1",
+        (rid, c.entry["brand"]),
+    ).fetchone()
+    if not own or own[1] is None:
+        return None
+    avg_row = c.conn.execute(
+        "SELECT AVG(split_time) FROM per_horse_sectionals "
+        "WHERE race_id=? AND furlong_idx=?",
+        (rid, own[0]),
+    ).fetchone()
+    if not avg_row or avg_row[0] is None:
+        return None
+    return float(own[1]) - float(avg_row[0])
+
+
+def h093_finishing_speed_pct(c):
+    """Final-200m speed relative to the field-best in the same race, averaged
+    across the horse's recent history. Higher % = stronger closer."""
+    if not c.history or c.conn is None:
+        return None
+    ratios: list[float] = []
+    for h in c.history[-5:]:                               # most recent 5
+        venue = (h.get("venue") or "").upper()[:2]
+        if venue not in ("ST", "HV", "CH"):
+            continue
+        race_row = c.conn.execute(
+            "SELECT id FROM races WHERE date=? AND course=? LIMIT 1",
+            (h["date"], venue),
+        ).fetchone()
+        if not race_row:
+            continue
+        rid = race_row[0]
+        own = c.conn.execute(
+            "SELECT furlong_idx, split_time FROM per_horse_sectionals "
+            "WHERE race_id=? AND brand=? ORDER BY furlong_idx DESC LIMIT 1",
+            (rid, c.entry["brand"]),
+        ).fetchone()
+        if not own or own[1] is None or own[1] <= 0:
+            continue
+        best_row = c.conn.execute(
+            "SELECT MIN(split_time) FROM per_horse_sectionals "
+            "WHERE race_id=? AND furlong_idx=?",
+            (rid, own[0]),
+        ).fetchone()
+        if not best_row or best_row[0] is None or best_row[0] <= 0:
+            continue
+        # Speed is inverse of split — best split = highest speed = 100%
+        ratios.append(float(best_row[0]) / float(own[1]) * 100.0)
+    return _mean(ratios)
+
+
 # ─── Category 1: Horse profile ────────────────────────────────────────────────
 def h001_age(c): return _g(c.entry, "age")
 def h002_gelding(c): return 1.0 if (c.entry.get("sex") or "").lower().startswith("g") else 0.0
