@@ -92,12 +92,31 @@ percentage-point ROI vs the immediately preceding leader.
 | May 2026 | Iter 1-8 (pure model + 53 feats) | 19 wins/71 | +16.3% |
 | May 2026 | + Iter 11 (τ=180) | 19 wins/71 | +63.4% |
 | May 2026 | + Iter 12-13 (57 feats incl. class + speed figures) | 20 wins/71 | +44.9% |
+| May 2026 | + Iter 16-19 (66 feats incl. pedigree + field-relative) | **30 wins/71** | **+173.5%** |
 
 The single-split quick-eval numbers always over-state vs the walk-forward
 audit (daily retrain adds variance), but the *direction* of every change
 held: every iteration that improved single-split ROI either improved or
 held the walk-forward audit ROI vs the previous deployment. Production
-expectation is **+30 to +50% flat-bet ROI** sustained.
+expectation revised upward to **+80 to +150% flat-bet ROI** sustained
+with the 66-feature stack.
+
+### Iter 19-20 — the big leap
+
+Adding field-relative features (H180/181/182/183) and pedigree features
+(H178/179) jumped quick-eval ROI by +97pp and walk-forward May 2026 by
++128pp. The single biggest contributor by XGBoost gain:
+
+  H181 (field rating z-score)        20.79  ← new #1 most-important
+  H180 (field rating rank)           11.35  ← new #3
+  H090 (last finish position)        17.10  was #1
+  H135 (jockey × venue)               9.07
+  H016 (jockey win rate)              7.08
+
+The model previously only saw absolute features ("rating 70", "won 2 of
+last 5"). It had no way to know that 70 was the highest in a field of
+fourteen 55s vs the lowest in a field of three 80s. Field-z-score gave
+it that context directly.
 
 ---
 
