@@ -337,6 +337,7 @@ class ResultsScraper(BaseScraper):
                 "race_no": race_no,
                 "course": course,
                 "brand": brand,
+                "horse_no": horse_no,
                 "horse_name": horse_name,
                 "jockey": jockey,
                 "trainer": trainer,

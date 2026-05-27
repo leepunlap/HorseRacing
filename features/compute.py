@@ -893,11 +893,27 @@ def h155_adjacent_draw(c):
 
 # ─── Category 14: Market ─────────────────────────────────────────────────────
 def _odds_snapshots(c) -> list[tuple[str, float | None]]:
-    if c.conn is None: return []
+    """Time-ordered list of (ts, win_odds) for this horse from odds_snapshots.
+
+    The HKJC GraphQL feed only carries saddle number (`horse_no`), never the
+    brand — so `odds_snapshots.brand` is NULL across the board. We have to
+    map brand → horse_no via `results` first, then join the snapshots on
+    horse_no. Without this every Cat-14 feature returned NaN for 18 months
+    of races while the poll data was sitting unused."""
+    if c.conn is None:
+        return []
+    hno_row = c.conn.execute(
+        "SELECT horse_no FROM results WHERE race_id = ? AND brand = ?",
+        (c.race_id, c.entry["brand"]),
+    ).fetchone()
+    if not hno_row or hno_row[0] is None:
+        return []
     rows = c.conn.execute(
-        "SELECT ts, win_odds FROM odds_snapshots WHERE race_id = ? AND brand = ? "
-        "AND ts <= ? ORDER BY ts ASC",
-        (c.race_id, c.entry["brand"], c.snapshot_basis or "9999")
+        "SELECT ts, win_odds FROM odds_snapshots "
+        "WHERE race_id = ? AND horse_no = ? AND win_odds IS NOT NULL "
+        "  AND ts <= ? "
+        "ORDER BY ts ASC",
+        (c.race_id, hno_row[0], c.snapshot_basis or "9999"),
     ).fetchall()
     return [(r[0], r[1]) for r in rows]
 def h156_open_odds(c):
