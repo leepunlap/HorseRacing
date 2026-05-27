@@ -550,7 +550,6 @@ const state = {
   raceData: null,                      // current date's race cards
   // Strategy dashboard
   dashStrategy: _ui.dashStrategy || null,  // PERSIST — selected strategy id
-  dashSelectedBet: _ui.dashSelectedBet || null,  // PERSIST — bet strategy id (or null = model default)
   dashData: null,                      // dashboard payload
 };
 
@@ -661,36 +660,6 @@ async function loadStrategyDetail(id) {
   // Lazy-load the rule-kinds catalog once so the "add new" dropdown has options.
   if (!state.betRuleKinds) {
     state.betRuleKinds = await api('/api/bet_strategies/rule_kinds').catch(() => ({}));
-  }
-  // If user previously selected a bet strategy, restore + refetch its charts.
-  if (state.dashSelectedBet) {
-    const stillExists = state.betStrategies.some(b => b.id === state.dashSelectedBet);
-    if (stillExists) {
-      await refreshDashCharts();
-    } else {
-      state.dashSelectedBet = null;
-      saveUi({ dashSelectedBet: null });
-    }
-  }
-  render();
-}
-
-// Switch the dashboard chart payload to either the model's default-rule
-// charts (state.dashSelectedBet = null) or a bet strategy's ledger-based
-// charts. Patches state.dashCharts in place + re-renders.
-async function refreshDashCharts() {
-  if (!state.dashStrategy) return;
-  if (state.dashSelectedBet) {
-    const c = await api(`/api/bet_strategies/${state.dashSelectedBet}/charts`)
-      .catch(e => ({ error: e.message }));
-    // Merge into state.dashCharts so chart components that depend on
-    // shapes we don't compute (kelly_scenarios, threshold_sweeps, etc.)
-    // simply fall back to empty rendering.
-    state.dashCharts = { ...state.dashCharts, ...c };
-  } else {
-    const c = await api(`/api/strategies/${state.dashStrategy}/charts`)
-      .catch(e => ({ error: e.message }));
-    state.dashCharts = c;
   }
   render();
 }
@@ -1093,28 +1062,6 @@ function renderStrategies() {
 // ─── Strategy feature-pill panel ────────────────────────────────────────────
 // Bilingual condensed view of which features this strategy uses (green) vs
 // disables (grey), grouped by the 15 catalogue categories. Pill labels follow
-// ─── Bet-strategy selector (drives all charts) ─────────────────────────
-// Sits inside the Performance Charts panel header. Selecting a bet strategy
-// switches the entire chart payload from the model's default rule to the
-// bet strategy's recorded ledger (via /api/bet_strategies/{id}/charts).
-function renderBetStrategySelector() {
-  const list = state.betStrategies || [];
-  if (!list.length) return '';
-  const selected = state.dashSelectedBet || '';
-  const lang = state.lang;
-  const opts = ['<option value="">' + escapeHtml(t('(模型預設 flat top-1)', '(model default — flat top-1)')) + '</option>']
-    .concat(list.map(b => {
-      const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
-      const sel = b.id == selected ? 'selected' : '';
-      return `<option value="${b.id}" ${sel}>${escapeHtml(label)} (${b.roi_pct.toFixed(0)}% ROI)</option>`;
-    })).join('');
-  return `
-    <span class="small" style="margin-left:16px;font-weight:normal;color:var(--muted)">
-      ${t('依投注策略檢視', 'View by bet strategy')}:
-      <select id="dashBetSelect" style="margin-left:6px">${opts}</select>
-    </span>`;
-}
-
 // ─── Bet-strategies panel ───────────────────────────────────────────────
 // Lists every bet strategy layered on top of the selected model with a
 // checkbox to overlay its cumulative-PnL curve on the Performance chart,
@@ -2198,17 +2145,7 @@ function renderStrategyDashboard(sel) {
     ${renderBetStrategiesPanel()}
 
     <div class="panel">
-      <h2>
-        ${t('表現圖表', 'Performance charts')}
-        ${renderBetStrategySelector()}
-      </h2>
-      <div class="small" style="color:var(--muted);margin-bottom:8px">
-        ${state.dashSelectedBet
-          ? t('圖表正在使用所選投注策略的 bet_ledger 計算',
-               'Charts are computed from the selected bet strategy\'s ledger')
-          : t('未選投注策略時,圖表使用模型的預設規則 (flat top-1)。選擇一個投注策略以重算所有圖表。',
-               'No bet strategy selected — charts use the model\'s default rule (flat top-1). Pick a bet strategy to recompute all charts.')}
-      </div>
+      <h2>${t('表現圖表', 'Performance charts')}</h2>
       ${renderPerformanceCharts(state.dashCharts)}
     </div>
 
@@ -3332,16 +3269,6 @@ function wire() {
   if (ksToggle) ksToggle.addEventListener('click', toggleKillSwitch);
   const lmToggle = document.getElementById('lmToggle');
   if (lmToggle) lmToggle.addEventListener('click', toggleLiveMode);
-
-  // Bet-strategy selector (above charts) — switch all charts to the
-  // selected strategy's bet_ledger payload.
-  const sel = document.getElementById('dashBetSelect');
-  if (sel) sel.addEventListener('change', () => {
-    const v = sel.value;
-    state.dashSelectedBet = v ? parseInt(v) : null;
-    saveUi({ dashSelectedBet: state.dashSelectedBet });
-    refreshDashCharts();
-  });
 
   // Bet-strategies panel wire-up: toggle = enable/disable + reload curves,
   // delete = wipe ledger + remove, add form = POST a new bet strategy and
