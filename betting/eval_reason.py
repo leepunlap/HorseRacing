@@ -507,6 +507,19 @@ def generate(conn: sqlite3.Connection, race_id: int, brand: str,
         fall back to rule.
       * `force_refresh=True` → bypass cache entirely.
     """
+    # Guard: only generate commentary for races that have actually run.
+    # Pre-race we have no running positions, lbw, sectionals, or
+    # comments-on-running → narrative would be empty placeholder. Refuse
+    # at the entry point and let the SPA suppress the cell entirely.
+    finished_row = conn.execute(
+        "SELECT 1 FROM results WHERE race_id = ? AND brand = ? "
+        "AND position IS NOT NULL AND position != '' LIMIT 1",
+        (race_id, brand),
+    ).fetchone()
+    if not finished_row:
+        return ("賽事未開始,暫無馬評。" if lang == 'zh'
+                else "Race has not finished; commentary unavailable."), "pending"
+
     cached_row = None
     if not force_refresh:
         cached_row = conn.execute(

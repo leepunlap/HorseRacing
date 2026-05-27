@@ -939,7 +939,7 @@ function layout() {
   const tabs = [
     ['dashboard',  t('儀表板', 'Dashboard')],
     ['strategies', t('策略', 'Strategies')],
-    ['races',      t('賽果', 'Races')],
+    ['races',      t('賽事', 'Races')],
     ['features',   t('特徵', 'Features')],
     ['scrapers',   t('抓取器', 'Scrapers')],
     ['schedules',  t('排程', 'Schedules')],
@@ -2375,7 +2375,7 @@ function renderRaces() {
   const loadingTxt = t('載入中…', 'loading…');
   main.innerHTML = `
     <div class="panel">
-      <h2>${t('賽果', 'Races')} ${state.raceDate ? `· ${state.raceDate}` : ''}</h2>
+      <h2>${t('賽事', 'Races')} ${state.raceDate ? `· ${state.raceDate}` : ''}</h2>
       <div class="toolbar">
         ${stratPicker}
         ${betPicker}
@@ -2556,17 +2556,45 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
   const body = items.map(({ r, bet, comboHtml }) => {
     const won = bet.won === 1;
     const rowPnlCls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
+    // settled = race has finished AND bet has been graded.
+    const isSettled = r.has_results && (bet.won === 0 || bet.won === 1);
     const cls = won ? 'winner' : '';
     // Pick the "primary" horse for the eval-reason fetch — singles use the
     // sole horse; for combos we use the first listed (top-1 in any-order
     // bets, or 1st-placed pick for ordered bets).
     const primaryBrand = String(bet.brand || '').split(/[,>]/)[0] || '';
     const ordered = String(bet.brand || '').includes('>');
-    const positions = String(bet.brand || '').split(ordered ? '>' : ',').map(b => {
+    const betBrands = String(bet.brand || '').split(ordered ? '>' : ',');
+    const positions = betBrands.map(b => {
       const h = (r.horses || []).find(x => x.brand === b);
       return h && h.position != null ? String(h.position) : '?';
     }).join(ordered ? ' → ' : ' / ');
-    const pm = pmByBet[bet.id] || null;
+    // Pre-race fallback for the odds column — bet.odds_at_bet is null until
+    // the race settles. Use the joined horse's live odds (results.odds OR
+    // odds_snapshots) for unsettled bets so the column never reads "—"
+    // on today's card.
+    let displayOdds = bet.odds_at_bet;
+    if (displayOdds == null && betBrands.length === 1) {
+      const h = (r.horses || []).find(x => x.brand === betBrands[0]);
+      if (h && h.odds != null) displayOdds = h.odds;
+    }
+    // 推介 column: model's top-4 picks for this race, in rank order. Bold
+    // any horse the user is actually betting on so it's easy to see whether
+    // the bet matches model conviction.
+    const topPicks = (r.horses || [])
+      .filter(h => h.calibrated_prob != null)
+      .slice()
+      .sort((a, b) => (b.calibrated_prob || 0) - (a.calibrated_prob || 0))
+      .slice(0, 4);
+    const betBrandSet = new Set(betBrands);
+    const tipHtml = topPicks.length
+      ? topPicks.map((h, i) => {
+          const nm = escapeHtml(i18n.horse(h, lang));
+          const onBet = betBrandSet.has(h.brand);
+          return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">${i + 1}. ${nm}</span>`;
+        }).join('<br>')
+      : '—';
+    const pm = isSettled ? (pmByBet[bet.id] || null) : null;
     const tagChips = pm && pm.tags && pm.tags.length
       ? '<div class="pm-chips" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
         + pm.tags.slice(0, 4).map(tag => {
@@ -2581,27 +2609,33 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           }).join('')
         + '</div>'
       : '';
+    // Commentary cell only fires its lazy-fetch when the race has results.
+    // Without a finished race there's nothing to comment on; auto-load
+    // would just produce "資料不足" / "Insufficient data" placeholders.
+    const commentaryCell = isSettled
+      ? `<div class="eval-cell" data-eval-race="${r.id}"
+              data-eval-brand="${escapeHtml(primaryBrand)}" data-eval-source="">
+           ${t('（載入馬評中…）', '(loading commentary…)')}
+         </div>${tagChips}`
+      : `<span class="meta">${t('賽事未開始', 'race pending')}</span>`;
     return `
       <tr class="${cls}">
         <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
         <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(_poolLabel(bet.pool, lang))}</span></td>
         <td class="h-name">${comboHtml}</td>
-        <td class="num">${bet.odds_at_bet == null ? '—' : Number(bet.odds_at_bet).toFixed(1)}</td>
-        <td class="num">${escapeHtml(positions)}</td>
+        <td class="small" style="max-width:170px;line-height:1.3">${tipHtml}</td>
+        <td class="num">${displayOdds == null ? '—' : Number(displayOdds).toFixed(1)}</td>
+        <td class="num">${isSettled ? escapeHtml(positions) : '—'}</td>
         <td class="num">${fmtMoney(bet.stake)}</td>
-        <td class="num">${fmtMoney(bet.payout)}</td>
-        <td class="num ${rowPnlCls}">${fmtMoney(bet.pnl)}</td>
-        <td>${won
-          ? `<span class="pill good">${t('命中', 'WON')}</span>`
-          : (bet.won === 0
-              ? `<span class="pill muted">${t('失敗', 'lost')}</span>`
-              : `<span class="pill muted">${t('未派彩', 'pending')}</span>`)}</td>
+        <td class="num">${isSettled ? fmtMoney(bet.payout) : '—'}</td>
+        <td class="num ${isSettled ? rowPnlCls : ''}">${isSettled ? fmtMoney(bet.pnl) : '—'}</td>
+        <td>${isSettled
+          ? (won
+              ? `<span class="pill good">${t('命中', 'WON')}</span>`
+              : `<span class="pill muted">${t('失敗', 'lost')}</span>`)
+          : `<span class="pill muted">${t('未派彩', 'pending')}</span>`}</td>
         <td class="assessment small" style="max-width:380px;color:var(--muted)">
-          <div class="eval-cell" data-eval-race="${r.id}"
-               data-eval-brand="${escapeHtml(primaryBrand)}" data-eval-source="">
-            ${t('（載入馬評中…）', '(loading commentary…)')}
-          </div>
-          ${tagChips}
+          ${commentaryCell}
         </td>
       </tr>`;
   }).join('');
@@ -2624,6 +2658,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
             <th>${t('場次', 'race')}</th>
             <th>${t('彩池', 'pool')}</th>
             <th>${t('組合', 'combination')}</th>
+            <th>${t('推介 4 項', 'top 4')}</th>
             <th class="num">${t('賠率', 'odds')}</th>
             <th class="num">${t('實際名次', 'finish')}</th>
             <th class="num">${t('投注', 'stake')}</th>
