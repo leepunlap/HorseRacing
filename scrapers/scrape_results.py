@@ -387,22 +387,32 @@ class ResultsScraper(BaseScraper):
         seen: set[tuple] = set()
         for table in soup.find_all("table"):
             # HKJC publishes multi-horse pools (PLACE for 3 finishers, QPL
-            # for 3 pairs, TRIO when split) as a single block where only the
-            # first row carries the pool name; subsequent rows have an empty
-            # first cell. Carry the pool across rows so we capture all
-            # placed-horse PLACE dividends instead of just the winner.
+            # for 3 pairs) as a single block. The FIRST row of the block has
+            # 3 cells [pool, combination, dividend]; rows 2-3 have only 2
+            # cells [combination, dividend] — the pool name is implied by
+            # the rowspan in the original HTML. Carry the pool across these
+            # rows so we capture all placed-horse PLACE/QPL dividends, not
+            # just the first one.
             current_pool: str | None = None
             for tr in table.find_all("tr"):
                 tds = [td.get_text(" ", strip=True) for td in tr.find_all("td")]
-                if len(tds) < 3:
+                if len(tds) == 3:
+                    first = tds[0].upper().strip()
+                    if first:
+                        new_pool = POOL_MAP.get(first)
+                        if new_pool is None:
+                            current_pool = None
+                            continue
+                        current_pool = new_pool
+                    combo_raw, div_raw = tds[1], tds[2]
+                elif len(tds) == 2 and current_pool:
+                    combo_raw, div_raw = tds[0], tds[1]
+                else:
                     continue
-                first = tds[0].upper().strip()
-                if first:
-                    current_pool = POOL_MAP.get(first)
                 pool = current_pool
                 if not pool:
                     continue
-                combo = re.sub(r"\s+", "", tds[1].strip())
+                combo = re.sub(r"\s+", "", combo_raw.strip())
                 if not combo:
                     continue
                 parts_raw = [p for p in re.split(r"[,\-]", combo) if p]
@@ -423,7 +433,7 @@ class ResultsScraper(BaseScraper):
                 # Normalise: sort alphabetically for stable UNIQUE
                 brands.sort()
                 combo = ",".join(brands)
-                div = _to_float(tds[2].replace(",", ""))
+                div = _to_float(div_raw.replace(",", ""))
                 if div is None:
                     continue
                 key = (pool, combo)
