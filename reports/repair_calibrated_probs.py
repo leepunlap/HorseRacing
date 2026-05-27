@@ -33,6 +33,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from models.walk_forward import _odds_for  # noqa: E402
+
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "racing.db"
 
 
@@ -56,7 +58,7 @@ def repair(strategy_id: int | None, dry_run: bool) -> tuple[int, int]:
         for sid, rid in race_rows:
             preds = conn.execute(
                 "SELECT id, brand, calibrated_prob, blended_prob, "
-                "       fundamental_prob, odds_at_prediction "
+                "       fundamental_prob, odds_at_prediction, snapshot_basis "
                 "FROM predictions WHERE strategy_id = ? AND race_id = ? "
                 "ORDER BY id",
                 (sid, rid),
@@ -70,18 +72,29 @@ def repair(strategy_id: int | None, dry_run: bool) -> tuple[int, int]:
             # AND cal_sum << 1), rebuild from blended_prob (which still
             # carries the per-race softmax distribution). Otherwise just
             # renormalise the existing cal_prob.
-            # Two failure modes to detect:
-            #   (a) "literal zeros" path — non-favourites at 0.0 after early
-            #       calibration runs that didn't clip.
-            #   (b) "EPS-clipped" path — non-favourites at calibration.EPS
-            #       (~1e-9), favourite at 1-EPS. After our previous
-            #       per-race renormalise these still sum to ~1 but the
-            #       distribution is degenerate.
-            # Treat either as broken: max prob > 0.7 with a near-zero
-            # floor (<1e-6 on any horse) means one horse owns ~all mass.
+            # Failure modes the calibrator can leave behind:
+            #   (a) cal_sum << 1 — never renormalised per race.
+            #   (b) one horse near 1.0, the rest at calibration.EPS (1e-9)
+            #       — saturated favourite + EPS-clipped losers.
+            #   (c) a handful of horses share the same mass, the rest at
+            #       literal 0.0 — happens when isotonic mapped many low
+            #       scores to its y_min and the renormalise then divided
+            #       the surviving mass equally. Spotted on race 2437
+            #       (today's HV R2) where 4 horses sat at 0.25 and 8 at 0.
+            # Conservative test: in a healthy multi-horse race no horse
+            # carries less than 1e-6 mass. Both literal 0 and EPS-clipped
+            # 1e-9 trigger this; the latter is what happens when isotonic
+            # mapped many low scores to its y_min before a previous repair
+            # renormalised — the survivors hit 0.25 / 0.5 and the rest
+            # stayed at EPS.
             min_v = min(cal_vals) if cal_vals else 0.0
             max_v = max(cal_vals) if cal_vals else 0.0
-            corrupted = (cal_sum < 0.99) or (max_v > 0.7 and min_v < 1e-6)
+            near_zeros = sum(1 for v in cal_vals if v < 1e-6)
+            corrupted = (
+                cal_sum < 0.99
+                or (max_v > 0.7 and min_v < 1e-6)
+                or (n > 1 and near_zeros > 0)
+            )
             if corrupted:
                 source = [p["blended_prob"] or p["fundamental_prob"] or 0.0
                           for p in preds]
@@ -100,18 +113,15 @@ def repair(strategy_id: int | None, dry_run: bool) -> tuple[int, int]:
                 print(f"  strategy {sid} race {rid}: sum={s:.4f} → "
                       f"top {max(cal_vals):.3f}→{max(new_cal):.3f}")
             else:
-                # Resolve odds: prefer odds_at_prediction, fall back to results.odds
+                # Resolve odds: prefer odds_at_prediction; otherwise the latest
+                # odds_snapshots tick at or before snapshot_basis, falling back
+                # to results.odds. Mirrors models.walk_forward._odds_for so a
+                # repaired row matches a freshly written one.
                 for p, new_p in zip(preds, new_cal):
                     odds = p["odds_at_prediction"]
                     if odds is None:
-                        r = conn.execute(
-                            "SELECT odds FROM results WHERE race_id = ? AND brand = ?",
-                            (rid, p["brand"]),
-                        ).fetchone()
-                        try:
-                            odds = float(r[0]) if r and r[0] is not None else None
-                        except (TypeError, ValueError):
-                            odds = None
+                        odds, _pos = _odds_for(conn, rid, p["brand"],
+                                               p["snapshot_basis"])
                     edge = (new_p * odds) if odds else None
                     conn.execute(
                         "UPDATE predictions SET calibrated_prob = ?, edge = ? "
