@@ -2394,33 +2394,36 @@ function renderBetsSummary(data, strat) {
   const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
   const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
 
+  // Render mode depends on whether the user selected a bet strategy:
+  //   - No bet strategy: one row per (race, horse) using model's default
+  //     top-1 rule (legacy path).
+  //   - Bet strategy: one row per bet_ledger entry — for exotic combos
+  //     this becomes one row per COMBO (showing every brand in the combo)
+  //     instead of one row per horse, so a quinella doesn't double-count
+  //     the stake.
+  const bsMeta = data.bet_strategy;
+  return bsMeta
+    ? _renderBetsSummaryFromLedger(data, bsMeta, lang)
+    : _renderBetsSummaryFromModel(data, strat, lang);
+}
+
+function _renderBetsSummaryFromModel(data, strat, lang) {
+  const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(1) + '%';
+  const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
+  const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
   const rows = [];
   let totalStake = 0, totalPnl = 0, settled = 0;
-  const bsMeta = data.bet_strategy;
   for (const r of (data.races || [])) {
     if (!r.has_predictions) continue;
-    if (bsMeta) {
-      // Use the ledger picks for this race (could be multiple horses for
-      // exotic bets like dutch_top2 / quinella).
-      for (const h of (r.horses || [])) {
-        const a = _analyseFromLedger(h, r.bets || [], bsMeta, lang);
-        if (!a.bet) continue;
-        rows.push({ r, h, a });
-        if (a.stake != null) totalStake += a.stake;
-        if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
-      }
-    } else {
-      // Default rule: top calibrated_prob.
-      const topBrand = (r.horses || [])
-        .filter(h => h.calibrated_prob != null)
-        .sort((a, b) => b.calibrated_prob - a.calibrated_prob)[0]?.brand;
-      for (const h of (r.horses || [])) {
-        const a = analyseHorse(h, strat, lang, h.brand === topBrand);
-        if (!a.bet) continue;
-        rows.push({ r, h, a });
-        if (a.stake != null) totalStake += a.stake;
-        if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
-      }
+    const topBrand = (r.horses || [])
+      .filter(h => h.calibrated_prob != null)
+      .sort((a, b) => b.calibrated_prob - a.calibrated_prob)[0]?.brand;
+    for (const h of (r.horses || [])) {
+      const a = analyseHorse(h, strat, lang, h.brand === topBrand);
+      if (!a.bet) continue;
+      rows.push({ r, h, a });
+      if (a.stake != null) totalStake += a.stake;
+      if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
     }
   }
   if (rows.length === 0) {
@@ -2486,6 +2489,99 @@ function renderBetsSummary(data, strat) {
             <th>${t('評估', 'assessment')}</th>
             <th class="num">${t('投注', 'stake')}</th>
             <th class="num">${t('盈虧', 'pnl')}</th>
+          </tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// Bets summary keyed by bet_ledger ENTRIES (one row per recorded bet). For
+// exotic combos this is one row per ticket showing the full combo —
+// avoids the double-counting that happens if we iterate horses for a
+// quinella / dutch / trifecta bet.
+function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
+  const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
+  const items = [];     // {r, bet, comboHtml, won, payout, pnl}
+  let totalStake = 0, totalPnl = 0, settled = 0, anyWonCount = 0;
+  for (const r of (data.races || [])) {
+    for (const bet of (r.bets || [])) {
+      const horseByBrand = {};
+      for (const h of (r.horses || [])) horseByBrand[h.brand] = h;
+      const ordered = String(bet.brand || '').includes('>');
+      const sep = ordered ? '>' : ',';
+      const parts = String(bet.brand || '').split(sep);
+      const arrow = ordered
+        ? '<span style="color:var(--muted)"> → </span>'
+        : '<span style="color:var(--muted)"> + </span>';
+      const comboHtml = parts.map(p => {
+        const h = horseByBrand[p];
+        if (!h) return `<code>${escapeHtml(p)}</code>`;
+        const placed = h.position && (parseInt(h.position) || 99) <= 3;
+        const won = h.position == 1 || h.position === '1';
+        const tag = won ? '🥇' : (placed ? `(${h.position})` : '');
+        return `<span title="${escapeHtml(h.brand)}">${escapeHtml(h.horse_name || h.brand)} ${tag}</span>`;
+      }).join(arrow);
+      items.push({ r, bet, comboHtml });
+      totalStake += bet.stake || 0;
+      if (bet.won === 1 || bet.won === 0) {
+        settled++;
+        totalPnl += bet.pnl || 0;
+        if (bet.won === 1) anyWonCount++;
+      }
+    }
+  }
+  if (items.length === 0) {
+    return `<div class="race-block"><div class="race-hdr">
+      <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
+      <span class="meta">${escapeHtml(bsMeta.name_zh || bsMeta.name)} · ${t('此日無下注', 'no bets this date')}</span>
+    </div></div>`;
+  }
+  const roi = totalStake > 0 ? (totalPnl / totalStake * 100) : null;
+  const pnlCls = totalPnl > 0 ? 'pnl-win' : (totalPnl < 0 ? 'pnl-lose' : '');
+  const body = items.map(({ r, bet, comboHtml }) => {
+    const won = bet.won === 1;
+    const rowPnlCls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
+    const cls = won ? 'winner' : '';
+    return `
+      <tr class="${cls}">
+        <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
+        <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(bet.pool)}</span></td>
+        <td class="h-name">${comboHtml}</td>
+        <td class="num">${bet.odds_at_bet == null ? '—' : Number(bet.odds_at_bet).toFixed(1)}</td>
+        <td class="num">${fmtMoney(bet.stake)}</td>
+        <td class="num">${fmtMoney(bet.payout)}</td>
+        <td class="num ${rowPnlCls}">${fmtMoney(bet.pnl)}</td>
+        <td>${won ? '<span class="pill good">WON</span>' : (bet.won === 0 ? '<span class="pill muted">lost</span>' : '<span class="pill muted">pending</span>')}</td>
+        <td class="assessment small" style="color:var(--muted)">${escapeHtml(bet.reason || '')}</td>
+      </tr>`;
+  }).join('');
+  const ruleLabel = lang === 'zh' ? (bsMeta.name_zh || bsMeta.name)
+                                  : (bsMeta.name_en || bsMeta.name);
+  return `
+    <div class="race-block">
+      <div class="race-hdr">
+        <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
+        <span><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(ruleLabel)}</span></span>
+        <span>${items.length} ${t('注', 'bets')}</span>
+        <span>${t('總投注', 'stake')}: ${fmtMoney(totalStake)}</span>
+        <span class="${pnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
+        ${roi != null && settled ? `<span class="${pnlCls}">ROI: ${roi.toFixed(1)}%</span>` : ''}
+        ${settled ? `<span class="meta">${anyWonCount}/${settled} ${t('命中', 'wins')}</span>` : ''}
+      </div>
+      <div class="race-body">
+        <table>
+          <thead><tr>
+            <th>${t('場次', 'race')}</th>
+            <th>${t('彩池', 'pool')}</th>
+            <th>${t('組合', 'combination')}</th>
+            <th class="num">${t('賠率', 'odds')}</th>
+            <th class="num">${t('投注', 'stake')}</th>
+            <th class="num">${t('派彩', 'payout')}</th>
+            <th class="num">${t('盈虧', 'pnl')}</th>
+            <th>${t('結果', 'result')}</th>
+            <th>${t('原因', 'reason')}</th>
           </tr></thead>
           <tbody>${body}</tbody>
         </table>
@@ -2561,13 +2657,23 @@ function analyseHorse(h, strat, lang, isTopPick) {
     return `${arrow}${String(nm ?? '')}${num}`;
   }).join('、');
 
+  // Assessment cells on the Races page only need the driver list
+  // (上揚因素 / 下挫因素 / Tailwinds / Headwinds). The "Skip — not top
+  // edge" / "Bet — model X% vs market Y%" preamble was noise users asked
+  // us to drop.
+  const driversZhSkip = [
+    drivers.top.length    ? `上揚因素：${driverLine(drivers.top, '↑')}`    : '',
+    drivers.bottom.length ? `下挫因素：${driverLine(drivers.bottom, '↓')}` : '',
+  ].filter(Boolean).join(' · ');
+  const driversEnSkip = [
+    drivers.top.length    ? `Tailwinds: ${driverLine(drivers.top, '↑')}`    : '',
+    drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
+  ].filter(Boolean).join(' · ');
   if (blocks.length) {
-    const lblZh = drivers.top.length ? ` · 上揚因素：${driverLine(drivers.top, '↑')}` : '';
-    const lblEn = drivers.top.length ? ` · Tailwinds: ${driverLine(drivers.top, '↑')}` : '';
     return {
       bet: false,
-      reasonZh: '不下注 — ' + blocks.map(b => b.zh).join('；') + lblZh,
-      reasonEn: 'Skip — ' + blocks.map(b => b.en).join('; ') + lblEn,
+      reasonZh: driversZhSkip,
+      reasonEn: driversEnSkip,
       stake: null, pnl: null,
     };
   }
@@ -2594,12 +2700,14 @@ function analyseHorse(h, strat, lang, isTopPick) {
     drivers.top.length    ? `Tailwinds: ${driverLine(drivers.top, '↑')}`    : '',
     drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
   ].filter(Boolean).join(' · ');
-  const sizingZh = kFrac === 0 ? '平注' : rawStake > bankCap ? '資金上限' : `${kFrac} Kelly`;
-  const sizingEn = kFrac === 0 ? 'flat stake' : rawStake > bankCap ? 'capped by bankroll' : `sized by ${kFrac}-Kelly`;
+  // Same simplification for bet rows: drop the "Bet — model 36% vs
+  // market 11% edge 4.1×" preamble that the user found noisy. The bet
+  // tick column already conveys "this is the bet"; the assessment text
+  // is now driver-only.
   return {
     bet: true,
-    reasonZh: `下注 — 模型 ${modelPct}% 對市場 ${mktPct}%，edge ${edgeV.toFixed(2)}×（${sizingZh}）${driversZh ? ' · ' + driversZh : ''}`,
-    reasonEn: `Bet — model ${modelPct}% vs market ${mktPct}%, edge ${edgeV.toFixed(2)}× (${sizingEn})${driversEn ? ' · ' + driversEn : ''}`,
+    reasonZh: driversZh,
+    reasonEn: driversEn,
     stake, pnl,
   };
 }
