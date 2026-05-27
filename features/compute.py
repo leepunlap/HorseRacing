@@ -20,6 +20,7 @@ catches and records NaN.
 from __future__ import annotations
 
 import math
+import re
 import sqlite3
 from dataclasses import dataclass, field as _dc_field
 from datetime import datetime
@@ -876,6 +877,148 @@ def h174_closer_boost(c):
     bias = h167_today_bias(c)
     if bias is None: return None
     return 1.0 - bias
+
+
+# ─── Speed-figure features (H175 / H176 / H177) ───────────────────────────
+# Beyer-style: for each (distance, course) bucket, compute the historical
+# par time (median across all strictly-prior races), then a horse's "speed
+# figure" is (par − their_actual). Positive = faster than par; bigger is
+# better. The par-time lookup is cached per (snapshot_basis, bucket) on
+# the connection object so 177-feature batch compute stays O(N).
+
+# race_history.finishtime is stored as "M.SS.cs" (e.g. "1.10.02" = 70.02s);
+# race_history.venue is the Chinese tag (e.g. '沙田草地"C+3"'), not the
+# 2-letter course code we use elsewhere. Both need parsing.
+_FINISHTIME_MSC = re.compile(r"^\s*(\d+)\.(\d+)\.(\d+)\s*$")
+
+
+def _parse_finish_time(v) -> float | None:
+    """Convert 'M.SS.cs' / 'SS.cs' / float to seconds."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        try:
+            f = float(v)
+            return f if f > 0 else None
+        except (TypeError, ValueError):
+            return None
+    s = str(v).strip()
+    if not s:
+        return None
+    m = _FINISHTIME_MSC.match(s)
+    if m:
+        mins, secs, cs = m.groups()
+        return int(mins) * 60 + int(secs) + int(cs) / 100.0
+    try:
+        f = float(s)
+        return f if f > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _venue_code(s) -> str | None:
+    """Map race_history.venue (Chinese) to the 2-letter course code."""
+    if not s:
+        return None
+    s = str(s)
+    if "沙田" in s:
+        return "ST"
+    if "跑馬地" in s:
+        return "HV"
+    if "從化" in s:
+        return "CH"
+    # Already a code?
+    code = s.strip().upper()
+    if code in ("ST", "HV", "CH"):
+        return code
+    return None
+
+
+_PAR_TIME_CACHE: dict = {}
+
+
+def _par_time(c, distance: int, course: str) -> float | None:
+    if c.conn is None or distance is None or not course:
+        return None
+    # sqlite3.Connection forbids setattr, so use a module-level cache keyed
+    # by (conn id, snapshot_basis, course, distance). Conn id is stable
+    # within one process.
+    key = (id(c.conn), c.snapshot_basis, course, int(distance))
+    if key in _PAR_TIME_CACHE:
+        return _PAR_TIME_CACHE[key]
+    # results.finish_time is a mix of REAL seconds (e.g. 69.08) and string
+    # "M:SS.cs" (e.g. "1:09.80"); pull all and parse in Python.
+    rows = c.conn.execute(
+        "SELECT r.finish_time FROM results r JOIN races ra ON ra.id = r.race_id "
+        "WHERE ra.distance = ? AND ra.course = ? "
+        "  AND ra.date < substr(?, 1, 10) AND r.finish_time IS NOT NULL",
+        (int(distance), course, c.snapshot_basis),
+    ).fetchall()
+    secs: list[float] = []
+    for (raw,) in rows:
+        v = _parse_results_time(raw)
+        if v is not None:
+            secs.append(v)
+    par = (sum(secs) / len(secs)) if secs else None
+    _PAR_TIME_CACHE[key] = par
+    return par
+
+
+def _parse_results_time(v) -> float | None:
+    """Parse results.finish_time: numeric seconds, 'M:SS.cs', or '---'."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        try:
+            f = float(v)
+            return f if f > 0 else None
+        except (TypeError, ValueError):
+            return None
+    s = str(v).strip()
+    if not s or s in ("---", "--"):
+        return None
+    # M:SS.cs format
+    m = re.match(r"^(\d+):(\d+)\.(\d+)$", s)
+    if m:
+        mins, secs, cs = m.groups()
+        return int(mins) * 60 + int(secs) + int(cs) / 100.0
+    try:
+        f = float(s)
+        return f if f > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _speed_figures_for_horse(c) -> list[float]:
+    """Return per-historical-run (par − actual) values for this horse."""
+    out: list[float] = []
+    for h in c.history or []:
+        d = h.get("distance")
+        course = _venue_code(h.get("venue") or h.get("course"))
+        ftime = _parse_finish_time(h.get("finish_time"))
+        if d is None or not course or ftime is None:
+            continue
+        par = _par_time(c, d, course)
+        if par is None:
+            continue
+        out.append(par - ftime)
+    return out
+
+
+def h175_speed_figure_mean(c):
+    sfs = _speed_figures_for_horse(c)
+    return sum(sfs) / len(sfs) if sfs else None
+
+
+def h176_speed_figure_best(c):
+    sfs = _speed_figures_for_horse(c)
+    return max(sfs) if sfs else None
+
+
+def h177_speed_figure_last(c):
+    # `history` is sorted ascending by date in the pipeline loader; take last.
+    sfs = _speed_figures_for_horse(c)
+    return sfs[-1] if sfs else None
 
 
 # ─── helpers ─────────────────────────────────────────────────────────────────

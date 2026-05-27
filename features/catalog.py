@@ -260,10 +260,24 @@ FEATURES: list[Feature] = [
     Feature("H172", 15, "內欄殘差", "Inner-draw residual", "Today vs long-term inner", "B41", "h172_inner_resid"),
     Feature("H173", 15, "風向變化", "Wind direction shift", "Headwind for leaders", "B28,B29", "h173_wind"),
     Feature("H174", 15, "Closer 加成", "Same-day closer boost", "Closers winning today", "B12,B41", "h174_closer_boost"),
+    # ─── Category 11 (added 2026-05-27): speed-figure approximations ───
+    # HKJC doesn't publish Beyer / Timeform / RPR. We derive a Beyer-style
+    # signal from race times by computing par-time per (distance, course)
+    # bucket from training-window data and reporting the horse's best
+    # historical (par − time) as a positive "above par" speed figure.
+    Feature("H175", 11, "速度指數均值", "Speed figure (avg)",
+            "Mean of past-runs (par − actual) per (distance, course) bucket",
+            "B9", "h175_speed_figure_mean"),
+    Feature("H176", 11, "速度指數最佳", "Speed figure (best)",
+            "Best (par − actual) across past runs — the upper-bound talent signal",
+            "B9", "h176_speed_figure_best"),
+    Feature("H177", 11, "速度指數最近", "Speed figure (last)",
+            "Most recent (par − actual) — recency-weighted form",
+            "B9", "h177_speed_figure_last"),
 ]
 
-assert len(FEATURES) == 174, f"expected 174 features, got {len(FEATURES)}"
-assert len({f.id for f in FEATURES}) == 174, "duplicate feature ids"
+assert len(FEATURES) == 177, f"expected 177 features, got {len(FEATURES)}"
+assert len({f.id for f in FEATURES}) == 177, "duplicate feature ids"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
