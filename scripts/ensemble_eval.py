@@ -30,7 +30,8 @@ from models import stage1_xgb                                            # noqa:
 from scripts.quick_eval import _load_split, _flat_metrics_v2             # noqa: E402
 
 
-def run(split: str, until: str, feature_filter: list[str], n_models: int) -> dict:
+def run(split: str, until: str, feature_filter: list[str], n_models: int,
+        time_decay_tau: float | None = None) -> dict:
     conn = sqlite3.connect(DB_PATH)
     fids = [f.id for f in FEATURES if f.id in feature_filter]
 
@@ -60,11 +61,33 @@ def run(split: str, until: str, feature_filter: list[str], n_models: int) -> dic
             pass
     conn.close()
 
+    # Time-decay weight (one per race group) if requested
+    sample_w = None
+    if time_decay_tau and time_decay_tau > 0:
+        from datetime import date as _date
+        rows_dates = sqlite3.connect(DB_PATH).execute(
+            f"SELECT id, date FROM races WHERE id IN ({','.join('?'*len(set(rids_tr)))})",
+            list(set(rids_tr)),
+        ).fetchall()
+        date_map = {rid: dt for rid, dt in rows_dates}
+        cutoff = _date.fromisoformat(split)
+        # rids_tr is per-row; collapse to per-group
+        per_group = []
+        race_ids_ordered = list(dict.fromkeys(rids_tr))  # preserve order
+        for rid in race_ids_ordered:
+            dt = date_map.get(rid)
+            if dt:
+                days = (cutoff - _date.fromisoformat(dt)).days
+                per_group.append(math.exp(-days / float(time_decay_tau)))
+            else:
+                per_group.append(1.0)
+        sample_w = np.array(per_group, dtype=float)
     avg_probs = np.zeros(len(X_te), dtype=float)
     for seed in range(n_models):
         params = {**stage1_xgb.DEFAULT_PARAMS, "seed": seed}
         bst = stage1_xgb.train(X_tr, y_tr, g_tr, params=params,
-                               num_boost_round=stage1_xgb.DEFAULT_NUM_BOOST_ROUND)
+                               num_boost_round=stage1_xgb.DEFAULT_NUM_BOOST_ROUND,
+                               weight=sample_w)
         scores = stage1_xgb.predict_scores(bst, X_te)
         probs = stage1_xgb.scores_to_probs(scores, g_te)
         avg_probs += probs
@@ -84,9 +107,11 @@ def main() -> None:
     p.add_argument("--until", required=True)
     p.add_argument("--features-json", required=True)
     p.add_argument("--n-models", type=int, default=5)
+    p.add_argument("--time-decay-tau", type=float, default=None)
     ns = p.parse_args()
     feats = json.loads(Path(ns.features_json).read_text())
-    print(json.dumps(run(ns.split, ns.until, feats, ns.n_models), indent=2))
+    print(json.dumps(run(ns.split, ns.until, feats, ns.n_models,
+                         time_decay_tau=ns.time_decay_tau), indent=2))
 
 
 if __name__ == "__main__":
