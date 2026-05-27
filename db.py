@@ -474,6 +474,60 @@ CREATE TABLE IF NOT EXISTS kill_switch_state (
     last_heartbeat TEXT
 );
 INSERT OR IGNORE INTO kill_switch_state (id, halted) VALUES (1, 0);
+
+-- ─── Strategy run summary ──────────────────────────────────────────────────
+-- One row per walk-forward run. Captures everything needed to compare
+-- strategies side-by-side without re-aggregating predictions on every page
+-- load: counts, money, hit rates, model-health metrics, plus a config_hash
+-- so two runs with identical setup are recognisable as the same algo.
+CREATE TABLE IF NOT EXISTS strategy_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER NOT NULL REFERENCES strategies(id),
+    window_start TEXT NOT NULL,
+    window_end TEXT NOT NULL,
+    -- counts + money
+    n_races INTEGER, n_bets INTEGER, n_wins INTEGER,
+    total_stake REAL, total_payout REAL, pnl REAL,
+    -- headline metrics
+    roi_pct REAL, strike_rate_pct REAL,
+    top1_hit_rate REAL, top3_hit_rate REAL,
+    -- model-health metrics
+    brier REAL, log_loss REAL, ece REAL, ndcg3 REAL,
+    -- config + provenance
+    n_features INTEGER, time_decay_tau REAL,
+    config_hash TEXT,                   -- sha1 of (features_json + hyperparams)
+    elapsed_s REAL,
+    notes TEXT,
+    computed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(strategy_id, window_end)
+);
+CREATE INDEX IF NOT EXISTS idx_runs_strategy ON strategy_runs(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_runs_roi ON strategy_runs(roi_pct DESC);
+
+-- ─── Model experiment ledger ───────────────────────────────────────────────
+-- Every quick_eval run appends here. Lets us answer "what config got the
+-- best ROI on the 2026-01 split" with a SQL query instead of grepping
+-- shell logs.
+CREATE TABLE IF NOT EXISTS model_experiments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER REFERENCES strategies(id),
+    tag TEXT,                           -- user-supplied label per run
+    split_date TEXT, until_date TEXT,
+    n_features INTEGER,
+    objective TEXT, max_depth INTEGER, num_round INTEGER,
+    eta REAL, subsample REAL, colsample REAL,
+    benter_alpha REAL, benter_beta REAL, use_market INTEGER,
+    select_by TEXT, label_scheme TEXT, time_decay_tau REAL,
+    -- outputs
+    n_races INTEGER, n_bets INTEGER, n_wins INTEGER,
+    top1_hit_rate REAL, top3_hit_rate REAL, ndcg3 REAL,
+    winner_log_loss REAL,
+    total_stake REAL, total_payout REAL, pnl REAL, roi_pct REAL,
+    elapsed_s REAL,
+    run_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_exp_roi ON model_experiments(roi_pct DESC);
+CREATE INDEX IF NOT EXISTS idx_exp_run ON model_experiments(run_at DESC);
 """
 
 

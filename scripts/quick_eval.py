@@ -418,6 +418,36 @@ def main() -> None:
     out["tag"] = ns.tag
     print(json.dumps(out, indent=2))
 
+    # Persist to model_experiments so we can later query "what config got
+    # ROI > +100% on the 2026-01 split" with SQL instead of grepping logs.
+    try:
+        c = sqlite3.connect(DB_PATH)
+        c.execute(
+            """
+            INSERT INTO model_experiments
+              (strategy_id, tag, split_date, until_date, n_features,
+               objective, max_depth, num_round, eta, subsample, colsample,
+               benter_alpha, benter_beta, use_market, select_by, label_scheme,
+               time_decay_tau,
+               n_races, n_bets, n_wins, top1_hit_rate, top3_hit_rate, ndcg3,
+               winner_log_loss, total_stake, total_payout, pnl, roi_pct,
+               elapsed_s)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (None, ns.tag, ns.split, ns.until, out.get("features"),
+             ns.objective, ns.max_depth, ns.num_round, ns.eta, ns.subsample, ns.colsample,
+             ns.alpha, ns.beta, 0 if ns.no_market else 1, ns.select_by, ns.label_scheme,
+             ns.time_decay_tau,
+             out.get("n_races"), out.get("n_bets"), out.get("n_wins"),
+             out.get("top1_hit_rate"), out.get("top3_hit_rate"), out.get("ndcg3"),
+             out.get("winner_log_loss"), out.get("total_stake"), out.get("total_payout"),
+             out.get("pnl"), out.get("roi_pct"), out.get("elapsed_s")),
+        )
+        c.commit(); c.close()
+    except sqlite3.OperationalError as exc:
+        # Table may not exist on older DBs — don't crash the eval.
+        print(f"  [model_experiments not written: {exc}]", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

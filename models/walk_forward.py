@@ -427,9 +427,88 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
         "ON CONFLICT(strategy_id, window_end) DO UPDATE SET brier=excluded.brier, log_loss=excluded.log_loss, ece=excluded.ece, sample_count=excluded.sample_count",
         (strategy_id, date_from, date_to, summary["brier"], summary["log_loss"], summary["ece"], summary["samples"]),
     )
+
+    # ─── strategy_runs: one-row summary of this walk-forward run ──────────
+    # Wraps the audit into a single record so the SPA's "compare strategies"
+    # view can SELECT … FROM strategy_runs WHERE strategy_id IN (…) instead
+    # of re-aggregating predictions every page load.
+    _write_strategy_run(conn, strategy_id, date_from, date_to,
+                        feature_ids, tau, summary)
     conn.commit()
     conn.close()
     return summary
+
+
+def _write_strategy_run(conn, strategy_id, date_from, date_to,
+                        feature_ids, tau, summary) -> None:
+    """Compute audit aggregates from the predictions table and upsert a
+    one-row summary into strategy_runs."""
+    import hashlib
+
+    # Aggregate audit numbers from predictions where recommendation='bet'
+    # (set by betting/select_bets.py — caller is expected to have run it
+    # OR to run it after this completes; we recompute from top-prob-per-race
+    # if recommendation isn't yet set).
+    rows = conn.execute(
+        """
+        WITH ranked AS (
+          SELECT p.race_id, p.brand, p.calibrated_prob,
+                 ROW_NUMBER() OVER (PARTITION BY p.race_id ORDER BY p.calibrated_prob DESC, p.brand) AS rk
+          FROM predictions p
+          JOIN races ra ON ra.id = p.race_id
+          WHERE p.strategy_id = ? AND ra.date BETWEEN ? AND ?
+        ),
+        top AS (SELECT race_id, brand FROM ranked WHERE rk = 1)
+        SELECT
+            COUNT(*),
+            SUM(CASE WHEN CAST(r.position AS INT) = 1 THEN 1 ELSE 0 END),
+            SUM(CASE WHEN CAST(r.position AS INT) = 1 THEN COALESCE(r.odds, 0) * 500 ELSE 0 END),
+            COUNT(*) * 500
+        FROM top
+        LEFT JOIN results r ON r.race_id = top.race_id AND r.brand = top.brand
+        """,
+        (strategy_id, date_from, date_to),
+    ).fetchone()
+    n_bets, n_wins, total_payout, total_stake = rows or (0, 0, 0, 0)
+    n_bets = n_bets or 0; n_wins = n_wins or 0
+    total_payout = float(total_payout or 0)
+    total_stake = float(total_stake or 0)
+    pnl = total_payout - total_stake
+    roi = (100.0 * pnl / total_stake) if total_stake else 0.0
+    strike = (100.0 * n_wins / n_bets) if n_bets else 0.0
+    top1 = (n_wins / n_bets) if n_bets else None
+
+    # config_hash: sha1 of the sorted feature list + the relevant XGBoost
+    # hyperparams. Two runs with identical hash are the same algo.
+    cfg = "|".join(sorted(feature_ids)) + f"|tau={tau}"
+    cfg_hash = hashlib.sha1(cfg.encode()).hexdigest()[:16]
+
+    conn.execute(
+        """
+        INSERT INTO strategy_runs
+            (strategy_id, window_start, window_end,
+             n_races, n_bets, n_wins, total_stake, total_payout, pnl,
+             roi_pct, strike_rate_pct, top1_hit_rate,
+             brier, log_loss, ece,
+             n_features, time_decay_tau, config_hash, elapsed_s)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(strategy_id, window_end) DO UPDATE SET
+            window_start=excluded.window_start,
+            n_races=excluded.n_races, n_bets=excluded.n_bets, n_wins=excluded.n_wins,
+            total_stake=excluded.total_stake, total_payout=excluded.total_payout, pnl=excluded.pnl,
+            roi_pct=excluded.roi_pct, strike_rate_pct=excluded.strike_rate_pct,
+            top1_hit_rate=excluded.top1_hit_rate,
+            brier=excluded.brier, log_loss=excluded.log_loss, ece=excluded.ece,
+            n_features=excluded.n_features, time_decay_tau=excluded.time_decay_tau,
+            config_hash=excluded.config_hash, elapsed_s=excluded.elapsed_s,
+            computed_at=CURRENT_TIMESTAMP
+        """,
+        (strategy_id, date_from, date_to,
+         n_bets, n_bets, n_wins, total_stake, total_payout, pnl,
+         roi, strike, top1,
+         summary.get("brier"), summary.get("log_loss"), summary.get("ece"),
+         len(feature_ids), tau, cfg_hash, summary.get("elapsed_s")),
+    )
 
 
 def main() -> None:
