@@ -311,16 +311,31 @@ def h073_going(c):
     return {"good": 0, "good to firm": 0.5, "good to yielding": 1.0, "yielding": 2.0,
             "soft": 3.0, "heavy": 4.0, "awt": 0.5}.get(g)
 def h074_class(c):
+    """Numeric class encoding. Lower = higher class (G1=1.0, C5=5.0).
+
+    Handles every form HKJC stores in `races.class`:
+      - Group / Listed: 'G1', 'G2', 'G3', 'LISTED'
+      - Class text:     'Class 1' … 'Class 5', 'C1' … 'C5'
+      - Plain number:   '1' … '5'
+      - Float string:   '1.0' … '5.0'  (the modern HKJC dump format)
+    """
     cls = (c.race.get("class") or "").strip().upper()
+    if not cls:
+        return None
     if cls.startswith("G1"): return 1.0
     if cls.startswith("G2"): return 1.5
     if cls.startswith("G3"): return 2.0
     if "LISTED" in cls: return 2.5
-    if cls in {"1", "C1"}: return 3.0
-    if cls in {"2", "C2"}: return 3.5
-    if cls in {"3", "C3"}: return 4.0
-    if cls in {"4", "C4"}: return 4.5
-    if cls in {"5", "C5"}: return 5.0
+    # Strip 'CLASS ' prefix and 'C' prefix.
+    norm = cls.replace("CLASS", "").replace("C", "").strip()
+    try:
+        n = int(float(norm))
+    except (ValueError, TypeError):
+        return None
+    # 1→3.0, 2→3.5, 3→4.0, 4→4.5, 5→5.0 — matches the original G1-C5 ramp.
+    if 1 <= n <= 5:
+        return 3.0 + 0.5 * (n - 1)
+    return None
     return None
 def h075_field_size(c): return float(c.race.get("participants") or len(c.field) or 0)
 def h076_prize(c):

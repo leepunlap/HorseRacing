@@ -248,14 +248,17 @@ def _winner_idx_per_race(conn: sqlite3.Connection, keys: list[tuple[int, str]], 
 def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
     conn = _conn()
     strat = conn.execute(
-        "SELECT name, stage2_enabled, stage2_alpha, stage2_beta, calibration FROM strategies WHERE id = ?",
+        "SELECT name, stage2_enabled, stage2_alpha, stage2_beta, calibration, "
+        "       time_decay_tau "
+        "FROM strategies WHERE id = ?",
         (strategy_id,),
     ).fetchone()
     if not strat:
         raise SystemExit(f"strategy id {strategy_id} not found")
-    name, stage2_on, alpha, beta, cal_mode = strat
+    name, stage2_on, alpha, beta, cal_mode, tau = strat
     feature_ids = _feature_ids_for_strategy(conn, strategy_id)
-    print(f"[walk_forward] strategy={name}  features={len(feature_ids)}  stage2={bool(stage2_on)}  cal={cal_mode}")
+    print(f"[walk_forward] strategy={name}  features={len(feature_ids)}  "
+          f"stage2={bool(stage2_on)}  cal={cal_mode}  tau={tau or 'none'}")
 
     dates = [r[0] for r in conn.execute(
         "SELECT DISTINCT date FROM races WHERE date BETWEEN ? AND ? ORDER BY date",
@@ -266,14 +269,43 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
 
     overall: list[tuple[float, int]] = []  # (calibrated_prob, won)
     t0 = time.time()
+    from datetime import date as _date
     for d in dates:
         X_tr, y_tr, gr_tr, keys_tr, _ = _load_matrix(conn, d, feature_ids)
         if len(X_tr) == 0 or sum(gr_tr) != len(X_tr):
             print(f"  {d}: insufficient training data, skipping")
             continue
+        # Time-decay group weights: each race contributes weight =
+        # exp(-Δdays / τ) relative to the current target date `d`. With
+        # tau=180 this emphasises the last ~6 months — see Iter 10 of the
+        # research log. Recovered per-group via the race_id stored in keys_tr.
+        sample_w = None
+        if tau and tau > 0:
+            try:
+                cutoff = _date.fromisoformat(d)
+                race_ids_tr = list(dict.fromkeys(rid for rid, _b in keys_tr))
+                placeholders = ",".join("?" * len(race_ids_tr))
+                date_rows = conn.execute(
+                    f"SELECT id, date FROM races WHERE id IN ({placeholders})",
+                    race_ids_tr,
+                ).fetchall()
+                date_map = {rid: dt for rid, dt in date_rows}
+                weights = []
+                for rid in race_ids_tr:
+                    dt = date_map.get(rid)
+                    if dt:
+                        days = (cutoff - _date.fromisoformat(dt)).days
+                        weights.append(math.exp(-days / float(tau)))
+                    else:
+                        weights.append(1.0)
+                sample_w = np.array(weights, dtype=float)
+            except Exception as exc:
+                print(f"  {d}: time-decay weight build failed: {exc}")
+                sample_w = None
         try:
             bst = stage1_xgb.train(X_tr, y_tr, gr_tr,
-                                   num_boost_round=stage1_xgb.DEFAULT_NUM_BOOST_ROUND)
+                                   num_boost_round=stage1_xgb.DEFAULT_NUM_BOOST_ROUND,
+                                   weight=sample_w)
         except Exception as exc:
             print(f"  {d}: stage-1 train failed: {exc}")
             continue
