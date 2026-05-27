@@ -2592,7 +2592,12 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           const nm = escapeHtml(i18n.horse(h, lang));
           const onBet = betBrandSet.has(h.brand);
           const gate = h.draw ?? '—';
-          return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}"><span style="display:inline-block;min-width:1.6em;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${gate}</span> ${nm}</span>`;
+          const oddsTxt = h.odds == null ? '—' : Number(h.odds).toFixed(1);
+          return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">`
+               + `<span style="display:inline-block;min-width:1.6em;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${gate}</span> `
+               + `${nm} `
+               + `<span style="color:var(--muted);font-variant-numeric:tabular-nums">@${oddsTxt}</span>`
+               + `</span>`;
         }).join('<br>')
       : '—';
     const pm = isSettled ? (pmByBet[bet.id] || null) : null;
