@@ -569,12 +569,19 @@ def bet_strategy_curve(bet_strategy_id: int,
 
 @router.get("/bet_strategies/rule_kinds")
 def list_rule_kinds() -> dict:
-    """Catalog of rule kinds + their expected params (for the UI dropdown)."""
+    """Catalog of rule kinds + their expected params (for the UI dropdown).
+
+    Singles (WIN/PLACE pools) settle from results.odds × stake. Exotics
+    settle by looking up `dividends.dividend` for the canonical sorted
+    combination — the dividends table needs to be scraped per meeting
+    for these to produce non-zero payouts.
+    """
     return {
+        # ─── Singles (WIN / PLACE pools) ───────────────────────────────
         "flat_top1": {"params": {"stake": 500},
-                      "label": "Flat stake on top pick"},
+                      "label": "Flat stake on top pick (WIN pool)"},
         "kelly_top1": {"params": {"bankroll": 10000, "kelly_frac": 0.25, "max_pct": 0.05},
-                       "label": "Fractional Kelly on top pick"},
+                       "label": "Fractional Kelly on top pick (WIN pool)"},
         "flat_top1_filtered": {"params": {"stake": 500, "min_prob": 0.20, "max_field": 12},
                                "label": "Flat top — filter by min_prob and/or max_field"},
         "dutch_topN": {"params": {"total_stake": 500, "n": 2},
@@ -587,6 +594,23 @@ def list_rule_kinds() -> dict:
                        "label": "Bet the market favourite (baseline; no model)"},
         "market_blended_top1": {"params": {"stake": 500, "alpha": 1.5, "beta": 0.7},
                                 "label": "Top pick after Benter α/β re-rank"},
+        # ─── Exotics (multi-horse, settled via dividends table) ────────
+        "quinella_top2": {"params": {"stake": 100},
+                          "label": "Quinella — top-2 picks (any order)"},
+        "qpl_top2": {"params": {"stake": 100},
+                     "label": "Quinella Place — top-2 picks (any in top-3)"},
+        "qpl_top3_box": {"params": {"stake_per_pair": 100},
+                         "label": "QPL box — 3 pairs from top-3 picks"},
+        "forecast_top2": {"params": {"stake": 100},
+                          "label": "Exacta (EXA) — top-2 in EXACT order"},
+        "trifecta_top3": {"params": {"stake": 100},
+                          "label": "Trifecta (TRI) — top-3 in EXACT order"},
+        "trio_top3": {"params": {"stake": 100},
+                      "label": "Trio (TRIO) — top-3 in any order"},
+        "first_four_top4": {"params": {"stake": 100},
+                            "label": "First Four (F4) — top-4 in any order"},
+        "quartet_top4": {"params": {"stake": 100},
+                         "label": "Quartet (QTT) — top-4 in EXACT order"},
     }
 
 
