@@ -121,6 +121,7 @@ SCRAPERS: dict[str, tuple[str, list[str]]] = {
     "roarers":               ("scrapers/scrape_roarers.py",               []),
     "weather":               ("scrapers/scrape_weather.py",               []),  # caller passes --date/--course
     "track_bias":            ("scrapers/compute_track_bias.py",           []),  # caller passes --date or --since/--until
+    "persons":               ("scrapers/scrape_persons.py",               ["--since", "2025-09-01"]),  # bilingual jockey/trainer registry keyed by HKJC IDs
 }
 
 
@@ -178,6 +179,64 @@ def register_actions(action_registry: dict[str, Callable], scraper_job: dict, is
 def list_scrapers() -> dict:
     """List scrapers and their default argv."""
     return {slug: {"script": s, "default_argv": d} for slug, (s, d) in SCRAPERS.items()}
+
+
+# ─── Data-integrity dashboard endpoint ───────────────────────────────────────
+@router.get("/integrity")
+def integrity_summary(limit: int = 10) -> dict:
+    """Return the most recent integrity_check_runs + a roll-up of open
+    violations by severity. Powers the SPA's data-integrity badge."""
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    conn = _connect()
+    try:
+        # Latest run summary
+        run = conn.execute(
+            "SELECT id, ts, scope, total_checks, passed, failed FROM integrity_check_runs "
+            "ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+        if not run:
+            return {"latest": None, "by_severity": {}, "runs": []}
+        run_id = run[0]
+        # Violation breakdown for that run
+        sev = conn.execute(
+            "SELECT severity, COUNT(*) FROM integrity_check_violations "
+            "WHERE run_id=? GROUP BY severity",
+            (run_id,),
+        ).fetchall()
+        by_check = conn.execute(
+            "SELECT check_name, severity, COUNT(*), SUM(auto_healed) FROM integrity_check_violations "
+            "WHERE run_id=? GROUP BY check_name, severity ORDER BY 3 DESC",
+            (run_id,),
+        ).fetchall()
+        runs = conn.execute(
+            "SELECT id, ts, scope, total_checks, passed, failed FROM integrity_check_runs "
+            "ORDER BY ts DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return {
+            "latest": {"id": run[0], "ts": run[1], "scope": run[2],
+                       "total_checks": run[3], "passed": run[4],
+                       "failed": run[5]},
+            "by_severity": {s: c for s, c in sev},
+            "by_check": [{"check_name": c[0], "severity": c[1],
+                          "count": c[2], "auto_healed": c[3]} for c in by_check],
+            "runs": [{"id": r[0], "ts": r[1], "scope": r[2],
+                      "total_checks": r[3], "passed": r[4],
+                      "failed": r[5]} for r in runs],
+        }
+    finally:
+        conn.close()
+
+
+@router.post("/integrity/run")
+def integrity_run(date: str | None = None, heal: bool = False) -> dict:
+    """Trigger an integrity check on-demand. Returns the new run summary."""
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    from monitoring.integrity_check import run as _ic_run
+    scope = {"date": date} if date else {"scope": "full"}
+    return _ic_run(scope, heal=heal)
 
 
 @router.post("/scrapers/{slug}/run")
@@ -378,11 +437,14 @@ def list_bet_strategies(model_strategy_id: int) -> list[dict]:
             SELECT bs.id, bs.name, bs.name_en, bs.name_zh, bs.rule_kind,
                    bs.params_json, bs.enabled, bs.chart_color, bs.notes,
                    bs.created_at,
-                   COALESCE(SUM(bl.stake), 0)  AS stake,
-                   COALESCE(SUM(bl.payout), 0) AS payout,
-                   COALESCE(SUM(bl.pnl), 0)    AS pnl,
-                   COUNT(bl.id)                AS n_bets,
-                   COALESCE(SUM(bl.won = 1), 0) AS n_wins
+                   COALESCE(SUM(bl.stake), 0)         AS stake,
+                   COALESCE(SUM(bl.payout), 0)        AS payout,
+                   COALESCE(SUM(bl.pnl), 0)           AS pnl,
+                   COUNT(bl.id)                       AS n_bets,
+                   COALESCE(SUM(bl.won = 1), 0)       AS n_wins,
+                   COUNT(DISTINCT bl.race_date)       AS race_days,
+                   MIN(bl.race_date)                  AS first_date,
+                   MAX(bl.race_date)                  AS last_date
             FROM bet_strategies bs
             LEFT JOIN bet_ledger bl ON bl.bet_strategy_id = bs.id
             WHERE bs.model_strategy_id = ?
@@ -408,6 +470,9 @@ def list_bet_strategies(model_strategy_id: int) -> list[dict]:
             "pnl": round(r[12], 2),
             "n_bets": r[13],
             "n_wins": r[14],
+            "race_days": r[15],
+            "first_date": r[16],
+            "last_date": r[17],
             "roi_pct": round(100.0 * r[12] / r[10], 2) if r[10] > 0 else 0.0,
             "strike_rate_pct": round(100.0 * r[14] / r[13], 2) if r[13] > 0 else 0.0,
         }
@@ -1643,9 +1708,11 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
             # (keyed by horse_no) so pre-race displays surface the latest tote
             # odds when results.odds is still null. `place_div` LEFT JOIN to
             # the dividends table so historical placed horses (top-3 finishers)
-            # surface a derived PLACE multiplier (dividend / 10, since HKJC
-            # quotes per $10 stake). Together they let one `place_odds` column
-            # work for both live and settled races.
+            # surface the actual PLACE payout (dividend / 10, since HKJC
+            # quotes per $10 stake). place_odds prefers the dividend when
+            # available (final payout for top-3) and falls back to the last
+            # pre-race live tick for non-placers, so settled races show
+            # both: top-3 → actual payout, rest → last pre-race place price.
             live_join = (
                 "LEFT JOIN ("
                 "  SELECT date, course, race_no, horse_no, win_odds, place_odds, "
@@ -1666,7 +1733,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                            r.act_wt, r.decl_wt,
                            COALESCE(r.odds, lo.win_odds) AS odds,
                            lo.win_odds AS live_win_odds,
-                           COALESCE(lo.place_odds, pd.dividend / 10.0) AS place_odds,
+                           COALESCE(pd.dividend / 10.0, lo.place_odds) AS place_odds,
                            r.finish_time, r.lbw,
                            r.running_style, r.position, r.horse_no,
                            h.age, h.sex, h.rating,
@@ -1697,7 +1764,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                            r.act_wt, r.decl_wt,
                            COALESCE(r.odds, lo.win_odds) AS odds,
                            lo.win_odds AS live_win_odds,
-                           COALESCE(lo.place_odds, pd.dividend / 10.0) AS place_odds,
+                           COALESCE(pd.dividend / 10.0, lo.place_odds) AS place_odds,
                            r.finish_time, r.lbw,
                            r.running_style, r.position, r.horse_no,
                            h.age, h.sex, h.rating,
@@ -1714,6 +1781,31 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                         "finish_time","lbw","running_style","position","horse_no",
                         "age","sex","rating","horse_name_en","horse_name_zh")
             horses = [dict(zip(cols, h)) for h in horse_rows]
+            # Bilingual jockey/trainer names from the persons registry
+            # (populated by scrape_persons.py, keyed by HKJC official IDs).
+            # We do the lookup in Python so we can strip the apprentice claim
+            # suffix '(-7)' before matching name_en.
+            import re as _re
+            _claim_re = _re.compile(r"\s*\(-?\d+\)\s*$")
+            _strip = lambda s: _claim_re.sub("", (s or "").strip()).strip()
+            persons_rows = conn.execute(
+                "SELECT kind, name_en, name_zh, hkjc_id FROM persons "
+                "WHERE name_en IS NOT NULL"
+            ).fetchall()
+            _by_kind: dict[tuple[str, str], tuple[str | None, str]] = {}
+            for kind, name_en, name_zh, hkjc_id in persons_rows:
+                _by_kind[(kind, name_en)] = (name_zh, hkjc_id)
+            for h in horses:
+                j_en = _strip(h.get("jockey"))
+                t_en = _strip(h.get("trainer"))
+                j = _by_kind.get(("jockey", j_en))
+                t = _by_kind.get(("trainer", t_en))
+                h["jockey_name_en"] = j_en or None
+                h["jockey_name_zh"] = j[0] if j else None
+                h["jockey_hkjc_id"] = j[1] if j else None
+                h["trainer_name_en"] = t_en or None
+                h["trainer_name_zh"] = t[0] if t else None
+                h["trainer_hkjc_id"] = t[1] if t else None
             # Sort: by calibrated_prob desc when available, else by position asc,
             # else by horse_no (use draw as proxy).
             def _sort_key(h: dict) -> tuple:
@@ -1732,6 +1824,25 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                 for h in horses:
                     if h.get("calibrated_prob") is not None:
                         h["feature_drivers"] = drivers.get(h["brand"], {"top": [], "bottom": []})
+            # Attach the full odds_snapshots history per horse so the SPA
+            # can draw tiny win- and place-odds sparklines next to each
+            # odds cell. Ordered by ts so the renderer can map points to
+            # time directly.
+            snap_rows = conn.execute(
+                "SELECT horse_no, ts, win_odds, place_odds "
+                "FROM odds_snapshots "
+                "WHERE race_id = ? "
+                "  AND (win_odds IS NOT NULL OR place_odds IS NOT NULL) "
+                "ORDER BY horse_no, ts",
+                (race_id,),
+            ).fetchall()
+            by_horse: dict[int, list[dict]] = {}
+            for hno, ts, wo, po in snap_rows:
+                by_horse.setdefault(hno, []).append(
+                    {"ts": ts, "win_odds": wo, "place_odds": po}
+                )
+            for h in horses:
+                h["odds_history"] = by_horse.get(h.get("horse_no"), [])
             race["horses"] = horses
             race["has_results"] = any(h.get("position") for h in horses)
             race["has_predictions"] = any(h.get("calibrated_prob") is not None for h in horses)

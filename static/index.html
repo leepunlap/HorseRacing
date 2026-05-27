@@ -232,31 +232,31 @@
   .biblio-row a { font-size: 11px; word-break: break-all; }
 
   /* Race viewer */
-  /* Cascading year → month → race-day picker. Each column has a fixed-ish
-     width and chips inside flow left-to-right wrapping, packed densely. */
-  .date-cascade { display: flex; gap: 8px; margin-bottom: 12px;
-                  align-items: flex-start; flex-wrap: wrap; }
-  .cascade-col { flex: 0 1 auto;
-                 border: 1px solid var(--border); border-radius: 4px;
-                 background: var(--bg); display: flex; flex-direction: column;
-                 min-width: 180px; }
-  /* Year column is naturally narrow; race-day column gets more space to fit days. */
-  .cascade-col.col-year   { max-width: 220px; }
-  .cascade-col.col-month  { max-width: 320px; }
-  .cascade-col.col-date   { flex: 1 1 auto; max-width: none; }
-  .cascade-hdr { padding: 6px 10px; font-size: 11px; color: var(--muted);
-                 text-transform: uppercase; letter-spacing: 0.5px;
-                 border-bottom: 1px solid var(--border);
-                 background: rgba(94,192,255,0.04); }
-  .cascade-body { padding: 6px;
-                  display: flex; flex-wrap: wrap; gap: 4px;       /* wrap rows of chips */
-                  max-height: 200px; overflow-y: auto;
-                  align-content: flex-start; }
-  /* Chips: content-width, tight padding so dozens fit per row */
-  .cascade-body .date-chip { padding: 3px 8px; font-size: 11px; line-height: 1.2;
-                             white-space: nowrap;
-                             display: inline-flex; align-items: center; gap: 4px; }
-  .cascade-body .date-chip .meta { font-size: 10px; }
+  /* Horizontal cascade: three "label : chips wrapping" rows stacked
+     vertically. Lives inside .races-toolbar so it shares the panel's top
+     row with the page title and 策略 selector. */
+  .date-cascade-h { display: flex; flex-direction: column; gap: 4px;
+                    flex: 1 1 320px; min-width: 0; }
+  .cascade-row { display: flex; align-items: baseline; gap: 8px; }
+  .cascade-label { font-size: 11px; color: var(--muted);
+                   text-transform: uppercase; letter-spacing: 0.5px;
+                   min-width: 48px; text-align: right; flex: 0 0 48px; }
+  /* In-row separator + secondary label (e.g. 月 inline after the year
+     chips when the two collapse onto a single row). */
+  .cascade-sublabel { font-size: 11px; color: var(--muted);
+                      text-transform: uppercase; letter-spacing: 0.5px;
+                      padding-left: 6px; margin-left: 4px;
+                      border-left: 1px solid var(--border); }
+  .cascade-chips { display: flex; flex-wrap: wrap; gap: 4px;
+                   align-items: center; flex: 1 1 auto; min-width: 0; }
+  .cascade-chips .date-chip { padding: 3px 8px; font-size: 11px; line-height: 1.2;
+                              white-space: nowrap;
+                              display: inline-flex; align-items: center; }
+  /* Toolbar that contains 賽事 title, 策略 selector, and the cascade rows
+     side-by-side on the same horizontal strip. */
+  .races-toolbar { display: flex; gap: 12px; align-items: flex-start;
+                   margin-bottom: 8px; flex-wrap: wrap; }
+  .races-toolbar-strat { display: flex; align-items: center; gap: 6px; }
   .date-picker { display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px;
                  overflow-y: auto; padding: 6px; border: 1px solid var(--border);
                  border-radius: 4px; background: var(--bg); margin-bottom: 12px; }
@@ -268,22 +268,15 @@
   }
   .date-chip:hover { border-color: var(--accent); }
   .date-chip.active { background: var(--accent); color: #061a2a; }
-  .date-chip .meta { color: var(--muted); margin-left: 6px; font-size: 10px; }
-  .date-chip.active .meta { color: rgba(6,26,42,0.7); }
   .date-chip.has-pred { background: rgba(77,209,122,0.08); color: var(--good); }
   .date-chip.has-pred.active { background: var(--good); color: #021a09; }
-  /* Compact races-panel — drop padding + margins, inline title, shrink
-     cascade body height so the page header takes <80px instead of ~160px. */
+  /* Compact races-panel — drop padding + margins so the page header
+     takes <80px instead of ~160px. */
   .races-panel { padding: 8px 12px; margin-bottom: 10px; }
-  .races-panel .races-title { font-weight: 600; font-size: 13px;
-                              text-transform: uppercase; letter-spacing: 0.4px;
-                              color: var(--muted); margin-right: 8px; }
-  .races-panel .races-title code { color: var(--text); text-transform: none;
-                                   letter-spacing: 0; font-size: 12px; }
   .races-panel .toolbar { margin-bottom: 4px; }
-  .races-panel .cascade-col { max-height: 96px; }
-  .races-panel .cascade-body { padding: 4px; }
-  .races-panel .cascade-hdr { padding: 3px 8px; }
+  /* Cap the chip row's visible height so a 30+ day list doesn't blow up
+     the panel. Overflowed chips become scrollable within the row. */
+  .races-panel .cascade-chips { max-height: 56px; overflow-y: auto; }
   .race-block { border: 1px solid var(--border); border-radius: 6px;
                 margin-bottom: 16px; }
   .race-block .race-hdr {
@@ -391,7 +384,7 @@
   .sparkline { height: 40px; width: 100%; }
 
   /* Bet-strategy mini-card selector — one card per bet strategy, click to
-     switch state.dashBetStrategy. Selected card highlighted via accent border. */
+     switch state.betStrategy. Selected card highlighted via accent border. */
   .bet-mini-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
   .bet-mini-card { background: var(--panel); border: 1px solid var(--border);
                    border-radius: 4px; padding: 4px 9px; min-width: 130px;
@@ -585,8 +578,11 @@ const state = {
   selectedStrategy: null,
   strategyHealth: null,
   strategyAudit: null,
-  dashBetStrategies: [],
-  dashBetStrategy: _ui.dashBetStrategy || null,  // PERSIST
+  // Bet-strategy selection — shared by Strategy + Races pages so the two
+  // selectors mirror each other. The list reloads whenever the current
+  // model changes via loadStrategyDetail / loadRaces.
+  betStrategies: [],
+  betStrategy: _ui.betStrategy || _ui.dashBetStrategy || _ui.raceBetStrategy || null,  // PERSIST
   auditFrom: _ui.auditFrom || '2026-01-01',  // PERSIST
   auditTo: _ui.auditTo || '2026-05-24',      // PERSIST
   logs: [],
@@ -606,8 +602,6 @@ const state = {
   raceMonth: _ui.raceMonth || null,    // PERSIST — "05"
   raceDate: _ui.raceDate || null,      // PERSIST — "2026-05-24"
   raceStrategy: _ui.raceStrategy || null,  // PERSIST — strategy_id filter for Races tab
-  raceBetStrategy: _ui.raceBetStrategy || null,  // PERSIST — bet_strategy_id filter for Races tab
-  raceBetStrategies: [],                   // list of bet strategies for current model
   raceDates: null,                     // list of {date, races, results, predicted_races}
   raceData: null,                      // current date's race cards
   // Strategy dashboard
@@ -681,6 +675,7 @@ async function loadDashboard() {
   state.liveStatus = await api('/api/live/status').catch(e => ({ error: e.message }));
   state.killSwitch = await api('/api/kill-switch').catch(e => ({ error: e.message }));
   state.liveMode = await api('/api/live/mode').catch(e => ({ error: e.message }));
+  state.integrity = await api('/api/integrity').catch(() => null);
   render();
 }
 
@@ -713,22 +708,8 @@ async function loadStrategyDetail(id) {
   state.dashData = dash;
   state.dashModelCharts = charts;            // raw model-level audit, kept for re-merges
   state.dashCharts = charts;
-  state.dashBetStrategies = Array.isArray(betStrats) ? betStrats : [];
-  // Forget the previously-selected bet strategy if it isn't owned by this
-  // model strategy (avoids stale selections after switching strategies).
-  if (state.dashBetStrategy != null) {
-    const bsid = parseInt(state.dashBetStrategy);
-    if (!state.dashBetStrategies.some(b => b.id === bsid)) {
-      state.dashBetStrategy = null;
-      saveUi({ dashBetStrategy: null });
-    }
-  }
-  // The selector no longer offers an "all" option, so default to the first
-  // available bet strategy if none is currently selected.
-  if (state.dashBetStrategy == null && state.dashBetStrategies.length > 0) {
-    state.dashBetStrategy = state.dashBetStrategies[0].id;
-    saveUi({ dashBetStrategy: state.dashBetStrategy });
-  }
+  state.betStrategies = Array.isArray(betStrats) ? betStrats : [];
+  _reconcileBetStrategy();
   if (features && !state.features) state.features = features;
   state.strategyHealth = dash && !dash.error
     ? { windows: dash.calibration_trend }
@@ -739,7 +720,25 @@ async function loadStrategyDetail(id) {
   render();
 }
 
-// Recompute state.dashCharts based on state.dashBetStrategy. With no bet
+// Shared validator for state.betStrategy: drop it if it no longer belongs
+// to the current model's bet-strategy list, then auto-select the first
+// available one. Called from both loadStrategyDetail and loadRaces so the
+// selection stays consistent across pages.
+function _reconcileBetStrategy() {
+  if (state.betStrategy != null) {
+    const bsid = parseInt(state.betStrategy);
+    if (!state.betStrategies.some(b => b.id === bsid)) {
+      state.betStrategy = null;
+      saveUi({ betStrategy: null });
+    }
+  }
+  if (state.betStrategy == null && state.betStrategies.length > 0) {
+    state.betStrategy = state.betStrategies[0].id;
+    saveUi({ betStrategy: state.betStrategy });
+  }
+}
+
+// Recompute state.dashCharts based on state.betStrategy. With no bet
 // strategy selected, show the model-level audit unchanged. With one selected,
 // fetch /api/bet_strategies/{id}/charts and overlay its ledger-derived series
 // (cumulative_pnl, odds_buckets, segments, bankroll_path, totals) onto the
@@ -748,7 +747,7 @@ async function loadStrategyDetail(id) {
 // bet rule fires.
 async function refreshDashCharts() {
   const base = state.dashModelCharts || {};
-  const bsid = state.dashBetStrategy;
+  const bsid = state.betStrategy;
   if (bsid == null) {
     state.dashCharts = base;
     return;
@@ -844,30 +843,17 @@ async function loadRaces() {
   }
   // Also pull the bet strategies list (used for the Races-page bet selector).
   if (sid != null) {
-    state.raceBetStrategies = await api(`/api/strategies/${sid}/bet_strategies`)
+    state.betStrategies = await api(`/api/strategies/${sid}/bet_strategies`)
       .catch(() => []);
   } else {
-    state.raceBetStrategies = [];
+    state.betStrategies = [];
   }
-  // Drop any stale bet-strategy id that no longer belongs to the current
-  // model. Then auto-select the first available one if nothing is selected —
-  // mirrors the dashboard, which has no "(all)" fallback either.
-  if (state.raceBetStrategy != null) {
-    const bsid = parseInt(state.raceBetStrategy);
-    if (!state.raceBetStrategies.some(b => b.id === bsid)) {
-      state.raceBetStrategy = null;
-      saveUi({ raceBetStrategy: null });
-    }
-  }
-  if (state.raceBetStrategy == null && state.raceBetStrategies.length > 0) {
-    state.raceBetStrategy = state.raceBetStrategies[0].id;
-    saveUi({ raceBetStrategy: state.raceBetStrategy });
-  }
+  _reconcileBetStrategy();
   // Fetch the selected date's race cards (if any selection)
   if (state.raceDate) {
     let dqs = sid != null ? `?strategy_id=${sid}` : '';
-    if (state.raceBetStrategy) {
-      dqs += (dqs ? '&' : '?') + `bet_strategy_id=${state.raceBetStrategy}`;
+    if (state.betStrategy) {
+      dqs += (dqs ? '&' : '?') + `bet_strategy_id=${state.betStrategy}`;
     }
     state.raceData = await api(`/api/races/${state.raceDate}${dqs}`)
       .catch(e => ({ races: [], error: e.message }));
@@ -1001,6 +987,20 @@ function layout() {
         ${tabs.map(([k, l]) => `<button data-tab="${k}" class="${state.tab === k ? 'active' : ''}">${l}</button>`).join('')}
       </nav>
       <div class="spacer"></div>
+      ${(() => {
+        // Data-integrity badge — fed from /api/integrity. Green if 0 failed
+        // checks in the latest run, amber if any medium violations, red on
+        // high/critical. Clicking opens the integrity dashboard.
+        const ic = state.integrity;
+        if (!ic || !ic.latest) return '';
+        const sev = ic.by_severity || {};
+        const fail = ic.latest.failed || 0;
+        const high = (sev.high || 0) + (sev.critical || 0);
+        const cls = fail === 0 ? 'good' : (high > 0 ? 'bad' : 'warn');
+        const label = fail === 0 ? '✓ data ok' : `${fail} 數據異常`;
+        return `<span class="pill ${cls}" title="latest integrity run: ${ic.latest.ts}"
+                       style="cursor:pointer" id="integrityBadge">${label}</span>`;
+      })()}
       <span class="status ${statusCls}"><span class="dot"></span>${state.health?.status || 'unknown'} · pid ${state.health?.pid || '?'}</span>
       <div class="lang-toggle" title="${t('切換語言', 'Switch language')}">
         <button class="${state.lang === 'zh' ? 'active' : ''}" data-lang="zh">中文</button>
@@ -2082,7 +2082,7 @@ function renderStrategyDashboard(sel) {
         `).join('')}
       </select>
     </div>
-    ${renderBetMiniCards(state.dashBetStrategies, state.dashBetStrategy, 'dash')}
+    ${renderBetMiniCards(state.betStrategies, state.betStrategy, 'dash')}
   `;
   return `
     <div class="panel">
@@ -2192,8 +2192,8 @@ function renderRaces() {
   // Bet-strategy mini-card row (same shape as the Dashboard's selector via
   // renderBetMiniCards). Always rendered when the model has any bet
   // strategies — loadRaces auto-selects the first one if none is active.
-  const betPicker = renderBetMiniCards(state.raceBetStrategies,
-                                       state.raceBetStrategy, 'race');
+  const betPicker = renderBetMiniCards(state.betStrategies,
+                                       state.betStrategy, 'race');
 
   // Cascading date picker: Year → Month → Race day. Each column is its own
   // scrollable list; later columns are empty until the previous one is chosen.
@@ -2210,61 +2210,43 @@ function renderRaces() {
     return (lang === 'zh' ? zh : en)[i] ?? mo;
   };
 
+  const yearChips = years.map(yr => {
+    const b = buckets[yr];
+    return `
+      <span class="date-chip ${yr === state.raceYear ? 'active' : ''} ${b.has_pred ? 'has-pred' : ''}"
+            data-race-year="${yr}">
+        ${yr}
+      </span>`;
+  }).join('');
+  const monthChips = months.length === 0
+    ? `<span class="empty" style="font-size:11px">${t('先選年份', 'select year first')}</span>`
+    : months.map(mo => {
+        const mb = yearBucket.months[mo];
+        return `
+          <span class="date-chip ${mo === state.raceMonth ? 'active' : ''} ${mb.has_pred ? 'has-pred' : ''}"
+                data-race-month="${mo}">
+            ${monthName(mo, state.lang)}
+          </span>`;
+      }).join('');
   const datePicker = dates.length ? `
-    <div class="date-cascade">
-      <div class="cascade-col col-year">
-        <div class="cascade-hdr">${t('年', 'Year')}</div>
-        <div class="cascade-body">
-          ${years.map(yr => {
-            const b = buckets[yr];
-            const cnt = b.has_pred ? `${b.predicted_total}/${b.races_total}` : `${b.dates.length}`;
-            return `
-              <span class="date-chip ${yr === state.raceYear ? 'active' : ''} ${b.has_pred ? 'has-pred' : ''}"
-                    data-race-year="${yr}"
-                    title="${t('場次', 'meetings')}: ${b.dates.length} · ${t('預測', 'predicted')}: ${b.predicted_total}">
-                ${yr}<span class="meta">${cnt}</span>
-              </span>
-            `;
-          }).join('')}
-        </div>
-      </div>
-
-      <div class="cascade-col col-month">
-        <div class="cascade-hdr">${t('月', 'Month')}</div>
-        <div class="cascade-body">
-          ${months.length === 0
-            ? `<div class="empty" style="padding:4px 8px;font-size:11px">${t('先選年份', 'select year first')}</div>`
-            : months.map(mo => {
-                const mb = yearBucket.months[mo];
-                const cnt = mb.has_pred ? `${mb.predicted_total}/${mb.races_total}` : `${mb.dates.length}`;
-                return `
-                  <span class="date-chip ${mo === state.raceMonth ? 'active' : ''} ${mb.has_pred ? 'has-pred' : ''}"
-                        data-race-month="${mo}"
-                        title="${t('場次', 'meetings')}: ${mb.dates.length} · ${t('預測', 'predicted')}: ${mb.predicted_total}">
-                    ${monthName(mo, state.lang)}<span class="meta">${cnt}</span>
-                  </span>
-                `;
-              }).join('')}
-        </div>
-      </div>
-
-      <div class="cascade-col col-date">
-        <div class="cascade-hdr">${t('賽事日', 'Race day')}</div>
-        <div class="cascade-body">
+    <div class="date-cascade-h">
+      <div class="cascade-row">
+        <span class="cascade-label">${t('年', 'Year')}</span>
+        <div class="cascade-chips">
+          ${yearChips}
+          <span class="cascade-sublabel">${t('月', 'Month')}</span>
+          ${monthChips}
+          <span class="cascade-sublabel">${t('賽事日', 'Race day')}</span>
           ${monthDates.length === 0
-            ? `<div class="empty" style="padding:4px 8px;font-size:11px">${t('先選月份', 'select month first')}</div>`
+            ? `<span class="empty" style="font-size:11px">${t('先選月份', 'select month first')}</span>`
             : monthDates.map(d => {
-                // Year + month already chosen → just show day of month for compactness
-                const day = d.date.slice(8, 10);
-                const cnt = (d.predicted_races || 0) > 0
-                  ? `${d.predicted_races}/${d.races}` : `${d.races}`;
+                // YY-MM-DD: drop the century from the stored YYYY-MM-DD date.
+                const shortDate = d.date.slice(2);
                 return `
                   <span class="date-chip ${d.date === state.raceDate ? 'active' : ''} ${(d.predicted_races || 0) > 0 ? 'has-pred' : ''}"
-                        data-race-date="${d.date}"
-                        title="${d.date} · ${t('場次', 'races')}: ${d.races} · ${t('結果', 'results')}: ${d.results} · ${t('預測', 'predictions')}: ${d.predicted_races || 0}">
-                    ${day}<span class="meta">${cnt}</span>
-                  </span>
-                `;
+                        data-race-date="${d.date}">
+                    ${shortDate}
+                  </span>`;
               }).join('')}
         </div>
       </div>
@@ -2289,12 +2271,11 @@ function renderRaces() {
   const loadingTxt = t('載入中…', 'loading…');
   main.innerHTML = `
     <div class="panel races-panel">
-      <div class="toolbar" style="margin-bottom:6px">
-        <span class="races-title">${t('賽事', 'Races')}${state.raceDate ? ` · <code>${state.raceDate}</code>` : ''}</span>
-        ${stratPicker}
+      <div class="races-toolbar">
+        <div class="races-toolbar-strat">${stratPicker}</div>
+        ${datePicker}
       </div>
       ${betPicker}
-      ${datePicker}
     </div>
     <div class="races-loading-wrap${loadingCls}" data-loading-text="${loadingTxt}">
       ${betsHtml}
@@ -2304,89 +2285,193 @@ function renderRaces() {
   wireRaceControls();
 }
 
+// Tiny inline SVG sparkline of a horse's odds history. `field` selects
+// which series to chart — 'win_odds' or 'place_odds'. X-axis is
+// proportional to wall-clock time (so two snapshots taken 5 seconds
+// apart sit close together; a 10-minute gap leaves a long flat run).
+// Y-axis stretches to the min/max odds observed for the chosen field.
+// Returns '' when there aren't at least 2 points to draw — graceful
+// when odds_snapshots is empty for the horse / race or only the other
+// pool has values.
+function _renderOddsSparkline(history, field) {
+  if (!Array.isArray(history) || history.length < 2) return '';
+  const W = 56, H = 14, padX = 1, padY = 2;
+  const innerW = W - padX * 2;
+  const innerH = H - padY * 2;
+  const pts = [];
+  let vMin = Infinity, vMax = -Infinity;
+  for (const p of history) {
+    const t = new Date(p.ts).getTime();
+    const v = +p[field];
+    if (!isFinite(t) || !isFinite(v) || v <= 0) continue;
+    pts.push({ t, v });
+    if (v < vMin) vMin = v;
+    if (v > vMax) vMax = v;
+  }
+  if (pts.length < 2) return '';
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const tSpan = Math.max(1, t1 - t0);
+  const vSpan = Math.max(0.01, vMax - vMin);
+  const coords = pts.map(p => {
+    const x = padX + innerW * (p.t - t0) / tSpan;
+    const y = padY + innerH * (1 - (p.v - vMin) / vSpan);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const last = pts[pts.length - 1];
+  const drift = ((last.v - pts[0].v) / pts[0].v * 100);
+  const poolLabel = field === 'place_odds' ? 'place' : 'win';
+  const title = `${poolLabel} odds drift ${drift >= 0 ? '+' : ''}${drift.toFixed(1)}% over ${pts.length} ticks · ${pts[0].v.toFixed(1)} → ${last.v.toFixed(1)}`;
+  return `<svg class="odds-spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"
+              style="vertical-align:middle;margin-left:4px"><title>${escapeHtml(title)}</title>
+    <polyline fill="none" stroke="var(--muted)" stroke-width="1" points="${coords}"/>
+  </svg>`;
+}
+
+// Single source of truth for bet-row data shown in Today's Bets summary
+// + per-race tables. Returns `{ rows, totals }` where each row is:
+//   { r, h, bet, reason, stake, pnl }
+// regardless of which bet strategy fed it. Centralising here means kelly,
+// flat, dutch, exotic, and the model-fallback path all render identically.
+//
+// - `reason` is ALWAYS _laymanDrivers(h, lang). The bet strategy's
+//   internal tag (e.g. "kelly_frac=0.25") is conveyed by the rule pill
+//   in the table header, not by per-row text.
+// - `pnl` is null when a bet hasn't settled yet (so the cell shows "—"
+//   instead of $0).
+// - For combo bets, `h` is the primary brand's horse object; the row
+//   renderer is responsible for showing the full brand list separately.
+function _resolveBetRows(data, strat, bsMeta, lang) {
+  const rows = [];
+  let totalStake = 0, totalPnl = 0, settled = 0;
+
+  if (bsMeta) {
+    for (const r of (data.races || [])) {
+      for (const bet of (r.bets || [])) {
+        const primaryBrand = String(bet.brand || '').split(/[,>]/)[0] || '';
+        const h = (r.horses || []).find(x => x.brand === primaryBrand) || {};
+        const isSettled = bet.won === 0 || bet.won === 1;
+        rows.push({
+          r, h, bet,
+          reason: _laymanDrivers(h, lang),
+          stake: bet.stake,
+          pnl: isSettled ? (bet.pnl || 0) : null,
+        });
+        if (bet.stake != null) totalStake += bet.stake;
+        if (isSettled) { totalPnl += bet.pnl || 0; settled++; }
+      }
+    }
+  } else if (strat) {
+    for (const r of (data.races || [])) {
+      if (!r.has_predictions) continue;
+      const topBrand = (r.horses || [])
+        .filter(h => h.calibrated_prob != null)
+        .sort((a, b) => b.calibrated_prob - a.calibrated_prob)[0]?.brand;
+      for (const h of (r.horses || [])) {
+        const a = analyseHorse(h, strat, lang, h.brand === topBrand);
+        if (!a.bet) continue;
+        rows.push({
+          r, h, bet: null,
+          reason: _laymanDrivers(h, lang),
+          stake: a.stake,
+          pnl: a.pnl,
+        });
+        if (a.stake != null) totalStake += a.stake;
+        if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
+      }
+    }
+  }
+
+  return { rows, totals: { totalStake, totalPnl, settled } };
+}
+
+// Today's Bets summary table. Always uses the "Flat $500" column layout
+// (race | finish | horse | jockey | draw | odds | mkt p | cal p | edge |
+//  time | bet | assessment | stake | pnl). Row data comes from
+// _resolveBetRows so every bet strategy (kelly / flat / dutch / exotic /
+// model fallback) flows through one resolver and renders identically.
 function renderBetsSummary(data, strat) {
   const lang = state.lang;
   const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(1) + '%';
   const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
   const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
-
-  // Render mode depends on whether the user selected a bet strategy:
-  //   - No bet strategy: one row per (race, horse) using model's default
-  //     top-1 rule (legacy path).
-  //   - Bet strategy: one row per bet_ledger entry — for exotic combos
-  //     this becomes one row per COMBO (showing every brand in the combo)
-  //     instead of one row per horse, so a quinella doesn't double-count
-  //     the stake.
   const bsMeta = data.bet_strategy;
-  return bsMeta
-    ? _renderBetsSummaryFromLedger(data, bsMeta, lang)
-    : _renderBetsSummaryFromModel(data, strat, lang);
-}
+  const { rows, totals: { totalStake, totalPnl, settled } } =
+    _resolveBetRows(data, strat, bsMeta, lang);
 
-function _renderBetsSummaryFromModel(data, strat, lang) {
-  const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(1) + '%';
-  const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
-  const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
-  const rows = [];
-  let totalStake = 0, totalPnl = 0, settled = 0;
-  for (const r of (data.races || [])) {
-    if (!r.has_predictions) continue;
-    const topBrand = (r.horses || [])
-      .filter(h => h.calibrated_prob != null)
-      .sort((a, b) => b.calibrated_prob - a.calibrated_prob)[0]?.brand;
-    for (const h of (r.horses || [])) {
-      const a = analyseHorse(h, strat, lang, h.brand === topBrand);
-      if (!a.bet) continue;
-      rows.push({ r, h, a });
-      if (a.stake != null) totalStake += a.stake;
-      if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
-    }
-  }
   if (rows.length === 0) {
+    const noteMeta = bsMeta ? `${escapeHtml(bsMeta.name_zh || bsMeta.name)} · ` : '';
     return `<div class="race-block"><div class="race-hdr">
       <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
-      <span class="meta">${t('此日無建議下注', 'no recommended bets for this date')}</span>
+      <span class="meta">${noteMeta}${t('此日無建議下注', 'no recommended bets for this date')}</span>
     </div></div>`;
   }
 
   const roi = totalStake > 0 ? (totalPnl / totalStake * 100) : null;
-  const pnlCls = totalPnl > 0 ? 'pnl-win' : (totalPnl < 0 ? 'pnl-lose' : '');
+  const headerPnlCls = totalPnl > 0 ? 'pnl-win' : (totalPnl < 0 ? 'pnl-lose' : '');
 
-  const body = rows.map(({ r, h, a }) => {
+  const body = rows.map(({ r, h, bet, reason, stake, pnl }) => {
     const won = h.position == 1 || h.position === '1';
     const placed = h.position && (parseInt(h.position) || 99) <= 3;
     const cls = won ? 'winner' : (placed ? 'placed' : '');
-    const reason = lang === 'zh' ? a.reasonZh : a.reasonEn;
     const mkt = h.odds && h.odds > 0 ? 1.0 / h.odds : null;
-    const pnlCls = a.pnl == null ? '' : (a.pnl > 0 ? 'pnl-win' : (a.pnl < 0 ? 'pnl-lose' : ''));
+    const rowPnlCls = pnl == null ? '' : (pnl > 0 ? 'pnl-win' : (pnl < 0 ? 'pnl-lose' : ''));
+    // Combo bets: 馬 column shows the literal brand-list (e.g. "K123+J456");
+    // single-horse bets show name + brand code as before.
+    const isCombo = bet && /[,>]/.test(String(bet.brand || ''));
+    const horseLabel = isCombo
+      ? `<code>${escapeHtml(bet.brand)}</code>`
+      : `${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code>`;
+    // 評估 cell: for finished races, drop an .eval-cell placeholder so
+    // _autoLoadEvalCells() hits /api/horse_eval — that endpoint combines
+    // HKJC running-comments + post-mortem RCA tags + model drivers, and
+    // (if DEEPSEEK_API_KEY is set) polishes the prose via DeepSeek. For
+    // unfinished races there's no race-process data yet, so we fall back
+    // to the layman-drivers line that came back from _resolveBetRows.
+    const evalBrand = bet ? String(bet.brand || '').split(/[,>]/)[0] || h.brand : h.brand;
+    const isFinished = !!r.has_results;
+    const assessmentCell = (isFinished && evalBrand)
+      ? `<div class="eval-cell" data-eval-race="${r.id}"
+              data-eval-brand="${escapeHtml(evalBrand)}" data-eval-source="">
+           ${t('（載入馬評中…）', '(loading commentary…)')}
+         </div>`
+      : `<span title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</span>`;
     return `
       <tr class="${cls}">
         <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
         <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
-        <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
-        <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
+        <td class="h-name">${horseLabel}</td>
+        <td>${escapeHtml(i18n.jockey(h, lang))}</td>
         <td class="num">${h.draw ?? '—'}</td>
-        <td class="num">${fmtNum(h.odds, 2)}</td>
+        <td class="num" style="white-space:nowrap">${fmtNum(h.odds, 2)}${_renderOddsSparkline(h.odds_history, 'win_odds')}</td>
+        <td class="num" style="white-space:nowrap">${fmtNum(h.place_odds, 2)}${_renderOddsSparkline(h.odds_history, 'place_odds')}</td>
         <td class="num">${fmtPct(mkt)}</td>
         <td class="num">${fmtPct(h.calibrated_prob)}</td>
         <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
         <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
         <td class="bet">✓</td>
-        <td class="assessment" title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</td>
-        <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>
-        <td class="num ${pnlCls}">${a.pnl == null ? '—' : fmtMoney(a.pnl)}</td>
+        <td class="assessment">${assessmentCell}</td>
+        <td class="num">${stake == null ? '—' : fmtMoney(stake)}</td>
+        <td class="num ${rowPnlCls}">${pnl == null ? '—' : fmtMoney(pnl)}</td>
       </tr>
     `;
   }).join('');
+
+  const ruleLabel = bsMeta
+    ? (lang === 'zh' ? (bsMeta.name_zh || bsMeta.name) : (bsMeta.name_en || bsMeta.name))
+    : '';
+  const rulePill = bsMeta
+    ? `<span><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(ruleLabel)}</span></span>`
+    : '';
 
   return `
     <div class="race-block">
       <div class="race-hdr">
         <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
+        ${rulePill}
         <span>${rows.length} ${t('注', 'bets')}</span>
         <span>${t('總投注', 'stake')}: ${fmtMoney(totalStake)}</span>
-        <span class="${pnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
-        ${roi != null && settled ? `<span class="${pnlCls}">${t('回報率', 'ROI')}: ${roi.toFixed(1)}%</span>` : ''}
+        <span class="${headerPnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
+        ${roi != null && settled ? `<span class="${headerPnlCls}">${t('回報率', 'ROI')}: ${roi.toFixed(1)}%</span>` : ''}
       </div>
       <div class="race-body">
         <table>
@@ -2396,7 +2481,8 @@ function _renderBetsSummaryFromModel(data, strat, lang) {
             <th>${t('馬', 'horse')}</th>
             <th>${t('騎師', 'jockey')}</th>
             <th>${t('閘', 'dr')}</th>
-            <th>${t('賠率', 'odds')}</th>
+            <th>${t('獨贏', 'win')}</th>
+            <th>${t('位置', 'place')}</th>
             <th>${t('市場', 'mkt p')}</th>
             <th>${t('模型', 'cal p')}</th>
             <th>edge</th>
@@ -2405,244 +2491,6 @@ function _renderBetsSummaryFromModel(data, strat, lang) {
             <th>${t('評估', 'assessment')}</th>
             <th class="num">${t('投注', 'stake')}</th>
             <th class="num">${t('盈虧', 'pnl')}</th>
-          </tr></thead>
-          <tbody>${body}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
-
-// Bets summary keyed by bet_ledger ENTRIES (one row per recorded bet). For
-// exotic combos this is one row per ticket showing the full combo —
-// avoids the double-counting that happens if we iterate horses for a
-// quinella / dutch / trifecta bet.
-function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
-  const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
-  const items = [];     // {r, bet, comboHtml, won, payout, pnl}
-  let totalStake = 0, totalPnl = 0, settled = 0, anyWonCount = 0;
-  for (const r of (data.races || [])) {
-    for (const bet of (r.bets || [])) {
-      const horseByBrand = {};
-      for (const h of (r.horses || [])) horseByBrand[h.brand] = h;
-      const ordered = String(bet.brand || '').includes('>');
-      const sep = ordered ? '>' : ',';
-      const parts = String(bet.brand || '').split(sep);
-      const arrow = ordered
-        ? '<span style="color:var(--muted)"> → </span>'
-        : '<span style="color:var(--muted)"> + </span>';
-      const comboHtml = parts.map(p => {
-        const h = horseByBrand[p];
-        if (!h) return `<code>${escapeHtml(p)}</code>`;
-        const placed = h.position && (parseInt(h.position) || 99) <= 3;
-        const won = h.position == 1 || h.position === '1';
-        const tag = won ? '🥇' : (placed ? `(${h.position})` : '');
-        return `<span title="${escapeHtml(h.brand)}">${escapeHtml(i18n.horse(h, lang))} ${tag}</span>`;
-      }).join(arrow);
-      items.push({ r, bet, comboHtml });
-      totalStake += bet.stake || 0;
-      if (bet.won === 1 || bet.won === 0) {
-        settled++;
-        totalPnl += bet.pnl || 0;
-        if (bet.won === 1) anyWonCount++;
-      }
-    }
-  }
-  if (items.length === 0) {
-    return `<div class="race-block"><div class="race-hdr">
-      <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
-      <span class="meta">${escapeHtml(bsMeta.name_zh || bsMeta.name)} · ${t('此日無下注', 'no bets this date')}</span>
-    </div></div>`;
-  }
-  const roi = totalStake > 0 ? (totalPnl / totalStake * 100) : null;
-  const pnlCls = totalPnl > 0 ? 'pnl-win' : (totalPnl < 0 ? 'pnl-lose' : '');
-  // Index post-mortem rows by bet_id for chip rendering.
-  const pmByBet = {};
-  for (const r of (data.races || [])) {
-    for (const pm of (r.post_mortem || [])) {
-      if (pm.bet_id != null) pmByBet[pm.bet_id] = pm;
-    }
-  }
-  const body = items.map(({ r, bet, comboHtml }) => {
-    const won = bet.won === 1;
-    const rowPnlCls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
-    // settled = race has finished AND bet has been graded.
-    const isSettled = r.has_results && (bet.won === 0 || bet.won === 1);
-    const cls = won ? 'winner' : '';
-    // Pick the "primary" horse for the eval-reason fetch — singles use the
-    // sole horse; for combos we use the first listed (top-1 in any-order
-    // bets, or 1st-placed pick for ordered bets).
-    const primaryBrand = String(bet.brand || '').split(/[,>]/)[0] || '';
-    const ordered = String(bet.brand || '').includes('>');
-    const betBrands = String(bet.brand || '').split(ordered ? '>' : ',');
-    const positions = betBrands.map(b => {
-      const h = (r.horses || []).find(x => x.brand === b);
-      return h && h.position != null ? String(h.position) : '?';
-    }).join(ordered ? ' → ' : ' / ');
-    // Pre-race fallback for the odds column — bet.odds_at_bet is null until
-    // the race settles. Use the joined horse's live odds (results.odds OR
-    // odds_snapshots) for unsettled bets so the column never reads "—"
-    // on today's card.
-    let displayOdds = bet.odds_at_bet;
-    if (displayOdds == null && betBrands.length === 1) {
-      const h = (r.horses || []).find(x => x.brand === betBrands[0]);
-      if (h && h.odds != null) displayOdds = h.odds;
-    }
-    // 推介 column: model's top-4 picks for this race, in rank order. Bold
-    // any horse the user is actually betting on so it's easy to see whether
-    // the bet matches model conviction.
-    const topPicks = (r.horses || [])
-      .filter(h => h.calibrated_prob != null)
-      .slice()
-      .sort((a, b) => (b.calibrated_prob || 0) - (a.calibrated_prob || 0))
-      .slice(0, 4);
-    const betBrandSet = new Set(betBrands);
-    const tipHtml = topPicks.length
-      ? topPicks.map(h => {
-          const nm = escapeHtml(i18n.horse(h, lang));
-          const onBet = betBrandSet.has(h.brand);
-          const gate = h.draw ?? '—';
-          return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">`
-               + `<span style="display:inline-block;min-width:1.6em;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${gate}</span> `
-               + `${nm}`
-               + `</span>`;
-        }).join('<br>')
-      : '—';
-    // Stack the same top-4 horses' prices + model prob in three columns
-    // so each row of 推介 lines up horizontally with its 獨贏 / 位置 / 模型.
-    // Bet horse(s) bolded in every column. Falls back to single-cell
-    // values when we have no top-4 (predictions missing for this race).
-    const stackHtml = (getter) => topPicks.length
-      ? topPicks.map(h => {
-          const onBet = betBrandSet.has(h.brand);
-          const txt = getter(h);
-          return `<span style="font-variant-numeric:tabular-nums;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">${txt}</span>`;
-        }).join('<br>')
-      : '—';
-    const winHtml   = stackHtml(h => h.odds == null ? '—' : Number(h.odds).toFixed(1));
-    const placeHtml = stackHtml(h => h.place_odds == null ? '—' : Number(h.place_odds).toFixed(1));
-    const modelHtml = stackHtml(h => h.calibrated_prob == null ? '—'
-                                                                : (h.calibrated_prob * 100).toFixed(1) + '%');
-    const edgeHtml = stackHtml(h => h.edge == null ? '—' : Number(h.edge).toFixed(2));
-    // 實際名次 / 投注 / 派彩 / 盈虧 also stack vertically — one row per
-    // top-4 horse. Stake/payout/pnl only appear on the bet horse's row(s);
-    // the rest stay blank so the eye lands on whatever the bet was. PnL
-    // class applied per-row so winning bets glow green inline.
-    const finishHtml = stackHtml(h => h.position == null ? '—' : escapeHtml(String(h.position)));
-    // Non-bet rows render an invisible em-dash so the 4-row stacks in
-    // 投注 / 派彩 / 盈虧 / 結果 stay vertically aligned with the other
-    // columns. Without the dash the row collapses; making it transparent
-    // keeps the row height while leaving the cell visually empty so the
-    // bet line is the only thing the eye picks up.
-    const dash = '<span style="color:transparent">—</span>';
-    const stakeHtml = topPicks.length
-      ? topPicks.map(h => betBrandSet.has(h.brand)
-          ? `<b>${fmtMoney(bet.stake)}</b>` : dash).join('<br>')
-      : (bet.stake == null ? '—' : fmtMoney(bet.stake));
-    const payoutHtml = topPicks.length
-      ? topPicks.map(h => {
-          if (!betBrandSet.has(h.brand)) return dash;
-          return isSettled ? `<b>${fmtMoney(bet.payout)}</b>` : dash;
-        }).join('<br>')
-      : (isSettled ? fmtMoney(bet.payout) : '—');
-    const pnlHtml = topPicks.length
-      ? topPicks.map(h => {
-          if (!betBrandSet.has(h.brand)) return dash;
-          if (!isSettled) return dash;
-          const cls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
-          return `<b class="${cls}">${fmtMoney(bet.pnl)}</b>`;
-        }).join('<br>')
-      : (isSettled ? fmtMoney(bet.pnl) : '—');
-    // 結果 column: same 4-row stack as 投注 / 派彩 / 盈虧 — non-bet rows
-    // use the invisible-dash placeholder so the bet row's outcome pill
-    // sits on the correct top-4 line.
-    const resultHtml = topPicks.length
-      ? topPicks.map(h => {
-          if (!betBrandSet.has(h.brand)) return dash;
-          if (!isSettled) return `<span class="pill muted">${t('未派彩', 'pending')}</span>`;
-          return won
-            ? `<span class="pill good">${t('命中', 'WON')}</span>`
-            : `<span class="pill muted">${t('失敗', 'lost')}</span>`;
-        }).join('<br>')
-      : (isSettled
-          ? (won
-              ? `<span class="pill good">${t('命中', 'WON')}</span>`
-              : `<span class="pill muted">${t('失敗', 'lost')}</span>`)
-          : `<span class="pill muted">${t('未派彩', 'pending')}</span>`);
-    const pm = isSettled ? (pmByBet[bet.id] || null) : null;
-    const tagChips = pm && pm.tags && pm.tags.length
-      ? '<div class="pm-chips" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
-        + pm.tags.slice(0, 4).map(tag => {
-            const lbl = lang === 'zh' ? tag.label_zh : tag.label_en;
-            const desc = lang === 'zh' ? tag.description_zh : tag.description_en;
-            const color = tag.severity === 'positive' ? '#1e7b3a'
-                       : tag.severity === 'negative' ? '#b3271a'
-                       : '#6b7280';
-            return `<span class="pm-chip" title="${escapeHtml(desc)}"
-              style="background:${color};color:white;font-size:11px;padding:1px 6px;border-radius:4px">
-              ${escapeHtml(lbl)}</span>`;
-          }).join('')
-        + '</div>'
-      : '';
-    // Commentary cell only fires its lazy-fetch when the race has results.
-    // Without a finished race there's nothing to comment on; auto-load
-    // would just produce "資料不足" / "Insufficient data" placeholders.
-    const commentaryCell = isSettled
-      ? `<div class="eval-cell" data-eval-race="${r.id}"
-              data-eval-brand="${escapeHtml(primaryBrand)}" data-eval-source="">
-           ${t('（載入馬評中…）', '(loading commentary…)')}
-         </div>${tagChips}`
-      : `<span class="meta">${t('賽事未開始', 'race pending')}</span>`;
-    return `
-      <tr class="${cls}">
-        <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
-        <td><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(_poolLabel(bet.pool, lang))}</span></td>
-        <td class="h-name">${comboHtml}</td>
-        <td class="small" style="max-width:170px;line-height:1.3">${tipHtml}</td>
-        <td class="num" style="line-height:1.3">${winHtml}</td>
-        <td class="num" style="line-height:1.3">${placeHtml}</td>
-        <td class="num" style="line-height:1.3">${modelHtml}</td>
-        <td class="num" style="line-height:1.3">${edgeHtml}</td>
-        <td class="num" style="line-height:1.3">${isSettled ? finishHtml : '—'}</td>
-        <td class="num" style="line-height:1.3">${stakeHtml}</td>
-        <td class="num" style="line-height:1.3">${payoutHtml}</td>
-        <td class="num" style="line-height:1.3">${pnlHtml}</td>
-        <td style="line-height:1.3">${resultHtml}</td>
-        <td class="assessment small" style="max-width:380px;color:var(--muted)">
-          ${commentaryCell}
-        </td>
-      </tr>`;
-  }).join('');
-  const ruleLabel = lang === 'zh' ? (bsMeta.name_zh || bsMeta.name)
-                                  : (bsMeta.name_en || bsMeta.name);
-  return `
-    <div class="race-block">
-      <div class="race-hdr">
-        <span class="race-num">${t('本日下注', 'Today\'s Bets')}</span>
-        <span><span class="pill" style="background:${escapeHtml(bsMeta.chart_color || '#888')};color:white">${escapeHtml(ruleLabel)}</span></span>
-        <span>${items.length} ${t('注', 'bets')}</span>
-        <span>${t('總投注', 'stake')}: ${fmtMoney(totalStake)}</span>
-        <span class="${pnlCls}">${t('總盈虧', 'pnl')}: ${settled ? fmtMoney(totalPnl) : '—'}</span>
-        ${roi != null && settled ? `<span class="${pnlCls}">${t('回報率', 'ROI')}: ${roi.toFixed(1)}%</span>` : ''}
-        ${settled ? `<span class="meta">${anyWonCount}/${settled} ${t('命中', 'wins')}</span>` : ''}
-      </div>
-      <div class="race-body">
-        <table>
-          <thead><tr>
-            <th>${t('場次', 'race')}</th>
-            <th>${t('彩池', 'pool')}</th>
-            <th>${t('下注馬', 'bet horse')}</th>
-            <th>${t('推介 4 項', 'top 4')}</th>
-            <th class="num">${t('獨贏', 'win')}</th>
-            <th class="num">${t('位置', 'place')}</th>
-            <th class="num">${t('模型', 'model')}</th>
-            <th class="num">edge</th>
-            <th class="num">${t('實際名次', 'finish')}</th>
-            <th class="num">${t('投注', 'stake')}</th>
-            <th class="num">${t('派彩', 'payout')}</th>
-            <th class="num">${t('盈虧', 'pnl')}</th>
-            <th>${t('結果', 'result')}</th>
-            <th>${t('馬評', 'commentary')}</th>
           </tr></thead>
           <tbody>${body}</tbody>
         </table>
@@ -2685,41 +2533,22 @@ const i18n = (() => {
     'F4':'四重彩','QTT':'四連環',
     'CWA':'CWA','CWB':'CWB','CWC':'CWC','IWN':'IWN',
   };
-  const JOCKEY_EN_ZH = {
-    "A Atzeni":"艾兆禮","A Badel":"巴度","B Avdulla":"艾道拿","C L Chau":"周俊樂",
-    "C Williams":"韋立彬","C Y Ho":"何澤堯","E Brown":"布浩榮","H Bentley":"班德禮",
-    "H Bowman":"布文","H T Mo":"莫艾誠","H Y Yuen":"袁幸堯","J McDonald":"麥道朗",
-    "J Moreira":"莫雷拉","J Orman":"奧爾民","K C Leung":"梁家俊","K Teetan":"田泰安",
-    "L Ferraris":"費利士","M Chadwick":"蔡明紹","M F Poon":"潘明輝","M L Yeung":"楊明綸",
-    "P N Wong":"黃皓楠","R Kingscote":"紀仁安","Y L Chung":"鍾易禮","Z Purton":"潘頓",
-  };
-  const TRAINER_EN_ZH = {
-    "A S Cruz":"告東尼","B Crawford":"高富瀚","C Fownes":"方嘉柏","C H Yip":"葉楚航",
-    "C S Shum":"沈集成","C W Chang":"鄭俊偉","D A Hayes":"大衛希斯","D Eustace":"易思達",
-    "D J Hall":"賀賢","D J Whyte":"韋達","F C Lor":"羅富全","H Tanaka":"田中博康",
-    "J Richards":"李家樂","J Size":"蔡約翰","K H Ting":"丁冠豪","K L Man":"文家良",
-    "K W Lui":"呂健威","M Newnham":"紐德安","P C Ng":"伍鵬志","P F Yiu":"姚本輝",
-    "W K Mo":"巫偉傑","W Y So":"蘇偉賢","Y Ikee":"池江泰寿","Y S Tsui":"徐雨石",
-  };
-  const JOCKEY_ZH_EN = Object.fromEntries(
-    Object.entries(JOCKEY_EN_ZH).map(([en, zh]) => [zh, en]));
-  const TRAINER_ZH_EN = Object.fromEntries(
-    Object.entries(TRAINER_EN_ZH).map(([en, zh]) => [zh, en]));
-
-  // Generic person-name resolver. Whichever side the input is on,
-  // translate to `lang` using the matching forward / reverse map.
-  function person(name, lang, kind) {
-    if (!name) return '';
-    const core = String(name).split('(')[0].trim();
-    const isCJK = hasCJK(core);
-    if (lang === 'zh') {
-      if (isCJK) return name;
-      const m = kind === 'jockey' ? JOCKEY_EN_ZH : TRAINER_EN_ZH;
-      return m[core] || name;
-    }
-    if (!isCJK) return name;
-    const m = kind === 'jockey' ? JOCKEY_ZH_EN : TRAINER_ZH_EN;
-    return m[core] || name;
+  // Bilingual jockey/trainer names come from the persons table (populated
+  // by scrape_persons.py, keyed by HKJC official IDs e.g. WPN, MHT, CAS).
+  // The API surfaces them on each horse row as jockey_name_en/zh +
+  // trainer_name_en/zh. The resolver below prefers those fields and falls
+  // back to the raw `results.jockey` / `results.trainer` string when the
+  // API didn't include them (older payload / scraper hasn't run on this
+  // meeting yet).
+  function person(row, lang, kind) {
+    if (!row) return '';
+    const k = kind === 'jockey' ? 'jockey' : 'trainer';
+    if (typeof row === 'string') return row;
+    const zh = row[`${k}_name_zh`];
+    const en = row[`${k}_name_en`];
+    const raw = row[k];   // raw string from results — fallback only
+    if (lang === 'zh') return zh || en || raw || '';
+    return en || raw || zh || '';
   }
 
   return {
@@ -2750,8 +2579,12 @@ const i18n = (() => {
       if (!p) return '';
       return (lang === 'zh' ? POOL_ZH[p] : null) || p;
     },
-    jockey(name, lang) { return person(name, lang, 'jockey'); },
-    trainer(name, lang) { return person(name, lang, 'trainer'); },
+    // Pass the full horse row so the resolver can read jockey_name_zh /
+    // jockey_name_en directly. Backwards-compatible: a plain string is
+    // returned unchanged (use this only when bilingual fields aren't
+    // attached).
+    jockey(row, lang) { return person(row, lang, 'jockey'); },
+    trainer(row, lang) { return person(row, lang, 'trainer'); },
     // Horse name resolver. Reads the bilingual horses.name_{en,zh} columns
     // that the API surfaces as `horse_name_en` / `horse_name_zh`. Falls
     // back to the legacy single `horse_name` field, then brand, so old
@@ -2995,6 +2828,10 @@ function renderRaceBlock(r, data, sid) {
     .filter(h => h.calibrated_prob != null)
     .sort((a, b) => b.calibrated_prob - a.calibrated_prob);
   ranked.forEach((h, i) => { predRank[h.brand] = i + 1; });
+  // Only show odds sparklines on unfinished races. Once results.position
+  // is recorded the tote odds are frozen — drawing the line then is just
+  // noise that competes with the finish data in adjacent cells.
+  const showSpark = !r.has_results;
   return `
     <div class="race-block">
       <div class="race-hdr">
@@ -3050,10 +2887,10 @@ function renderRaceBlock(r, data, sid) {
                 <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
                 <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code></td>
                 <td class="num">${h.draw ?? '—'}</td>
-                <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
-                <td>${escapeHtml(i18n.trainer(h.trainer, lang))}</td>
-                <td class="num">${fmtNum(h.odds, 2)}</td>
-                <td class="num">${fmtNum(h.place_odds, 2)}</td>
+                <td>${escapeHtml(i18n.jockey(h, lang))}</td>
+                <td>${escapeHtml(i18n.trainer(h, lang))}</td>
+                <td class="num" style="white-space:nowrap">${fmtNum(h.odds, 2)}${showSpark ? _renderOddsSparkline(h.odds_history, 'win_odds') : ''}</td>
+                <td class="num" style="white-space:nowrap">${fmtNum(h.place_odds, 2)}${showSpark ? _renderOddsSparkline(h.odds_history, 'place_odds') : ''}</td>
                 <td class="num">
                   <div>${fmtPct(h.calibrated_prob)}</div>
                   <div class="sub">edge ${h.edge == null ? '—' : fmtNum(h.edge, 2)}</div>
@@ -3085,8 +2922,10 @@ function wireRaceControls() {
   const sel = document.getElementById('raceStrat');
   if (sel) sel.addEventListener('change', () => {
     state.raceStrategy = sel.value === '' ? null : parseInt(sel.value);
-    state.raceBetStrategy = null;    // new model = stale bet selection
-    saveUi({ raceStrategy: state.raceStrategy, raceBetStrategy: null });
+    // Switching models invalidates the current bet-strategy id; loadRaces
+    // will reload the list and _reconcileBetStrategy() picks a fresh default.
+    state.betStrategy = null;
+    saveUi({ raceStrategy: state.raceStrategy, betStrategy: null });
     loadRaces();
   });
   // 馬評 commentary: lazy-fetch DeepSeek (or rule-based) text in place of
@@ -3506,23 +3345,20 @@ function wire() {
   if (dashStratSel) dashStratSel.addEventListener('change', e => {
     loadStrategyDetail(parseInt(e.target.value));
   });
-  // Bet-strategy mini-card clicks. data-bmc-ctx tells us which page's
-  // state field to update + how to refresh; the helper renderBetMiniCards
-  // emits one of "dash" / "race" per card.
+  // Bet-strategy mini-card clicks. state.betStrategy is shared by both
+  // Strategy and Races pages so switching on one mirrors on the other;
+  // data-bmc-ctx tells us which refresh path to take.
   document.querySelectorAll('.bet-mini-card').forEach(card => {
     card.addEventListener('click', async () => {
       const bid = parseInt(card.dataset.bid);
+      if (state.betStrategy === bid) return;
+      state.betStrategy = bid;
+      saveUi({ betStrategy: bid });
       const ctx = card.dataset.bmcCtx;
       if (ctx === 'dash') {
-        if (state.dashBetStrategy === bid) return;
-        state.dashBetStrategy = bid;
-        saveUi({ dashBetStrategy: bid });
         await refreshDashCharts();
         render();
       } else if (ctx === 'race') {
-        if (state.raceBetStrategy === bid) return;
-        state.raceBetStrategy = bid;
-        saveUi({ raceBetStrategy: bid });
         loadRaces();
       }
     });
