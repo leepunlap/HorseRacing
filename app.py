@@ -177,6 +177,17 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         print(f"[startup] register_actions failed: {exc}", flush=True)
 
+    # Seed the post-mortem RCA tag catalog (idempotent)
+    try:
+        import sqlite3 as _sqlite3
+        from betting.post_mortem import seed_tags as _pm_seed
+        _c = _sqlite3.connect(BASE_DIR / "data" / "racing.db")
+        _pm_seed(_c)
+        _c.close()
+        print("[startup] bet_tags seeded", flush=True)
+    except Exception as exc:
+        print(f"[startup] bet_tags seed failed: {exc}", flush=True)
+
     # In-process odds poller (T-60→T-0 every 30s on race days)
     odds_poller_task = None
     try:

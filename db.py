@@ -600,6 +600,62 @@ CREATE TABLE IF NOT EXISTS horse_eval_text (
     UNIQUE(race_id, brand, lang)
 );
 CREATE INDEX IF NOT EXISTS idx_eval_race ON horse_eval_text(race_id);
+
+-- ─── HKJC "Comments on Running" per-horse narrative ───────────────────────
+-- Scraped from racing.hkjc.com/.../corunning.aspx. One row per (race, brand,
+-- lang). Fed into betting.eval_reason as authoritative race-incident
+-- context (e.g. "Sat midfield 2 wide, closed off strongly to score").
+CREATE TABLE IF NOT EXISTS running_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    race_id INTEGER NOT NULL REFERENCES races(id),
+    brand TEXT NOT NULL,
+    lang TEXT NOT NULL,                  -- 'en' | 'zh'
+    placing INTEGER,                     -- finish position as listed on the page
+    gear TEXT,                           -- equipment string (CP/XB/TT etc.)
+    comment TEXT NOT NULL,
+    scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(race_id, brand, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_rc_race ON running_comments(race_id);
+
+-- ─── Bet post-mortem tag lookup + assignments ─────────────────────────────
+-- After a race settles, betting.post_mortem analyses every placed bet
+-- (winners + losers) and emits a set of tags describing WHY each outcome
+-- happened. Tags reference a rich lookup table (zh + en label & description)
+-- so the SPA can render coloured chips and DeepSeek can fold them into the
+-- commentary it produces.
+CREATE TABLE IF NOT EXISTS bet_tags (
+    code TEXT PRIMARY KEY,                 -- short identifier, e.g. 'led_then_faded'
+    category TEXT NOT NULL,                -- 'trip' | 'result' | 'pace' | 'incident' | 'model' | 'context'
+    severity TEXT NOT NULL,                -- 'positive' | 'neutral' | 'negative'
+    label_zh TEXT NOT NULL,
+    label_en TEXT NOT NULL,
+    description_zh TEXT NOT NULL,
+    description_en TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bet_post_mortem (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bet_id INTEGER NOT NULL REFERENCES bet_ledger(id),
+    race_id INTEGER NOT NULL REFERENCES races(id),
+    brand TEXT NOT NULL,
+    outcome TEXT NOT NULL,                 -- 'won' | 'lost'
+    summary_zh TEXT,
+    summary_en TEXT,
+    computed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(bet_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pm_race ON bet_post_mortem(race_id);
+
+CREATE TABLE IF NOT EXISTS bet_post_mortem_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_mortem_id INTEGER NOT NULL REFERENCES bet_post_mortem(id) ON DELETE CASCADE,
+    tag_code TEXT NOT NULL REFERENCES bet_tags(code),
+    evidence TEXT,                         -- short snippet of the data that triggered the tag
+    weight REAL DEFAULT 1.0                -- relative importance of this tag for the bet outcome
+);
+CREATE INDEX IF NOT EXISTS idx_pm_tags_pm ON bet_post_mortem_tags(post_mortem_id);
+CREATE INDEX IF NOT EXISTS idx_pm_tags_code ON bet_post_mortem_tags(tag_code);
 """
 
 

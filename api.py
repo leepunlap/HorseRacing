@@ -768,6 +768,49 @@ def bet_strategy_curve(bet_strategy_id: int,
     }
 
 
+@router.get("/bet_tags")
+def list_bet_tags(lang: str = "zh") -> dict:
+    """Tag-lookup table for the post-mortem RCA system. The SPA renders
+    coloured chips next to each bet and reads `description_{lang}` for
+    the tooltip / drill-down body."""
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    from betting.post_mortem import seed_tags
+    conn = _connect()
+    try:
+        seed_tags(conn)
+        rows = conn.execute(
+            "SELECT code, category, severity, label_zh, label_en, "
+            "       description_zh, description_en FROM bet_tags "
+            "ORDER BY category, severity DESC, code"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {"tags": [
+        {"code": r[0], "category": r[1], "severity": r[2],
+         "label_zh": r[3], "label_en": r[4],
+         "description_zh": r[5], "description_en": r[6]}
+        for r in rows
+    ]}
+
+
+@router.post("/races/{race_id}/post_mortem")
+def compute_post_mortem(race_id: int, force: bool = False) -> dict:
+    """Force-compute (or recompute) post-mortem tags for every placed bet
+    in `race_id`. Normally called automatically on first /api/races/{date}
+    read; this endpoint is for manual refresh after a tag-catalog update."""
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    from betting.post_mortem import tag_race, fetch_for_race
+    conn = _connect()
+    try:
+        n = tag_race(conn, race_id, force=force)
+        pms = fetch_for_race(conn, race_id)
+    finally:
+        conn.close()
+    return {"race_id": race_id, "tagged": n, "post_mortem": pms}
+
+
 @router.get("/horse_eval/{race_id}/{brand}")
 def horse_eval(race_id: int, brand: str, lang: str = "zh",
                force: bool = False) -> dict:
@@ -1684,7 +1727,7 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                 }
                 ledger_rows = conn.execute(
                     """
-                    SELECT race_id, brand, pool, stake, odds_at_bet, won,
+                    SELECT id, race_id, brand, pool, stake, odds_at_bet, won,
                            payout, pnl, pick_rank, reason
                     FROM bet_ledger
                     WHERE bet_strategy_id = ? AND race_date = ?
@@ -1692,14 +1735,40 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                     (bet_strategy_id, date),
                 ).fetchall()
                 bets_by_race: dict[int, list] = {}
-                for race_id_, brand, pool, stake, odds, won, payout, pnl, rank, reason in ledger_rows:
+                for bid, race_id_, brand, pool, stake, odds, won, payout, pnl, rank, reason in ledger_rows:
                     bets_by_race.setdefault(race_id_, []).append({
-                        "brand": brand, "pool": pool, "stake": stake,
+                        "id": bid, "brand": brand, "pool": pool, "stake": stake,
                         "odds_at_bet": odds, "won": won, "payout": payout,
                         "pnl": pnl, "pick_rank": rank, "reason": reason,
                     })
                 for race in out_races:
                     race["bets"] = bets_by_race.get(race["id"], [])
+
+                # First-read trigger for post-mortem RCA. For each settled
+                # race that has bets in this ledger but no post-mortem rows
+                # yet, compute tags inline. Cheap on re-reads thanks to the
+                # bet_id UNIQUE constraint.
+                from betting import post_mortem as _pm
+                for race in out_races:
+                    if not race.get("has_results") or not race.get("bets"):
+                        continue
+                    bet_ids = [b for b in conn.execute(
+                        "SELECT id FROM bet_ledger WHERE race_id = ? "
+                        "AND bet_strategy_id = ? AND won IN (0, 1)",
+                        (race["id"], bet_strategy_id),
+                    ).fetchall()]
+                    if not bet_ids:
+                        continue
+                    have = conn.execute(
+                        "SELECT COUNT(*) FROM bet_post_mortem "
+                        "WHERE race_id = ? AND bet_id IN "
+                        "(SELECT id FROM bet_ledger WHERE race_id = ? "
+                        "AND bet_strategy_id = ?)",
+                        (race["id"], race["id"], bet_strategy_id),
+                    ).fetchone()[0]
+                    if have < len(bet_ids):
+                        _pm.tag_race(conn, race["id"])
+                    race["post_mortem"] = _pm.fetch_for_race(conn, race["id"])
     finally:
         conn.close()
     return {"date": date, "races": out_races, "dividends": dividends,

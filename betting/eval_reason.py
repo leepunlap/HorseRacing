@@ -237,6 +237,32 @@ def _build_structured(conn: sqlite3.Connection, race_id: int, brand: str) -> dic
 
     drivers = _compute_feature_drivers_for_horse(conn, race_id, brand)
 
+    # HKJC's published "Comments on Running" — authoritative race-incident text.
+    rc = conn.execute(
+        "SELECT lang, comment, gear FROM running_comments "
+        "WHERE race_id = ? AND brand = ?",
+        (race_id, brand),
+    ).fetchall()
+    hkjc_comments = {row[0]: {"comment": row[1], "gear": row[2]} for row in rc}
+
+    # Post-mortem RCA tags (joined to bet_tags lookup), if any placed bets
+    # for this horse have been analysed. Lets the model fold structured
+    # cause-tags into the prose narrative.
+    pm_tags = conn.execute(
+        "SELECT t.code, t.category, t.severity, t.label_zh, t.label_en, "
+        "       t.description_zh, t.description_en, x.evidence "
+        "FROM bet_post_mortem pm "
+        "JOIN bet_post_mortem_tags x ON x.post_mortem_id = pm.id "
+        "JOIN bet_tags t ON t.code = x.tag_code "
+        "WHERE pm.race_id = ? AND pm.brand = ? "
+        "ORDER BY x.weight DESC",
+        (race_id, brand),
+    ).fetchall()
+    rca_tags = [{"code": r[0], "category": r[1], "severity": r[2],
+                 "label_zh": r[3], "label_en": r[4],
+                 "description_zh": r[5], "description_en": r[6],
+                 "evidence": r[7]} for r in pm_tags]
+
     return {
         "race": {"date": date, "course": course, "race_no": race_no,
                  "distance": distance, "class": race_class, "going": going,
@@ -248,6 +274,8 @@ def _build_structured(conn: sqlite3.Connection, race_id: int, brand: str) -> dic
         "history": hist_dicts,
         "sectionals": sect_data,
         "drivers": drivers,
+        "hkjc_running_comments": hkjc_comments,
+        "rca_tags": rca_tags,
     }
 
 
@@ -261,6 +289,11 @@ def _rule_narrative(data: dict, lang: str) -> str:
     except (TypeError, ValueError): odds = None
     running = _running_segments(h.get("running"))
     lbw = _parse_lbw(h.get("lbw"))
+    rc_map = data.get("hkjc_running_comments") or {}
+    hkjc_comment = (rc_map.get(lang) or rc_map.get("en") or rc_map.get("zh") or {}).get("comment")
+    rca = data.get("rca_tags") or []
+    rca_labels = [t.get(f"label_{lang}" if lang in ("zh", "en") else "label_en")
+                  for t in rca[:3] if t.get(f"label_{lang}" if lang in ("zh", "en") else "label_en")]
 
     sentences: list[str] = []
 
@@ -285,6 +318,10 @@ def _rule_narrative(data: dict, lang: str) -> str:
         f = _form_summary(data.get('history') or [], 'zh')
         if f:
             sentences.append(f + "。")
+        if hkjc_comment:
+            sentences.append(f"馬會評述:{hkjc_comment}")
+        if rca_labels:
+            sentences.append("關鍵標籤 — " + "、".join(rca_labels) + "。")
         d = _drivers_compact(data.get('drivers') or {}, 'zh')
         if d:
             sentences.append("模型因素 — " + d + "。")
@@ -310,6 +347,10 @@ def _rule_narrative(data: dict, lang: str) -> str:
     f = _form_summary(data.get('history') or [], 'en')
     if f:
         sentences.append(f.capitalize() + ".")
+    if hkjc_comment:
+        sentences.append(f"HKJC note: {hkjc_comment}")
+    if rca_labels:
+        sentences.append("Key tags — " + ", ".join(rca_labels) + ".")
     d = _drivers_compact(data.get('drivers') or {}, 'en')
     if d:
         sentences.append("Model — " + d + ".")
@@ -320,27 +361,116 @@ def _rule_narrative(data: dict, lang: str) -> str:
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 
 
+# Bidirectional jockey + trainer name lookup (mirrors the SPA-side maps in
+# static/index.html). When generating English commentary we translate any
+# Chinese jockey / trainer names in the payload to English so the model
+# isn't fed mixed-language context that biases the output language.
+_JOCKEY_EN_ZH = {
+    "A Atzeni": "艾兆禮", "A Badel": "巴度", "B Avdulla": "艾道拿",
+    "C L Chau": "周俊樂", "C Williams": "韋立彬", "C Y Ho": "何澤堯",
+    "E Brown": "布浩榮", "H Bentley": "班德禮", "H Bowman": "布文",
+    "H T Mo": "莫艾誠", "H Y Yuen": "袁幸堯", "J McDonald": "麥道朗",
+    "J Moreira": "莫雷拉", "J Orman": "奧爾民", "K C Leung": "梁家俊",
+    "K Teetan": "田泰安", "L Ferraris": "費利士", "M Chadwick": "蔡明紹",
+    "M F Poon": "潘明輝", "M L Yeung": "楊明綸", "P N Wong": "黃皓楠",
+    "R Kingscote": "紀仁安", "Y L Chung": "鍾易禮", "Z Purton": "潘頓",
+}
+_TRAINER_EN_ZH = {
+    "A S Cruz": "告東尼", "B Crawford": "高富瀚", "C Fownes": "方嘉柏",
+    "C H Yip": "葉楚航", "C S Shum": "沈集成", "C W Chang": "鄭俊偉",
+    "D A Hayes": "大衛希斯", "D Eustace": "易思達", "D J Hall": "賀賢",
+    "D J Whyte": "韋達", "F C Lor": "羅富全", "H Tanaka": "田中博康",
+    "J Richards": "李家樂", "J Size": "蔡約翰", "K H Ting": "丁冠豪",
+    "K L Man": "文家良", "K W Lui": "呂健威", "M Newnham": "紐德安",
+    "P C Ng": "伍鵬志", "P F Yiu": "姚本輝", "W K Mo": "巫偉傑",
+    "W Y So": "蘇偉賢", "Y Ikee": "池江泰寿", "Y S Tsui": "徐雨石",
+}
+_JOCKEY_ZH_EN = {v: k for k, v in _JOCKEY_EN_ZH.items()}
+_TRAINER_ZH_EN = {v: k for k, v in _TRAINER_EN_ZH.items()}
+
+
+def _has_cjk(s) -> bool:
+    if not s: return False
+    return any('一' <= c <= '鿿' for c in str(s))
+
+
+def _localise_payload(payload: dict, lang: str) -> dict:
+    """Best-effort name translation so the prompt feeds the model
+    monolingual context. Mutates a shallow copy and returns it. Also
+    flattens `hkjc_running_comments` to the language-specific entry."""
+    if not payload:
+        return payload
+    out = json.loads(json.dumps(payload, ensure_ascii=False))
+    horse = out.get("horse") or {}
+    if lang == "en":
+        # Translate ZH → EN where we have a map.
+        if _has_cjk(horse.get("jockey")):
+            core = str(horse["jockey"]).split("(")[0].strip()
+            horse["jockey"] = _JOCKEY_ZH_EN.get(core, horse["jockey"])
+        if _has_cjk(horse.get("trainer")):
+            horse["trainer"] = _TRAINER_ZH_EN.get(horse["trainer"], horse["trainer"])
+    else:  # zh — translate EN → ZH where possible
+        if horse.get("jockey") and not _has_cjk(horse.get("jockey")):
+            core = str(horse["jockey"]).split("(")[0].strip()
+            horse["jockey"] = _JOCKEY_EN_ZH.get(core, horse["jockey"])
+        if horse.get("trainer") and not _has_cjk(horse.get("trainer")):
+            horse["trainer"] = _TRAINER_EN_ZH.get(horse["trainer"], horse["trainer"])
+    out["horse"] = horse
+    # Surface only the language-matching HKJC running comment.
+    rc = out.pop("hkjc_running_comments", None) or {}
+    chosen = rc.get(lang) or rc.get("en") or rc.get("zh")
+    if chosen and chosen.get("comment"):
+        out["hkjc_running_comment"] = chosen["comment"]
+        if chosen.get("gear"):
+            out["horse"]["gear"] = chosen["gear"]
+    # Compact the RCA tag set to language-specific labels + descriptions only.
+    rca = out.pop("rca_tags", None) or []
+    if rca:
+        key_label = f"label_{lang}" if lang in ("zh", "en") else "label_en"
+        key_desc = f"description_{lang}" if lang in ("zh", "en") else "description_en"
+        out["rca_tags"] = [{
+            "code": t["code"], "category": t["category"], "severity": t["severity"],
+            "label": t[key_label], "description": t[key_desc],
+            "evidence": t.get("evidence"),
+        } for t in rca]
+    return out
+
+
 def _deepseek_call(payload: dict, lang: str) -> str | None:
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         return None
+    payload = _localise_payload(payload, lang)
     if lang == 'zh':
         sys_prompt = (
-            "你是專業香港賽馬評論員。請根據提供的賽事數據,以繁體中文馬評風格"
-            "生成 2-3 句精簡分析,涵蓋走位、段速、過往表現、賠率與結果的關係。"
+            "你是專業香港賽馬評論員。請只用繁體中文回答(嚴禁使用英文)。"
+            "根據提供的賽事數據,以馬評風格生成 2-3 句精簡分析,"
+            "涵蓋走位、段速、過往表現、賠率與結果的關係。"
+            "如 JSON 含 `hkjc_running_comment` 欄位,請優先以其內容為事實基礎,"
+            "再結合模型因素(drivers)與後驗標籤(`rca_tags`,每項已附 label + description)"
+            "做出綜合判斷,適當引用 1-2 個最關鍵的標籤。"
             "輸出純文字,不要 markdown。"
         )
-        user_prompt = json.dumps(payload, ensure_ascii=False)
+        user_prompt = ("賽事與馬匹資料(JSON),請只用繁體中文撰寫馬評:\n\n"
+                       + json.dumps(payload, ensure_ascii=False, default=str))
     else:
         sys_prompt = (
             "You are a professional horse-racing analyst. "
-            "Respond ONLY in English (do NOT use Chinese). "
-            "Generate a concise 2-3 sentence commentary in racing-form style, "
-            "covering running positions, sectional pace, recent form, and odds "
-            "vs outcome. Plain text, no markdown."
+            "Respond ONLY in English. Chinese characters are strictly forbidden. "
+            "If a name in the JSON is in Chinese, transliterate or omit it — never "
+            "echo Chinese characters. Generate a concise 2-3 sentence commentary in "
+            "racing-form style, covering running positions, sectional pace, recent "
+            "form, and odds vs outcome. "
+            "When the JSON contains an `hkjc_running_comment` field, treat it as the "
+            "authoritative race-incident narrative and weave it into your analysis "
+            "together with the model `drivers` and the post-mortem tags in `rca_tags` "
+            "(each tag has a label + description — cite the 1-2 most relevant ones in "
+            "natural English). "
+            "Plain text, no markdown."
         )
         user_prompt = ("Race + horse data (JSON). Please write the commentary "
-                       "in English only:\n\n" + json.dumps(payload, default=str))
+                       "in English only — no Chinese characters anywhere:\n\n"
+                       + json.dumps(payload, default=str))
     body = {
         "model": "deepseek-chat",
         "messages": [
