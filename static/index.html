@@ -2625,12 +2625,12 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
     // the rest stay blank so the eye lands on whatever the bet was. PnL
     // class applied per-row so winning bets glow green inline.
     const finishHtml = stackHtml(h => h.position == null ? '—' : escapeHtml(String(h.position)));
-    // Non-bet rows render an em-dash placeholder so the 4-row stacks in
-    // 投注 / 派彩 / 盈虧 stay vertically aligned with the other columns
-    // — without it the bet line drifts up to row 1 when the bet horse is
-    // not top-1, and the eye loses the row-to-row correspondence with
-    // 推介, 獨贏, etc.
-    const dash = '<span style="color:var(--muted)">—</span>';
+    // Non-bet rows render an invisible em-dash so the 4-row stacks in
+    // 投注 / 派彩 / 盈虧 / 結果 stay vertically aligned with the other
+    // columns. Without the dash the row collapses; making it transparent
+    // keeps the row height while leaving the cell visually empty so the
+    // bet line is the only thing the eye picks up.
+    const dash = '<span style="color:transparent">—</span>';
     const stakeHtml = topPicks.length
       ? topPicks.map(h => betBrandSet.has(h.brand)
           ? `<b>${fmtMoney(bet.stake)}</b>` : dash).join('<br>')
@@ -2649,14 +2649,12 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           return `<b class="${cls}">${fmtMoney(bet.pnl)}</b>`;
         }).join('<br>')
       : (isSettled ? fmtMoney(bet.pnl) : '—');
-    // 結果 column: same 4-row stack. Wrap every row in `.pill` so the
-    // bet row's coloured pill and the non-bet placeholder share identical
-    // height/padding — otherwise the plain em-dash sat shorter than the
-    // pill row and broke vertical alignment with the other 4-row stacks.
-    const placeholderPill = '<span class="pill muted" style="opacity:0.4">—</span>';
+    // 結果 column: same 4-row stack as 投注 / 派彩 / 盈虧 — non-bet rows
+    // use the invisible-dash placeholder so the bet row's outcome pill
+    // sits on the correct top-4 line.
     const resultHtml = topPicks.length
       ? topPicks.map(h => {
-          if (!betBrandSet.has(h.brand)) return placeholderPill;
+          if (!betBrandSet.has(h.brand)) return dash;
           if (!isSettled) return `<span class="pill muted">${t('未派彩', 'pending')}</span>`;
           return won
             ? `<span class="pill good">${t('命中', 'WON')}</span>`
