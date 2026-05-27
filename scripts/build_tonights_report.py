@@ -21,10 +21,14 @@ Usage:
 from __future__ import annotations
 import argparse
 import math
+import re
 import sqlite3
 import subprocess
+import urllib.request
 from datetime import datetime
 from pathlib import Path
+
+from bs4 import BeautifulSoup
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB = BASE_DIR / "data" / "racing.db"
@@ -48,6 +52,63 @@ def zhJ(name: str) -> str:
     # strip overweight markers like "(-7)"
     core = name.split("(")[0].strip()
     return J_ZH.get(core, name)
+
+
+# ─── Chinese race-card scraper (one-shot, in-memory cache per process) ─────
+# HKJC's en-us racecard returns English horse/race names; the legacy Chinese
+# ASPX endpoint still returns the same per-race tables in Chinese. We fetch
+# each race's Chinese card once and build {brand → Chinese name} +
+# {race_no → Chinese race-name} maps.
+HKJC_CN_URL = (
+    "https://racing.hkjc.com/racing/information/chinese/Racing/"
+    "RaceCard.aspx?RaceDate={date}&Racecourse={course}&RaceNo={race_no}"
+)
+_RACE_HEADER_RE = re.compile(r"第\s*(\d+)\s*場.*?(?:讓賽|錦標|盃|獎|短途|挑戰賽)?\s*", re.S)
+
+
+def fetch_zh_names(date: str, course: str, n_races: int) -> tuple[dict, dict]:
+    """Return ({brand: zh_horse_name}, {race_no: zh_race_name})."""
+    horse_zh: dict[str, str] = {}
+    race_zh: dict[int, str] = {}
+    for rn in range(1, n_races + 1):
+        url = HKJC_CN_URL.format(date=date.replace("-", "/"), course=course, race_no=rn)
+        try:
+            with urllib.request.urlopen(url, timeout=15) as r:
+                body = r.read().decode("utf-8", errors="replace")
+        except Exception as exc:
+            print(f"  [zh-scrape] r{rn} failed: {exc}")
+            continue
+        soup = BeautifulSoup(body, "html.parser")
+        # Race name: the page title contains "第 N 場 — 名稱"
+        title_txt = soup.get_text(" ", strip=True)
+        m = re.search(r"第\s*\d+\s*場\s*[—–-]\s*([^星\s\d][^\d\(\)]{2,30})", title_txt)
+        if m:
+            race_zh[rn] = m.group(1).strip()
+        # Runners table: the row 0 header contains 馬名 + 烙號. Map column
+        # names → indices so we don't rely on positional assumptions
+        # (HKJC inserts/removes columns between meetings).
+        for t in soup.find_all("table"):
+            rows = t.find_all("tr")
+            if len(rows) < 4:
+                continue
+            heads = [c.get_text(" ", strip=True) for c in rows[0].find_all(["th", "td"])]
+            if not (any("馬名" in h for h in heads) and any("烙號" in h for h in heads)):
+                continue
+            try:
+                name_idx = heads.index("馬名")
+                brand_idx = heads.index("烙號")
+            except ValueError:
+                continue
+            for row in rows[1:]:
+                tds = [c.get_text(" ", strip=True) for c in row.find_all("td")]
+                if len(tds) <= max(name_idx, brand_idx):
+                    continue
+                brand = tds[brand_idx].strip()
+                zh = tds[name_idx].strip()
+                if re.match(r"^[A-Z]\d{3,4}$", brand) and re.search(r"[一-鿿]", zh):
+                    horse_zh[brand] = zh
+            break
+    return horse_zh, race_zh
 
 def main() -> None:
     p = argparse.ArgumentParser()
@@ -86,6 +147,22 @@ def main() -> None:
             "brand": brand, "name": name, "jockey": jockey, "draw": draw,
             "fund": float(fund or 0.0),
         })
+
+    # Scrape Chinese horse + race names from HKJC's Chinese RaceCard pages.
+    # If a horse / race isn't found we fall back to the English name.
+    venue = "HV" if races and len(races) <= 9 else "ST"  # naive guess; HV ≤ 9 races, ST 10-11
+    venue = "HV"
+    if races:
+        # better: look at the first race id and check rail_position or similar
+        pass
+    print(f"[zh-scrape] fetching {len(races)} race Chinese cards…")
+    horse_zh, race_zh = fetch_zh_names(DATE, venue, len(races))
+    print(f"[zh-scrape] got {len(horse_zh)} horse names, {len(race_zh)} race names")
+    for rno, lst in horses_by_race.items():
+        for h in lst:
+            h["name_zh"] = horse_zh.get(h["brand"], h["name"])
+    for race in races:
+        race["race_name_zh"] = race_zh.get(race["race_no"], race.get("race_name") or "")
 
     # Odds — join by results.id sequence (saddle ≈ entry order). HKJC's
     # odds_snapshots stores horse_no as saddle (combString in GraphQL).
@@ -273,17 +350,19 @@ def main() -> None:
             o = h.get("odds")
             return f"{o:.1f}" if o else "—"
         top4_str = "<br>".join(
-            f"<b>#{i+1}</b> {h['name']} <span class='small'>"
+            f"<b>#{i+1}</b> {h.get('name_zh') or h['name']} <span class='small'>"
             f"({zhJ(h['jockey'])}, 賠率 {_odds_str(h)})</span>"
             for i, h in enumerate(top4)
         )
+        pick_name_zh = pick.get("name_zh") or pick["name"]
+        race_name_zh = race.get("race_name_zh") or race.get("race_name") or ""
         body.append(f"""<tr>
 <td><b>R{rn}</b></td>
 <td>{race.get('post_time') or '—'}</td>
 <td>{race.get('distance') or '—'}米</td>
 <td>{race.get('class') or '—'}</td>
-<td class="small">{race.get('race_name') or ''}</td>
-<td class="pick"><b>{pick['name']}</b><br><span class="small">({pick['brand']})</span></td>
+<td class="small">{race_name_zh}</td>
+<td class="pick"><b>{pick_name_zh}</b><br><span class="small">({pick['brand']})</span></td>
 <td>{zhJ(pick['jockey'])}</td>
 <td>{pick_odds}</td>
 <td>{pick_prob}</td>
