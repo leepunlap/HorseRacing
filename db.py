@@ -151,6 +151,26 @@ CREATE INDEX IF NOT EXISTS idx_dividends_race ON dividends(date, course, race_no
 
 # tables. Each is independent; adding more later is additive.
 SCHEMA = """
+-- ─── Bilingual jockey/trainer registry (HKJC official IDs) ───────────────
+-- Keyed by HKJC's own jockey/trainer profile ID (e.g. 'WPN' for 黃寶妮 /
+-- Pollyann Wong, 'MHT' for 巫顯東 / Mo Hin Tung, 'CAS' for trainer 告東尼).
+-- Populated by scrape_persons.py which pulls anchor links from per-race
+-- Local race-card HTML in both languages and joins by the ID. Used by
+-- /api/races/{date} to surface name_zh next to results.jockey so the SPA
+-- doesn't need a hardcoded translation dictionary.
+CREATE TABLE IF NOT EXISTS persons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hkjc_id TEXT NOT NULL,                 -- e.g. 'WPN', 'MHT', 'CAS' — 2-4 upper letters
+    kind TEXT NOT NULL,                    -- 'jockey' | 'trainer'
+    name_en TEXT,                          -- e.g. 'P N Wong' (claim suffix stripped)
+    name_zh TEXT,                          -- e.g. '黃寶妮'
+    last_seen TEXT,                        -- ISO date of most recent meeting that named them
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(hkjc_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_persons_kind ON persons(kind);
+CREATE INDEX IF NOT EXISTS idx_persons_name_en ON persons(name_en);
+
 -- ─── Pre-race odds polling (Cat 14 source) ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS odds_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
