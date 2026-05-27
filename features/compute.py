@@ -495,13 +495,18 @@ def h094_barrier_trial(c):
     ).fetchone()
     return float(r[0]) if r and r[0] else None
 def h095_trackwork(c):
+    """Trackwork sessions in the 14 days leading up to the race — a
+    fitness proxy. HKJC's trackwork dump rarely carries distance/time
+    (mostly stub records like 'Swimming' / 'Trotting'), so we just COUNT
+    sessions. More sessions = more recent activity = a horse being
+    actively trained."""
     if c.conn is None: return None
     r = c.conn.execute(
-        "SELECT SUM(distance) FROM trackwork WHERE brand = ? "
-        "AND date BETWEEN date(?, '-14 days') AND ?",
+        "SELECT COUNT(*) FROM trackwork WHERE brand = ? "
+        "AND date BETWEEN date(?, '-14 days') AND date(?, '-1 day')",
         (c.entry["brand"], c.race["date"], c.race["date"])
     ).fetchone()
-    return float(r[0]) if r and r[0] else None
+    return float(r[0]) if r else 0.0
 def h096_same_jockey_streak(c):
     if not c.history: return None
     jock = c.entry.get("jockey")
@@ -1024,6 +1029,87 @@ def h177_speed_figure_last(c):
     # `history` is sorted ascending by date in the pipeline loader; take last.
     sfs = _speed_figures_for_horse(c)
     return sfs[-1] if sfs else None
+
+
+# ─── Pedigree features (H178/H179) ────────────────────────────────────
+# horse_pedigree stores sire/dam per brand. Compute the sire's win rate
+# over the strictly-prior-results training window for any horse this
+# sire produced. Cached per (conn_id, snapshot_basis, sire).
+_SIRE_WR_CACHE: dict = {}
+_SIRE_DIST_WR_CACHE: dict = {}
+
+
+def _sire_for_brand(c, brand: str) -> str | None:
+    if c.conn is None:
+        return None
+    r = c.conn.execute(
+        "SELECT sire FROM horse_pedigree WHERE brand = ?", (brand,)
+    ).fetchone()
+    return r[0] if r and r[0] else None
+
+
+def h178_sire_winrate(c):
+    sire = _sire_for_brand(c, c.entry["brand"])
+    if sire is None:
+        return None
+    key = (id(c.conn), c.snapshot_basis, sire)
+    if key in _SIRE_WR_CACHE:
+        return _SIRE_WR_CACHE[key]
+    # Sire's win rate = (wins / runs) across all results before snapshot_basis
+    # for horses whose sire matches.
+    r = c.conn.execute(
+        """
+        SELECT
+            SUM(CASE WHEN CAST(rs.position AS INT) = 1 THEN 1 ELSE 0 END) AS wins,
+            COUNT(*) AS runs
+        FROM results rs
+        JOIN races ra ON ra.id = rs.race_id
+        JOIN horse_pedigree hp ON hp.brand = rs.brand
+        WHERE hp.sire = ? AND ra.date < substr(?, 1, 10)
+        """,
+        (sire, c.snapshot_basis),
+    ).fetchone()
+    wr = (r[0] / r[1]) if r and r[1] and r[1] >= 5 else None
+    _SIRE_WR_CACHE[key] = wr
+    return wr
+
+
+def h179_sire_dist_winrate(c):
+    sire = _sire_for_brand(c, c.entry["brand"])
+    dist = c.race.get("distance")
+    if sire is None or dist is None:
+        return None
+    # Distance bucket: 1000-1200 / 1300-1600 / 1700-2000 / 2100+
+    if dist <= 1200:
+        bucket = "sprint"
+    elif dist <= 1600:
+        bucket = "mile"
+    elif dist <= 2000:
+        bucket = "intermediate"
+    else:
+        bucket = "long"
+    key = (id(c.conn), c.snapshot_basis, sire, bucket)
+    if key in _SIRE_DIST_WR_CACHE:
+        return _SIRE_DIST_WR_CACHE[key]
+    ranges = {"sprint": (800, 1200), "mile": (1300, 1600),
+              "intermediate": (1700, 2000), "long": (2100, 3000)}
+    lo, hi = ranges[bucket]
+    r = c.conn.execute(
+        """
+        SELECT
+            SUM(CASE WHEN CAST(rs.position AS INT) = 1 THEN 1 ELSE 0 END),
+            COUNT(*)
+        FROM results rs
+        JOIN races ra ON ra.id = rs.race_id
+        JOIN horse_pedigree hp ON hp.brand = rs.brand
+        WHERE hp.sire = ? AND ra.distance BETWEEN ? AND ?
+          AND ra.date < substr(?, 1, 10)
+        """,
+        (sire, lo, hi, c.snapshot_basis),
+    ).fetchone()
+    wr = (r[0] / r[1]) if r and r[1] and r[1] >= 3 else None
+    _SIRE_DIST_WR_CACHE[key] = wr
+    return wr
 
 
 # ─── helpers ─────────────────────────────────────────────────────────────────

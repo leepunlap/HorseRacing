@@ -274,10 +274,17 @@ FEATURES: list[Feature] = [
     Feature("H177", 11, "速度指數最近", "Speed figure (last)",
             "Most recent (par − actual) — recency-weighted form",
             "B9", "h177_speed_figure_last"),
+    # ─── Pedigree (added 2026-05-27): sire / dam-based features ─────
+    Feature("H178", 1, "父系勝率", "Sire win rate",
+            "Sire's offspring win-rate over training-window results",
+            "B5", "h178_sire_winrate"),
+    Feature("H179", 1, "父系距離勝率", "Sire × distance WR",
+            "Sire's offspring win-rate at this race's distance bucket",
+            "B5", "h179_sire_dist_winrate"),
 ]
 
-assert len(FEATURES) == 177, f"expected 177 features, got {len(FEATURES)}"
-assert len({f.id for f in FEATURES}) == 177, "duplicate feature ids"
+assert len(FEATURES) == 179, f"expected 179 features, got {len(FEATURES)}"
+assert len({f.id for f in FEATURES}) == 179, "duplicate feature ids"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
