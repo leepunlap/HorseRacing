@@ -2554,10 +2554,10 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
           : (bet.won === 0
               ? `<span class="pill muted">${t('失敗', 'lost')}</span>`
               : `<span class="pill muted">${t('未派彩', 'pending')}</span>`)}</td>
-        <td class="assessment small" style="max-width:380px"
-            data-eval-race="${r.id}" data-eval-brand="${escapeHtml(primaryBrand)}">
-          <span class="eval-text" style="color:var(--muted)">${t('（按鈕載入 AI 馬評）', '(click to load AI commentary)')}</span>
-          <button class="btn ghost small eval-load-btn" style="font-size:11px;padding:2px 8px;margin-left:6px">${t('馬評', 'AI 馬評')}</button>
+        <td class="assessment small eval-cell" style="max-width:380px;color:var(--muted)"
+            data-eval-race="${r.id}" data-eval-brand="${escapeHtml(primaryBrand)}"
+            data-eval-source="">
+          ${t('（載入馬評中…）', '(loading commentary…)')}
         </td>
       </tr>`;
   }).join('');
@@ -2782,6 +2782,36 @@ function _analyseFromLedger(h, ledgerBets, bsMeta, lang) {
   return { bet: true, reasonZh, reasonEn, stake, pnl };
 }
 
+// Auto-load AI 馬評 commentary for every .eval-cell currently in the DOM.
+// Fans out 3-wide so DeepSeek isn't hammered; the server-side cache makes
+// repeats free. The "AI" source flag is recorded on the cell (data-eval-
+// source attr) but NOT displayed — user wants the text only.
+async function _autoLoadEvalCells() {
+  const cells = Array.from(document.querySelectorAll('.eval-cell[data-eval-race]'));
+  if (!cells.length) return;
+  const lang = state.lang || 'zh';
+  const CONCURRENCY = 3;
+  let i = 0;
+  async function worker() {
+    while (i < cells.length) {
+      const cell = cells[i++];
+      const rid = cell.dataset.evalRace;
+      const brand = cell.dataset.evalBrand;
+      if (!rid || !brand) continue;
+      try {
+        const r = await api(`/api/horse_eval/${rid}/${encodeURIComponent(brand)}?lang=${lang}`);
+        cell.dataset.evalSource = r.source || '';
+        cell.style.color = 'var(--text)';
+        cell.textContent = r.text;
+      } catch (e) {
+        cell.style.color = 'var(--muted)';
+        cell.textContent = '(' + (e.message || 'eval load failed') + ')';
+      }
+    }
+  }
+  await Promise.all(Array.from({length: CONCURRENCY}, () => worker()));
+}
+
 // Driver line per horse — lists EVERY tailwind and headwind the backend
 // returned (currently up to 3 each), with each factor's strength
 // normalised to an integer score in [-9, +9] for at-a-glance comparison.
@@ -2957,30 +2987,12 @@ function wireRaceControls() {
   // AI 馬評 buttons: lazy-fetch DeepSeek (or rule-based) commentary on
   // click, render in place of the placeholder. First call may take ~3s
   // when DeepSeek is invoked; subsequent calls are cached server-side.
-  document.querySelectorAll('.eval-load-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const cell = btn.closest('[data-eval-race]');
-      if (!cell) return;
-      const rid = cell.dataset.evalRace;
-      const brand = cell.dataset.evalBrand;
-      const span = cell.querySelector('.eval-text');
-      const lang = state.lang || 'zh';
-      btn.disabled = true; btn.textContent = '…';
-      span.textContent = t('（載入中…）', '(loading…)');
-      try {
-        const r = await api(`/api/horse_eval/${rid}/${encodeURIComponent(brand)}?lang=${lang}`);
-        span.textContent = r.text;
-        span.style.color = 'var(--text)';
-        if (r.source === 'deepseek') {
-          span.innerHTML = `<span class="pill" style="background:#1f4e79;color:white;font-size:9px">AI</span> ${escapeHtml(r.text)}`;
-        }
-        btn.remove();
-      } catch (e) {
-        span.textContent = '(' + e.message + ')';
-        btn.disabled = false; btn.textContent = t('重試', 'retry');
-      }
-    });
-  });
+  // Auto lazy-fetch the AI 馬評 for every visible bet row. We fan out at
+  // most 3 in flight at a time so we don't hammer DeepSeek; the backend
+  // cache makes repeat renders instant. If a cached entry is rule-based
+  // and DeepSeek is configured server-side, /api/horse_eval upgrades it
+  // automatically (silent — no badge, no button per user request).
+  _autoLoadEvalCells();
   // Year click: clear month + date so the user makes a fresh choice; render
   // only (no API call) since the month list comes from data we already have.
   document.querySelectorAll('[data-race-year]').forEach(el => {

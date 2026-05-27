@@ -367,28 +367,42 @@ def generate(conn: sqlite3.Connection, race_id: int, brand: str,
              lang: str = "zh", force_refresh: bool = False) -> tuple[str, str]:
     """Return (text, source). source ∈ {'rule', 'deepseek', 'cache'}.
 
-    Looks up the cache first. On miss, builds structured data, optionally
-    calls DeepSeek, falls back to the rule-based narrator, then writes
-    the cache row.
+    Cache policy (one row per (race, brand, lang)):
+      * Cache hit + source == 'deepseek' → return as-is. AI narrative is
+        already the best we can produce, no need to regenerate.
+      * Cache hit + source == 'rule' and DEEPSEEK_API_KEY is now set →
+        UPGRADE: re-call DeepSeek and replace the cached row (or keep the
+        rule text if the DeepSeek call fails this time around).
+      * Cache miss → build structured payload, try DeepSeek (if key set),
+        fall back to rule.
+      * `force_refresh=True` → bypass cache entirely.
     """
+    cached_row = None
     if not force_refresh:
-        row = conn.execute(
+        cached_row = conn.execute(
             "SELECT text, source FROM horse_eval_text "
             "WHERE race_id = ? AND brand = ? AND lang = ?",
             (race_id, brand, lang),
         ).fetchone()
-        if row:
-            return row[0], "cache"
+        if cached_row and cached_row[1] == "deepseek":
+            return cached_row[0], "deepseek"
+        # Cache hit but rule-based AND no DeepSeek key → keep returning rule.
+        if cached_row and cached_row[1] == "rule" and not os.environ.get("DEEPSEEK_API_KEY"):
+            return cached_row[0], "rule"
 
     data = _build_structured(conn, race_id, brand)
     if not data:
         return ("資料不足無法生成馬評。" if lang == 'zh'
                 else "Insufficient data to generate commentary."), "rule"
 
-    # DeepSeek path first if key is set; otherwise rule-based.
+    # DeepSeek (if key is set); fall back to rule otherwise / on failure.
     text = _deepseek_call(data, lang)
     source = "deepseek" if text else "rule"
     if not text:
+        # DeepSeek unavailable / failed. If we have a cached rule entry,
+        # keep it rather than re-generating the same text.
+        if cached_row:
+            return cached_row[0], "rule"
         text = _rule_narrative(data, lang)
 
     conn.execute(
