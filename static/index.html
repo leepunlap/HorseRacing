@@ -2671,11 +2671,33 @@ function _poolLabel(pool, lang) {
   return (lang === 'zh' ? _POOL_ZH[pool] : null) || pool;
 }
 
+// Bidirectional jockey / trainer name lookup. The DB stores whichever
+// language HKJC's results page happened to use at scrape time — some
+// races came back English ("Z Purton", "D J Hall"), others Chinese
+// ("潘頓", "賀賢"). Auto-detect by checking for any CJK code-point in
+// the input, then map to the requested side using the lazily-built
+// reverse map.
+const _JOCKEY_ZH_EN = Object.fromEntries(
+  Object.entries(JOCKEY_EN_ZH).map(([en, zh]) => [zh, en])
+);
+const _TRAINER_ZH_EN = Object.fromEntries(
+  Object.entries(TRAINER_EN_ZH).map(([en, zh]) => [zh, en])
+);
+const _CJK_RE = /[一-鿿]/;
 function localiseName(name, lang, kind) {
   if (!name) return '';
-  if (lang !== 'zh') return name;
-  const map = kind === 'jockey' ? JOCKEY_EN_ZH : TRAINER_EN_ZH;
-  return map[name] || name;
+  const core = String(name).split('(')[0].trim();  // strip overweight markers
+  const isCJK = _CJK_RE.test(core);
+  // Caller wants Chinese
+  if (lang === 'zh') {
+    if (isCJK) return name;  // already CJK — pass through
+    const map = kind === 'jockey' ? JOCKEY_EN_ZH : TRAINER_EN_ZH;
+    return map[core] || name;
+  }
+  // Caller wants English
+  if (!isCJK) return name;  // already English — pass through
+  const rev = kind === 'jockey' ? _JOCKEY_ZH_EN : _TRAINER_ZH_EN;
+  return rev[core] || name;
 }
 function formatFinishTime(v) {
   if (v == null || v === '') return '';
@@ -2917,12 +2939,15 @@ function renderRaceBlock(r, data, sid) {
             <th>${t('預測', 'pred')}</th>
             <th>${t('馬', 'horse')}</th>
             <th>${t('騎師', 'jockey')}</th>
+            <th>${t('練馬師', 'trainer')}</th>
             <th>${t('閘', 'dr')}</th>
             <th>${t('賠率', 'odds')}</th>
             <th>${t('市場', 'mkt p')}</th>
             <th>${t('模型', 'cal p')}</th>
             <th>edge</th>
             <th>${t('時間', 'time')}</th>
+            <th>${t('頭馬距離', 'lbw')}</th>
+            <th>${t('沿途走位', 'running')}</th>
             <th>${t('決策', 'bet')}</th>
             <th>${t('評估', 'assessment')}</th>
             <th class="num">${t('投注', 'stake')}</th>
@@ -2944,18 +2969,25 @@ function renderRaceBlock(r, data, sid) {
             const predCls = pr == null ? '' :
               (isActualWinner && isTopPick) ? 'pred-hit' :
               (isActualWinner && pr <= 3)   ? 'pred-near' : '';
+            const lbwTxt = h.lbw == null || h.lbw === ''
+              ? (h.position === 1 || h.position === '1' ? '—' : '')
+              : escapeHtml(String(h.lbw));
+            const runTxt = escapeHtml(String(h.running_style || h.running || '').trim() || '');
             return `
               <tr class="${cls}">
                 <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
                 <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
                 <td class="h-name">${escapeHtml(h.horse_name || '')} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
                 <td>${escapeHtml(localiseName(h.jockey, lang, 'jockey'))}</td>
+                <td>${escapeHtml(localiseName(h.trainer, lang, 'trainer'))}</td>
                 <td class="num">${h.draw ?? '—'}</td>
                 <td class="num">${fmtNum(h.odds, 2)}</td>
                 <td class="num">${fmtPct(mkt)}</td>
                 <td class="num">${fmtPct(h.calibrated_prob)}</td>
                 <td class="num">${h.edge == null ? '—' : fmtNum(h.edge, 2)}</td>
                 <td class="num" style="font-family:var(--mono);font-size:11px">${escapeHtml(formatFinishTime(h.finish_time))}</td>
+                <td class="num small">${lbwTxt}</td>
+                <td class="small" style="font-family:var(--mono)">${runTxt}</td>
                 <td class="${a.bet ? 'bet' : ''}">${a.bet ? '✓' : ''}</td>
                 <td class="assessment" title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</td>
                 <td class="num">${a.stake == null ? '—' : fmtMoney(a.stake)}</td>
