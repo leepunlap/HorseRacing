@@ -2619,18 +2619,26 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
     // the rest stay blank so the eye lands on whatever the bet was. PnL
     // class applied per-row so winning bets glow green inline.
     const finishHtml = stackHtml(h => h.position == null ? '—' : escapeHtml(String(h.position)));
+    // Non-bet rows render an em-dash placeholder so the 4-row stacks in
+    // 投注 / 派彩 / 盈虧 stay vertically aligned with the other columns
+    // — without it the bet line drifts up to row 1 when the bet horse is
+    // not top-1, and the eye loses the row-to-row correspondence with
+    // 推介, 獨贏, etc.
+    const dash = '<span style="color:var(--muted)">—</span>';
     const stakeHtml = topPicks.length
       ? topPicks.map(h => betBrandSet.has(h.brand)
-          ? `<b>${fmtMoney(bet.stake)}</b>` : '').join('<br>')
+          ? `<b>${fmtMoney(bet.stake)}</b>` : dash).join('<br>')
       : (bet.stake == null ? '—' : fmtMoney(bet.stake));
     const payoutHtml = topPicks.length
-      ? topPicks.map(h => betBrandSet.has(h.brand)
-          ? (isSettled ? `<b>${fmtMoney(bet.payout)}</b>` : '—') : '').join('<br>')
+      ? topPicks.map(h => {
+          if (!betBrandSet.has(h.brand)) return dash;
+          return isSettled ? `<b>${fmtMoney(bet.payout)}</b>` : dash;
+        }).join('<br>')
       : (isSettled ? fmtMoney(bet.payout) : '—');
     const pnlHtml = topPicks.length
       ? topPicks.map(h => {
-          if (!betBrandSet.has(h.brand)) return '';
-          if (!isSettled) return '—';
+          if (!betBrandSet.has(h.brand)) return dash;
+          if (!isSettled) return dash;
           const cls = bet.pnl == null ? '' : (bet.pnl > 0 ? 'pnl-win' : (bet.pnl < 0 ? 'pnl-lose' : ''));
           return `<b class="${cls}">${fmtMoney(bet.pnl)}</b>`;
         }).join('<br>')
