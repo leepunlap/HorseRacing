@@ -2613,6 +2613,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
     const placeHtml = stackHtml(h => h.place_odds == null ? '—' : Number(h.place_odds).toFixed(1));
     const modelHtml = stackHtml(h => h.calibrated_prob == null ? '—'
                                                                 : (h.calibrated_prob * 100).toFixed(1) + '%');
+    const edgeHtml = stackHtml(h => h.edge == null ? '—' : Number(h.edge).toFixed(2));
     // 實際名次 / 投注 / 派彩 / 盈虧 also stack vertically — one row per
     // top-4 horse. Stake/payout/pnl only appear on the bet horse's row(s);
     // the rest stay blank so the eye lands on whatever the bet was. PnL
@@ -2667,6 +2668,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
         <td class="num" style="line-height:1.3">${winHtml}</td>
         <td class="num" style="line-height:1.3">${placeHtml}</td>
         <td class="num" style="line-height:1.3">${modelHtml}</td>
+        <td class="num" style="line-height:1.3">${edgeHtml}</td>
         <td class="num" style="line-height:1.3">${isSettled ? finishHtml : '—'}</td>
         <td class="num" style="line-height:1.3">${stakeHtml}</td>
         <td class="num" style="line-height:1.3">${payoutHtml}</td>
@@ -2704,6 +2706,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
             <th class="num">${t('獨贏', 'win')}</th>
             <th class="num">${t('位置', 'place')}</th>
             <th class="num">${t('模型', 'model')}</th>
+            <th class="num">edge</th>
             <th class="num">${t('實際名次', 'finish')}</th>
             <th class="num">${t('投注', 'stake')}</th>
             <th class="num">${t('派彩', 'payout')}</th>
