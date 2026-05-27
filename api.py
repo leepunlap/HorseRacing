@@ -1638,19 +1638,39 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
         for r in races:
             race = dict(zip(race_cols, r))
             race_id = race["id"]
-            # Horse rows joined with optional predictions and horse profile
+            # Horse rows joined with optional predictions and horse profile.
+            # `live_odds` LEFT JOIN against the most recent odds_snapshots row
+            # (keyed by horse_no) so pre-race displays surface the latest tote
+            # odds when results.odds is still null. The COALESCE in the SELECT
+            # makes `odds` always reflect whatever is freshest.
+            live_join = (
+                "LEFT JOIN ("
+                "  SELECT date, course, race_no, horse_no, win_odds, place_odds, "
+                "         pool_total FROM odds_snapshots o1 "
+                "  WHERE id = (SELECT MAX(id) FROM odds_snapshots o2 "
+                "              WHERE o2.date=o1.date AND o2.course=o1.course "
+                "                AND o2.race_no=o1.race_no AND o2.horse_no=o1.horse_no)"
+                ") lo ON lo.date = r.date AND lo.course = r.course "
+                "        AND lo.race_no = r.race_no AND lo.horse_no = r.horse_no "
+            )
             if strategy_id is not None:
                 horse_rows = conn.execute(
-                    """
+                    f"""
                     SELECT r.brand, r.horse_name, r.jockey, r.trainer, r.draw,
-                           r.act_wt, r.decl_wt, r.odds, r.finish_time, r.lbw,
-                           r.running_style, r.position,
+                           r.act_wt, r.decl_wt,
+                           COALESCE(r.odds, lo.win_odds) AS odds,
+                           lo.win_odds AS live_win_odds,
+                           lo.place_odds AS live_place_odds,
+                           r.finish_time, r.lbw,
+                           r.running_style, r.position, r.horse_no,
                            h.age, h.sex, h.rating,
+                           h.name_en AS horse_name_en, h.name_zh AS horse_name_zh,
                            p.fundamental_prob, p.market_implied_prob,
                            p.blended_prob, p.calibrated_prob, p.edge,
                            p.recommendation
                     FROM results r
                     LEFT JOIN horses h ON h.brand = r.brand
+                    {live_join}
                     LEFT JOIN predictions p ON p.race_id = r.race_id
                                             AND p.brand = r.brand
                                             AND p.strategy_id = ?
@@ -1659,26 +1679,34 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                     (strategy_id, race_id),
                 ).fetchall()
                 cols = ("brand","horse_name","jockey","trainer","draw","act_wt",
-                        "decl_wt","odds","finish_time","lbw","running_style","position",
-                        "age","sex","rating",
+                        "decl_wt","odds","live_win_odds","live_place_odds",
+                        "finish_time","lbw","running_style","position","horse_no",
+                        "age","sex","rating","horse_name_en","horse_name_zh",
                         "fundamental_prob","market_implied_prob","blended_prob",
                         "calibrated_prob","edge","recommendation")
             else:
                 horse_rows = conn.execute(
-                    """
+                    f"""
                     SELECT r.brand, r.horse_name, r.jockey, r.trainer, r.draw,
-                           r.act_wt, r.decl_wt, r.odds, r.finish_time, r.lbw,
-                           r.running_style, r.position,
-                           h.age, h.sex, h.rating
+                           r.act_wt, r.decl_wt,
+                           COALESCE(r.odds, lo.win_odds) AS odds,
+                           lo.win_odds AS live_win_odds,
+                           lo.place_odds AS live_place_odds,
+                           r.finish_time, r.lbw,
+                           r.running_style, r.position, r.horse_no,
+                           h.age, h.sex, h.rating,
+                           h.name_en AS horse_name_en, h.name_zh AS horse_name_zh
                     FROM results r
                     LEFT JOIN horses h ON h.brand = r.brand
+                    {live_join}
                     WHERE r.race_id = ?
                     """,
                     (race_id,),
                 ).fetchall()
                 cols = ("brand","horse_name","jockey","trainer","draw","act_wt",
-                        "decl_wt","odds","finish_time","lbw","running_style","position",
-                        "age","sex","rating")
+                        "decl_wt","odds","live_win_odds","live_place_odds",
+                        "finish_time","lbw","running_style","position","horse_no",
+                        "age","sex","rating","horse_name_en","horse_name_zh")
             horses = [dict(zip(cols, h)) for h in horse_rows]
             # Sort: by calibrated_prob desc when available, else by position asc,
             # else by horse_no (use draw as proxy).

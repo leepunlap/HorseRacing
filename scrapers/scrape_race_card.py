@@ -243,7 +243,7 @@ class RaceCardScraper(BaseScraper):
         ).fetchone()
         if existing:
             sets, params = [], []
-            for col in ("horse_name","jockey","trainer","draw","act_wt","decl_wt"):
+            for col in ("horse_no","horse_name","jockey","trainer","draw","act_wt","decl_wt"):
                 if r.get(col) is not None:
                     sets.append(f"{col} = ?"); params.append(r[col])
             if sets:
@@ -253,14 +253,14 @@ class RaceCardScraper(BaseScraper):
             conn.execute(
                 """
                 INSERT INTO results
-                   (race_id, horse_id, date, race_no, course, brand,
+                   (race_id, horse_id, date, race_no, course, brand, horse_no,
                     horse_name, jockey, trainer, draw, act_wt, decl_wt)
                 VALUES (?, (SELECT id FROM horses WHERE brand = ?),
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (race_id, brand, date_str, race_no, course, brand,
-                 r.get("horse_name"), r.get("jockey"), r.get("trainer"),
-                 r.get("draw"), r.get("act_wt"), r.get("decl_wt")),
+                 r.get("horse_no"), r.get("horse_name"), r.get("jockey"),
+                 r.get("trainer"), r.get("draw"), r.get("act_wt"), r.get("decl_wt")),
             )
 
     @staticmethod
@@ -300,6 +300,7 @@ class RaceCardScraper(BaseScraper):
                 def _to_float(s):
                     try: return float(re.sub(r"[^\d.]", "", s or ""))
                     except (ValueError, TypeError): return None
+                horse_no = _to_int(col("Horse No.", cells))
                 draw = _to_int(col("Draw", cells))
                 # `Rtg.` sometimes lives under `Int'l Rtg.`
                 rating = _to_int(col("Rtg.", cells)) or _to_int(col("Int'l Rtg.", cells))
@@ -307,6 +308,7 @@ class RaceCardScraper(BaseScraper):
                 horse_name = col("Horse", cells) or None
                 out.append({
                     "brand": brand,
+                    "horse_no": horse_no,
                     "horse_name": horse_name,
                     "jockey": col("Jockey", cells) or None,
                     "trainer": col("Trainer", cells) or None,

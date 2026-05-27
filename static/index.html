@@ -2433,8 +2433,8 @@ function _renderBetsSummaryFromModel(data, strat, lang) {
       <tr class="${cls}">
         <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
         <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
-        <td class="h-name">${escapeHtml(h.horse_name || '')} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
-        <td>${escapeHtml(localiseName(h.jockey, lang, 'jockey'))}</td>
+        <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
+        <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
         <td class="num">${h.draw ?? '—'}</td>
         <td class="num">${fmtNum(h.odds, 2)}</td>
         <td class="num">${fmtPct(mkt)}</td>
@@ -2507,7 +2507,7 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
         const placed = h.position && (parseInt(h.position) || 99) <= 3;
         const won = h.position == 1 || h.position === '1';
         const tag = won ? '🥇' : (placed ? `(${h.position})` : '');
-        return `<span title="${escapeHtml(h.brand)}">${escapeHtml(h.horse_name || h.brand)} ${tag}</span>`;
+        return `<span title="${escapeHtml(h.brand)}">${escapeHtml(i18n.horse(h, lang))} ${tag}</span>`;
       }).join(arrow);
       items.push({ r, bet, comboHtml });
       totalStake += bet.stake || 0;
@@ -2629,100 +2629,119 @@ function formatDriverVal(v) {
   return v.toFixed(3);
 }
 
-// HKJC jockey + trainer EN→ZH translation for the active 2026 roster. The DB
-// usually stores Chinese names but a few recent meetings were scraped from the
-// English HKJC URL and came back in English; this map fills that gap on the
-// SPA side so the UI is consistent when the Chinese language is selected.
-const JOCKEY_EN_ZH = {
-  "A Atzeni":"艾兆禮","A Badel":"巴度","B Avdulla":"艾道拿","C L Chau":"周俊樂",
-  "C Williams":"韋立彬","C Y Ho":"何澤堯","E Brown":"布浩榮","H Bentley":"班德禮",
-  "H Bowman":"布文","H T Mo":"莫艾誠","H Y Yuen":"袁幸堯","J McDonald":"麥道朗",
-  "J Moreira":"莫雷拉","J Orman":"奧爾民","K C Leung":"梁家俊","K Teetan":"田泰安",
-  "L Ferraris":"費利士","M Chadwick":"蔡明紹","M F Poon":"潘明輝","M L Yeung":"楊明綸",
-  "P N Wong":"黃皓楠","R Kingscote":"紀仁安","Y L Chung":"鍾易禮","Z Purton":"潘頓",
-};
-const TRAINER_EN_ZH = {
-  "A S Cruz":"告東尼","B Crawford":"高富瀚","C Fownes":"方嘉柏","C H Yip":"葉楚航",
-  "C S Shum":"沈集成","C W Chang":"鄭俊偉","D A Hayes":"大衛希斯","D Eustace":"易思達",
-  "D J Hall":"賀賢","D J Whyte":"韋達","F C Lor":"羅富全","H Tanaka":"田中博康",
-  "J Richards":"李家樂","J Size":"蔡約翰","K H Ting":"丁冠豪","K L Man":"文家良",
-  "K W Lui":"呂健威","M Newnham":"紐德安","P C Ng":"伍鵬志","P F Yiu":"姚本輝",
-  "W K Mo":"巫偉傑","W Y So":"蘇偉賢","Y Ikee":"池江泰寿","Y S Tsui":"徐雨石",
-};
-// HKJC race-meta + pool-name localisation. When language is Chinese the
-// race header reads "沙田 / Class 4 → 第四班 / Good → 好" and the dividend
-// row shows 連贏 / 位置Q / 順序連贏 / 三重彩 / 四重彩 / 四連環 / 單T
-// instead of the English codes.
-const _COURSE_ZH = { ST: '沙田', HV: '跑馬地', CH: '從化' };
-function _courseLabel(code, lang) {
-  if (!code) return '';
-  return (lang === 'zh' ? _COURSE_ZH[code] : null) || code;
-}
-function _classLabel(raw, lang) {
-  if (!raw) return '';
-  const s = String(raw).trim().toUpperCase();
-  if (s.startsWith('G1')) return lang === 'zh' ? '一級賽 (G1)' : 'G1';
-  if (s.startsWith('G2')) return lang === 'zh' ? '二級賽 (G2)' : 'G2';
-  if (s.startsWith('G3')) return lang === 'zh' ? '三級賽 (G3)' : 'G3';
-  if (s.indexOf('LISTED') >= 0) return lang === 'zh' ? '表列賽' : 'Listed';
-  const m = s.replace('CLASS', '').replace('C', '').trim();
-  const n = parseInt(parseFloat(m));
-  if (n >= 1 && n <= 5) {
-    return lang === 'zh' ? `第 ${n} 班` : `Class ${n}`;
-  }
-  return raw;
-}
-function _goingLabel(raw, lang) {
-  if (!raw) return '';
-  const s = String(raw).trim();
-  if (lang !== 'zh') return s;
-  const map = {
-    'Good': '好', 'Good To Yielding': '好至黏軟', 'Good To Firm': '好至快',
-    'Yielding': '黏軟', 'Soft': '軟', 'Heavy': '大爛',
-    'Fast': '快', 'Wet Fast': '濕快', 'Wet Slow': '濕慢',
-    'Sloppy': '泥濘', 'Muddy': '爛地', 'Frozen': '凍地',
-  };
-  return map[s] || s;
-}
-const _POOL_ZH = {
-  'WIN': '獨贏', 'PLACE': '位置', 'QIN': '連贏', 'QPL': '位置Q',
-  'EXA': '順序連贏', 'TRI': '三重彩', 'TRIO': '單T',
-  'F4': '四重彩', 'QTT': '四連環',
-  'CWA': 'CWA', 'CWB': 'CWB', 'CWC': 'CWC', 'IWN': 'IWN',
-};
-function _poolLabel(pool, lang) {
-  if (!pool) return '';
-  return (lang === 'zh' ? _POOL_ZH[pool] : null) || pool;
-}
+// ─── i18n module ─────────────────────────────────────────────────────────
+// Single source of truth for every language-aware display value: course,
+// class, going, pool labels + jockey / trainer / horse names. All UI render
+// sites go through `i18n.X(value, lang)`. Horse names come bilingual from
+// the API (horses.name_en + horses.name_zh); person names use static maps
+// because HKJC's pages historically came back in mixed languages — the
+// maps cover the active 2026 roster, with CJK auto-detection as fallback.
+const i18n = (() => {
+  const CJK_RE = /[一-鿿]/;
+  const hasCJK = (s) => CJK_RE.test(String(s || ''));
 
-// Bidirectional jockey / trainer name lookup. The DB stores whichever
-// language HKJC's results page happened to use at scrape time — some
-// races came back English ("Z Purton", "D J Hall"), others Chinese
-// ("潘頓", "賀賢"). Auto-detect by checking for any CJK code-point in
-// the input, then map to the requested side using the lazily-built
-// reverse map.
-const _JOCKEY_ZH_EN = Object.fromEntries(
-  Object.entries(JOCKEY_EN_ZH).map(([en, zh]) => [zh, en])
-);
-const _TRAINER_ZH_EN = Object.fromEntries(
-  Object.entries(TRAINER_EN_ZH).map(([en, zh]) => [zh, en])
-);
-const _CJK_RE = /[一-鿿]/;
-function localiseName(name, lang, kind) {
-  if (!name) return '';
-  const core = String(name).split('(')[0].trim();  // strip overweight markers
-  const isCJK = _CJK_RE.test(core);
-  // Caller wants Chinese
-  if (lang === 'zh') {
-    if (isCJK) return name;  // already CJK — pass through
-    const map = kind === 'jockey' ? JOCKEY_EN_ZH : TRAINER_EN_ZH;
-    return map[core] || name;
+  const COURSE_ZH = { ST: '沙田', HV: '跑馬地', CH: '從化' };
+  const GOING_ZH = {
+    'Good':'好','Good To Yielding':'好至黏軟','Good To Firm':'好至快',
+    'Yielding':'黏軟','Soft':'軟','Heavy':'大爛',
+    'Fast':'快','Wet Fast':'濕快','Wet Slow':'濕慢',
+    'Sloppy':'泥濘','Muddy':'爛地','Frozen':'凍地',
+  };
+  const POOL_ZH = {
+    'WIN':'獨贏','PLACE':'位置','QIN':'連贏','QPL':'位置Q',
+    'EXA':'順序連贏','TRI':'三重彩','TRIO':'單T',
+    'F4':'四重彩','QTT':'四連環',
+    'CWA':'CWA','CWB':'CWB','CWC':'CWC','IWN':'IWN',
+  };
+  const JOCKEY_EN_ZH = {
+    "A Atzeni":"艾兆禮","A Badel":"巴度","B Avdulla":"艾道拿","C L Chau":"周俊樂",
+    "C Williams":"韋立彬","C Y Ho":"何澤堯","E Brown":"布浩榮","H Bentley":"班德禮",
+    "H Bowman":"布文","H T Mo":"莫艾誠","H Y Yuen":"袁幸堯","J McDonald":"麥道朗",
+    "J Moreira":"莫雷拉","J Orman":"奧爾民","K C Leung":"梁家俊","K Teetan":"田泰安",
+    "L Ferraris":"費利士","M Chadwick":"蔡明紹","M F Poon":"潘明輝","M L Yeung":"楊明綸",
+    "P N Wong":"黃皓楠","R Kingscote":"紀仁安","Y L Chung":"鍾易禮","Z Purton":"潘頓",
+  };
+  const TRAINER_EN_ZH = {
+    "A S Cruz":"告東尼","B Crawford":"高富瀚","C Fownes":"方嘉柏","C H Yip":"葉楚航",
+    "C S Shum":"沈集成","C W Chang":"鄭俊偉","D A Hayes":"大衛希斯","D Eustace":"易思達",
+    "D J Hall":"賀賢","D J Whyte":"韋達","F C Lor":"羅富全","H Tanaka":"田中博康",
+    "J Richards":"李家樂","J Size":"蔡約翰","K H Ting":"丁冠豪","K L Man":"文家良",
+    "K W Lui":"呂健威","M Newnham":"紐德安","P C Ng":"伍鵬志","P F Yiu":"姚本輝",
+    "W K Mo":"巫偉傑","W Y So":"蘇偉賢","Y Ikee":"池江泰寿","Y S Tsui":"徐雨石",
+  };
+  const JOCKEY_ZH_EN = Object.fromEntries(
+    Object.entries(JOCKEY_EN_ZH).map(([en, zh]) => [zh, en]));
+  const TRAINER_ZH_EN = Object.fromEntries(
+    Object.entries(TRAINER_EN_ZH).map(([en, zh]) => [zh, en]));
+
+  // Generic person-name resolver. Whichever side the input is on,
+  // translate to `lang` using the matching forward / reverse map.
+  function person(name, lang, kind) {
+    if (!name) return '';
+    const core = String(name).split('(')[0].trim();
+    const isCJK = hasCJK(core);
+    if (lang === 'zh') {
+      if (isCJK) return name;
+      const m = kind === 'jockey' ? JOCKEY_EN_ZH : TRAINER_EN_ZH;
+      return m[core] || name;
+    }
+    if (!isCJK) return name;
+    const m = kind === 'jockey' ? JOCKEY_ZH_EN : TRAINER_ZH_EN;
+    return m[core] || name;
   }
-  // Caller wants English
-  if (!isCJK) return name;  // already English — pass through
-  const rev = kind === 'jockey' ? _JOCKEY_ZH_EN : _TRAINER_ZH_EN;
-  return rev[core] || name;
-}
+
+  return {
+    hasCJK,
+    course(code, lang) {
+      if (!code) return '';
+      return (lang === 'zh' ? COURSE_ZH[code] : null) || code;
+    },
+    going(raw, lang) {
+      if (!raw) return '';
+      const s = String(raw).trim();
+      if (lang !== 'zh') return s;
+      return GOING_ZH[s] || s;
+    },
+    klass(raw, lang) {
+      if (!raw) return '';
+      const s = String(raw).trim().toUpperCase();
+      if (s.startsWith('G1')) return lang === 'zh' ? '一級賽 (G1)' : 'G1';
+      if (s.startsWith('G2')) return lang === 'zh' ? '二級賽 (G2)' : 'G2';
+      if (s.startsWith('G3')) return lang === 'zh' ? '三級賽 (G3)' : 'G3';
+      if (s.indexOf('LISTED') >= 0) return lang === 'zh' ? '表列賽' : 'Listed';
+      const m = s.replace('CLASS', '').replace('C', '').trim();
+      const n = parseInt(parseFloat(m));
+      if (n >= 1 && n <= 5) return lang === 'zh' ? `第 ${n} 班` : `Class ${n}`;
+      return raw;
+    },
+    pool(p, lang) {
+      if (!p) return '';
+      return (lang === 'zh' ? POOL_ZH[p] : null) || p;
+    },
+    jockey(name, lang) { return person(name, lang, 'jockey'); },
+    trainer(name, lang) { return person(name, lang, 'trainer'); },
+    // Horse name resolver. Reads the bilingual horses.name_{en,zh} columns
+    // that the API surfaces as `horse_name_en` / `horse_name_zh`. Falls
+    // back to the legacy single `horse_name` field, then brand, so old
+    // pre-bilingual payloads still render something readable.
+    horse(row, lang) {
+      if (!row) return '';
+      const zh = row.horse_name_zh;
+      const en = row.horse_name_en;
+      const legacy = row.horse_name;
+      if (lang === 'zh') return zh || legacy || en || row.brand || '';
+      return en || (legacy && !hasCJK(legacy) ? legacy : '') || zh || row.brand || '';
+    },
+  };
+})();
+
+// Back-compat shims (kept thin while we migrate any third-party callers).
+// New code should call i18n.* directly.
+const _courseLabel = i18n.course;
+const _classLabel  = i18n.klass;
+const _goingLabel  = i18n.going;
+const _poolLabel   = i18n.pool;
+const localiseName = (n, l, k) => i18n[k === 'jockey' ? 'jockey' : 'trainer'](n, l);
 function formatFinishTime(v) {
   if (v == null || v === '') return '';
   const n = typeof v === 'number' ? v : parseFloat(String(v));
@@ -3001,9 +3020,9 @@ function renderRaceBlock(r, data, sid) {
               <tr class="${cls}">
                 <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
                 <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
-                <td class="h-name">${escapeHtml(h.horse_name || '')} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
-                <td>${escapeHtml(localiseName(h.jockey, lang, 'jockey'))}</td>
-                <td>${escapeHtml(localiseName(h.trainer, lang, 'trainer'))}</td>
+                <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code></td>
+                <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
+                <td>${escapeHtml(i18n.trainer(h.trainer, lang))}</td>
                 <td class="num">${h.draw ?? '—'}</td>
                 <td class="num">${fmtNum(h.odds, 2)}</td>
                 <td class="num">${fmtPct(mkt)}</td>

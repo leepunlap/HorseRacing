@@ -671,9 +671,31 @@ def init_db() -> None:
     conn = _connect(DB_PATH)
     conn.executescript(RAW_SCHEMA)
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
     conn.close()
     print(f"DB initialized: {DB_PATH}")
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Idempotent column-additive migrations. Safe on every startup."""
+    horses_cols = _columns(conn, "horses")
+    if "name_en" not in horses_cols:
+        conn.execute("ALTER TABLE horses ADD COLUMN name_en TEXT")
+    if "name_zh" not in horses_cols:
+        conn.execute("ALTER TABLE horses ADD COLUMN name_zh TEXT")
+    results_cols = _columns(conn, "results")
+    if "horse_no" not in results_cols:
+        # Saddle number 1..N — used to join `odds_snapshots` rows
+        # (which key by horse_no, not brand) for pre-race odds display.
+        conn.execute("ALTER TABLE results ADD COLUMN horse_no INTEGER")
+    # Backfill name_en from the legacy `name` column when name_en is empty
+    # and `name` is ASCII-only (i.e. the historical English-side scrape).
+    conn.execute(
+        "UPDATE horses SET name_en = name WHERE name_en IS NULL "
+        "AND name IS NOT NULL AND name GLOB '*[A-Za-z]*' "
+        "AND name NOT GLOB '*[一-龥]*'"
+    )
 
 
 def _columns(conn: sqlite3.Connection, table: str, schema: str = "main") -> list[str]:
