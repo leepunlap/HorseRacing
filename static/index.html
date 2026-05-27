@@ -510,10 +510,13 @@ const state = {
   raceMonth: _ui.raceMonth || null,    // PERSIST — "05"
   raceDate: _ui.raceDate || null,      // PERSIST — "2026-05-24"
   raceStrategy: _ui.raceStrategy || null,  // PERSIST — strategy_id filter for Races tab
+  raceBetStrategy: _ui.raceBetStrategy || null,  // PERSIST — bet_strategy_id filter for Races tab
+  raceBetStrategies: [],                   // list of bet strategies for current model
   raceDates: null,                     // list of {date, races, results, predicted_races}
   raceData: null,                      // current date's race cards
   // Strategy dashboard
   dashStrategy: _ui.dashStrategy || null,  // PERSIST — selected strategy id
+  dashSelectedBet: _ui.dashSelectedBet || null,  // PERSIST — bet strategy id (or null = model default)
   dashData: null,                      // dashboard payload
 };
 
@@ -624,6 +627,36 @@ async function loadStrategyDetail(id) {
   // Lazy-load the rule-kinds catalog once so the "add new" dropdown has options.
   if (!state.betRuleKinds) {
     state.betRuleKinds = await api('/api/bet_strategies/rule_kinds').catch(() => ({}));
+  }
+  // If user previously selected a bet strategy, restore + refetch its charts.
+  if (state.dashSelectedBet) {
+    const stillExists = state.betStrategies.some(b => b.id === state.dashSelectedBet);
+    if (stillExists) {
+      await refreshDashCharts();
+    } else {
+      state.dashSelectedBet = null;
+      saveUi({ dashSelectedBet: null });
+    }
+  }
+  render();
+}
+
+// Switch the dashboard chart payload to either the model's default-rule
+// charts (state.dashSelectedBet = null) or a bet strategy's ledger-based
+// charts. Patches state.dashCharts in place + re-renders.
+async function refreshDashCharts() {
+  if (!state.dashStrategy) return;
+  if (state.dashSelectedBet) {
+    const c = await api(`/api/bet_strategies/${state.dashSelectedBet}/charts`)
+      .catch(e => ({ error: e.message }));
+    // Merge into state.dashCharts so chart components that depend on
+    // shapes we don't compute (kelly_scenarios, threshold_sweeps, etc.)
+    // simply fall back to empty rendering.
+    state.dashCharts = { ...state.dashCharts, ...c };
+  } else {
+    const c = await api(`/api/strategies/${state.dashStrategy}/charts`)
+      .catch(e => ({ error: e.message }));
+    state.dashCharts = c;
   }
   render();
 }
@@ -739,9 +772,26 @@ async function loadRaces() {
     state.raceDate = firstPred.date;
     saveUi({ raceYear: state.raceYear, raceMonth: state.raceMonth, raceDate: state.raceDate });
   }
+  // Also pull the bet strategies list (used for the Races-page bet selector).
+  if (sid != null) {
+    state.raceBetStrategies = await api(`/api/strategies/${sid}/bet_strategies`)
+      .catch(() => []);
+  } else {
+    state.raceBetStrategies = [];
+  }
   // Fetch the selected date's race cards (if any selection)
   if (state.raceDate) {
-    const dqs = sid != null ? `?strategy_id=${sid}` : '';
+    let dqs = sid != null ? `?strategy_id=${sid}` : '';
+    if (state.raceBetStrategy) {
+      const bsid = parseInt(state.raceBetStrategy);
+      // Only attach if the selected bet strategy belongs to the current model.
+      if (state.raceBetStrategies.some(b => b.id === bsid)) {
+        dqs += (dqs ? '&' : '?') + `bet_strategy_id=${bsid}`;
+      } else {
+        state.raceBetStrategy = null;
+        saveUi({ raceBetStrategy: null });
+      }
+    }
     state.raceData = await api(`/api/races/${state.raceDate}${dqs}`)
       .catch(e => ({ races: [], error: e.message }));
   } else {
@@ -1001,6 +1051,28 @@ function renderStrategies() {
 // ─── Strategy feature-pill panel ────────────────────────────────────────────
 // Bilingual condensed view of which features this strategy uses (green) vs
 // disables (grey), grouped by the 15 catalogue categories. Pill labels follow
+// ─── Bet-strategy selector (drives all charts) ─────────────────────────
+// Sits inside the Performance Charts panel header. Selecting a bet strategy
+// switches the entire chart payload from the model's default rule to the
+// bet strategy's recorded ledger (via /api/bet_strategies/{id}/charts).
+function renderBetStrategySelector() {
+  const list = state.betStrategies || [];
+  if (!list.length) return '';
+  const selected = state.dashSelectedBet || '';
+  const lang = state.lang;
+  const opts = ['<option value="">' + escapeHtml(t('(模型預設 flat top-1)', '(model default — flat top-1)')) + '</option>']
+    .concat(list.map(b => {
+      const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
+      const sel = b.id == selected ? 'selected' : '';
+      return `<option value="${b.id}" ${sel}>${escapeHtml(label)} (${b.roi_pct.toFixed(0)}% ROI)</option>`;
+    })).join('');
+  return `
+    <span class="small" style="margin-left:16px;font-weight:normal;color:var(--muted)">
+      ${t('依投注策略檢視', 'View by bet strategy')}:
+      <select id="dashBetSelect" style="margin-left:6px">${opts}</select>
+    </span>`;
+}
+
 // ─── Bet-strategies panel ───────────────────────────────────────────────
 // Lists every bet strategy layered on top of the selected model with a
 // checkbox to overlay its cumulative-PnL curve on the Performance chart,
@@ -2084,7 +2156,17 @@ function renderStrategyDashboard(sel) {
     ${renderBetStrategiesPanel()}
 
     <div class="panel">
-      <h2>${t('表現圖表', 'Performance charts')}</h2>
+      <h2>
+        ${t('表現圖表', 'Performance charts')}
+        ${renderBetStrategySelector()}
+      </h2>
+      <div class="small" style="color:var(--muted);margin-bottom:8px">
+        ${state.dashSelectedBet
+          ? t('圖表正在使用所選投注策略的 bet_ledger 計算',
+               'Charts are computed from the selected bet strategy\'s ledger')
+          : t('未選投注策略時,圖表使用模型的預設規則 (flat top-1)。選擇一個投注策略以重算所有圖表。',
+               'No bet strategy selected — charts use the model\'s default rule (flat top-1). Pick a bet strategy to recompute all charts.')}
+      </div>
       ${renderPerformanceCharts(state.dashCharts)}
     </div>
 
@@ -2181,6 +2263,25 @@ function renderRaces() {
     </select>
   `;
 
+  // Bet-strategy chooser: when set, highlights the selected strategy's
+  // bet_ledger picks instead of the model's flat-top-1 default. Only
+  // shown if the model has bet strategies attached.
+  const betList = state.raceBetStrategies || [];
+  const lang = state.lang;
+  const bsid = state.raceBetStrategy || '';
+  const betPicker = betList.length ? `
+    <label style="font-size:12px;color:var(--muted);margin-left:12px">
+      ${t('投注策略', 'bet strategy')}:
+    </label>
+    <select id="raceBetStrat">
+      <option value="">${t('（模型預設 flat top-1）', '(default — flat top-1)')}</option>
+      ${betList.map(b => {
+        const label = lang === 'zh' ? (b.name_zh || b.name) : (b.name_en || b.name);
+        return `<option value="${b.id}" ${b.id == bsid ? 'selected' : ''}>${escapeHtml(label)} · ${b.roi_pct.toFixed(0)}% ROI</option>`;
+      }).join('')}
+    </select>
+  ` : '';
+
   // Cascading date picker: Year → Month → Race day. Each column is its own
   // scrollable list; later columns are empty until the previous one is chosen.
   const buckets = bucketDatesByYearMonth(dates);
@@ -2273,6 +2374,7 @@ function renderRaces() {
       <h2>${t('賽果', 'Races')} ${state.raceDate ? `· ${state.raceDate}` : ''}</h2>
       <div class="toolbar">
         ${stratPicker}
+        ${betPicker}
         <div style="flex:1"></div>
         <span style="font-size:11px;color:var(--muted)">
           ${t('綠色 = 已有該策略預測', 'green = strategy has predictions')}
@@ -2294,22 +2396,31 @@ function renderBetsSummary(data, strat) {
 
   const rows = [];
   let totalStake = 0, totalPnl = 0, settled = 0;
+  const bsMeta = data.bet_strategy;
   for (const r of (data.races || [])) {
     if (!r.has_predictions) continue;
-    // Determine top horse per race by edge (same logic as renderRaceBlock).
-    const topBrand = (r.horses || [])
-      .filter(h => h.calibrated_prob != null && h.odds != null)
-      .reduce((best, h) => {
-        const e = h.calibrated_prob * h.odds;
-        const bestE = best ? best.calibrated_prob * best.odds : -Infinity;
-        return e > bestE ? h : best;
-      }, null)?.brand;
-    for (const h of (r.horses || [])) {
-      const a = analyseHorse(h, strat, lang, h.brand === topBrand);
-      if (!a.bet) continue;
-      rows.push({ r, h, a });
-      if (a.stake != null) totalStake += a.stake;
-      if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
+    if (bsMeta) {
+      // Use the ledger picks for this race (could be multiple horses for
+      // exotic bets like dutch_top2 / quinella).
+      for (const h of (r.horses || [])) {
+        const a = _analyseFromLedger(h, r.bets || [], bsMeta, lang);
+        if (!a.bet) continue;
+        rows.push({ r, h, a });
+        if (a.stake != null) totalStake += a.stake;
+        if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
+      }
+    } else {
+      // Default rule: top calibrated_prob.
+      const topBrand = (r.horses || [])
+        .filter(h => h.calibrated_prob != null)
+        .sort((a, b) => b.calibrated_prob - a.calibrated_prob)[0]?.brand;
+      for (const h of (r.horses || [])) {
+        const a = analyseHorse(h, strat, lang, h.brand === topBrand);
+        if (!a.bet) continue;
+        rows.push({ r, h, a });
+        if (a.stake != null) totalStake += a.stake;
+        if (a.pnl   != null) { totalPnl += a.pnl; settled++; }
+      }
     }
   }
   if (rows.length === 0) {
@@ -2493,22 +2604,77 @@ function analyseHorse(h, strat, lang, isTopPick) {
   };
 }
 
+// When a bet strategy is selected on the Races page, we don't compute the
+// bet decision here — the server-side bet_runner already wrote bet_ledger
+// rows. This helper turns those rows into the same {bet, reason, stake,
+// pnl} shape that the per-race tables consume.
+function _analyseFromLedger(h, ledgerBets, bsMeta, lang) {
+  if (!ledgerBets.length) {
+    return { bet: false, reasonZh: '—', reasonEn: '—', stake: null, pnl: null };
+  }
+  // A horse is "bet" if it appears in any ledger row's combination.
+  const involved = ledgerBets.filter(b => {
+    for (const part of String(b.brand || '').split(/[,>]/)) {
+      if (part === h.brand) return true;
+    }
+    return false;
+  });
+  if (!involved.length) {
+    const label = lang === 'zh'
+      ? `非 ${escapeHtml(bsMeta.name_zh || bsMeta.name)} 投注`
+      : `not bet by ${escapeHtml(bsMeta.name_en || bsMeta.name)}`;
+    return { bet: false, reasonZh: label, reasonEn: label, stake: null, pnl: null };
+  }
+  // Sum stake/pnl across all rows this horse is part of.
+  let stake = 0, pnl = 0, anyWon = 0, pools = new Set();
+  for (const b of involved) {
+    stake += (b.stake || 0);
+    pnl += (b.pnl || 0);
+    if (b.won === 1) anyWon = 1;
+    pools.add(b.pool);
+  }
+  const poolLabel = [...pools].join(',');
+  const ruleLabel = lang === 'zh' ? (bsMeta.name_zh || bsMeta.name)
+                                  : (bsMeta.name_en || bsMeta.name);
+  const ranks = involved.map(b => `#${b.pick_rank || '?'}`).join('/');
+  return {
+    bet: true,
+    reasonZh: `${ruleLabel} (${poolLabel}) — 排名 ${ranks}`,
+    reasonEn: `${ruleLabel} (${poolLabel}) — rank ${ranks}`,
+    stake, pnl,
+  };
+}
+
 function renderRaceBlock(r, data, sid) {
   const fmtPct = (v) => v == null ? '—' : (v * 100).toFixed(1) + '%';
   const fmtNum = (v, dp = 2) => v == null ? '—' : Number(v).toFixed(dp);
   const fmtMoney = (v) => v == null ? '—' : (v >= 0 ? '$' : '-$') + Math.abs(v).toFixed(0);
   const strat = (state.strategies || []).find(s => s.id == sid);
 
-  // One-bet-per-race rule: find the brand with the highest edge (prob × odds),
-  // pass `isTopPick` down so analyseHorse only marks that horse as a bet.
+  // If user selected a bet strategy, the server has attached r.bets — the
+  // actual recorded bet_ledger picks. Otherwise fall back to the model's
+  // default "top calibrated_prob" rule via analyseHorse.
+  const bsMeta = data.bet_strategy;
+  const ledgerBets = r.bets || [];
+  // Build a set of "bet brands" across all combos (split exotics on , or >)
+  const betBrands = new Set();
+  for (const b of ledgerBets) {
+    for (const part of String(b.brand || '').split(/[,>]/)) {
+      if (part) betBrands.add(part);
+    }
+  }
+
+  // Default-rule pick (used when no bet strategy selected): top calibrated_prob.
   const topBrand = (r.horses || [])
-    .filter(h => h.calibrated_prob != null && h.odds != null)
-    .reduce((best, h) => {
-      const e = h.calibrated_prob * h.odds;
-      const bestE = best ? best.calibrated_prob * best.odds : -Infinity;
-      return e > bestE ? h : best;
-    }, null)?.brand;
-  const analyse = (h) => analyseHorse(h, strat, state.lang, h.brand === topBrand);
+    .filter(h => h.calibrated_prob != null)
+    .sort((a, b) => b.calibrated_prob - a.calibrated_prob)[0]?.brand;
+  const analyse = (h) => {
+    if (bsMeta) {
+      // Override: this horse is a bet iff it appears in bet_ledger for this race.
+      return _analyseFromLedger(h, ledgerBets, bsMeta, state.lang);
+    }
+    return analyseHorse(h, strat, state.lang, h.brand === topBrand);
+  };
 
   const dividends = (data.dividends || []).filter(d => d.course === r.course && d.race_no === r.race_no);
   const divChunks = dividends.map(d =>
@@ -2600,7 +2766,14 @@ function wireRaceControls() {
   const sel = document.getElementById('raceStrat');
   if (sel) sel.addEventListener('change', () => {
     state.raceStrategy = sel.value === '' ? null : parseInt(sel.value);
-    saveUi({ raceStrategy: state.raceStrategy });
+    state.raceBetStrategy = null;    // new model = stale bet selection
+    saveUi({ raceStrategy: state.raceStrategy, raceBetStrategy: null });
+    loadRaces();
+  });
+  const betSel = document.getElementById('raceBetStrat');
+  if (betSel) betSel.addEventListener('change', () => {
+    state.raceBetStrategy = betSel.value === '' ? null : parseInt(betSel.value);
+    saveUi({ raceBetStrategy: state.raceBetStrategy });
     loadRaces();
   });
   // Year click: clear month + date so the user makes a fresh choice; render
@@ -2999,6 +3172,16 @@ function wire() {
   if (ksToggle) ksToggle.addEventListener('click', toggleKillSwitch);
   const lmToggle = document.getElementById('lmToggle');
   if (lmToggle) lmToggle.addEventListener('click', toggleLiveMode);
+
+  // Bet-strategy selector (above charts) — switch all charts to the
+  // selected strategy's bet_ledger payload.
+  const sel = document.getElementById('dashBetSelect');
+  if (sel) sel.addEventListener('change', () => {
+    const v = sel.value;
+    state.dashSelectedBet = v ? parseInt(v) : null;
+    saveUi({ dashSelectedBet: state.dashSelectedBet });
+    refreshDashCharts();
+  });
 
   // Bet-strategies panel wire-up: toggle = enable/disable + reload curves,
   // delete = wipe ledger + remove, add form = POST a new bet strategy and

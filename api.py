@@ -511,6 +511,207 @@ def run_bet_strategy(bet_strategy_id: int, date_from: str | None = None,
         conn.close()
 
 
+@router.get("/bet_strategies/{bet_strategy_id}/charts")
+def bet_strategy_charts(bet_strategy_id: int,
+                        date_from: str | None = None,
+                        date_to: str | None = None) -> dict:
+    """Per-bet-strategy chart payload — same SHAPE as
+    /strategies/{id}/charts so the SPA can render with the existing chart
+    components, but every series is computed from `bet_ledger` rows
+    instead of predictions + a hardcoded selection rule.
+
+    Returns:
+      cumulative_pnl   — daily stake/payout/pnl + running cum
+      odds_buckets     — strike + ROI per odds band
+      segments         — by_track / by_class / by_distance (from JOINed races)
+      bankroll_path    — compounded bank assuming bet_ledger.stake is fixed
+      totals           — n_bets / n_wins / stake / payout / pnl
+      thresholds       — config snapshot for the UI
+    """
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    conn = _connect()
+    try:
+        meta = conn.execute(
+            "SELECT name, name_en, name_zh, rule_kind, params_json, "
+            "       chart_color, model_strategy_id "
+            "FROM bet_strategies WHERE id = ?",
+            (bet_strategy_id,),
+        ).fetchone()
+        if not meta:
+            raise HTTPException(404, f"bet strategy {bet_strategy_id} not found")
+        name, name_en, name_zh, rule_kind, params_json, chart_color, model_id = meta
+
+        where = ["bl.bet_strategy_id = ?"]
+        params: list = [bet_strategy_id]
+        if date_from:
+            where.append("bl.race_date >= ?"); params.append(date_from)
+        if date_to:
+            where.append("bl.race_date <= ?"); params.append(date_to)
+
+        # ── Cumulative PnL ─────────────────────────────────────────────
+        daily = conn.execute(
+            f"""
+            SELECT bl.race_date AS date,
+                   SUM(bl.stake)   AS stake,
+                   SUM(bl.payout)  AS payout,
+                   SUM(bl.pnl)     AS pnl,
+                   COUNT(*)        AS n_bets,
+                   SUM(bl.won = 1) AS n_wins
+            FROM bet_ledger bl
+            WHERE {' AND '.join(where)}
+            GROUP BY bl.race_date
+            ORDER BY bl.race_date
+            """,
+            params,
+        ).fetchall()
+        # Total race count per meeting day (any race that the strategy COULD
+        # have bet on) — so the stacked-races chart still works.
+        race_count_rows = conn.execute(
+            """
+            SELECT date, COUNT(*) FROM races
+            WHERE date IN (SELECT DISTINCT race_date FROM bet_ledger
+                           WHERE bet_strategy_id = ?)
+            GROUP BY date
+            """,
+            (bet_strategy_id,),
+        ).fetchall()
+        race_counts = {d: n for d, n in race_count_rows}
+
+        cum_pnl = []
+        s_cum = p_cum = 0.0; n_cum = 0
+        for d, stake, payout, pnl, nb, nw in daily:
+            s_cum += float(stake or 0); p_cum += float(payout or 0); n_cum += nb
+            cum_pnl.append({
+                "date": d,
+                "stake_cum": round(s_cum, 2),
+                "payout_cum": round(p_cum, 2),
+                "pnl_cum": round(p_cum - s_cum, 2),
+                "n_bets_cum": n_cum,
+                "daily_stake": round(float(stake or 0), 2),
+                "daily_pnl": round(float(pnl or 0), 2),
+                "daily_bets": nb,
+                "daily_wins": nw,
+                "total_races": race_counts.get(d, 0),
+            })
+
+        # ── Odds buckets ───────────────────────────────────────────────
+        bucket_def = [(2.5, 4), (4, 6), (6, 8), (8, 12), (12, 16), (16, 20), (20, 99)]
+        odds_buckets = []
+        for lo, hi in bucket_def:
+            row = conn.execute(
+                f"""
+                SELECT COUNT(*), SUM(bl.won = 1),
+                       SUM(bl.stake), SUM(bl.payout)
+                FROM bet_ledger bl
+                WHERE {' AND '.join(where)}
+                  AND bl.odds_at_bet >= ? AND bl.odds_at_bet < ?
+                """,
+                params + [lo, hi],
+            ).fetchone()
+            if not row or not row[0]:
+                continue
+            n_bets, n_wins, stake, payout = row
+            stake = float(stake or 0); payout = float(payout or 0)
+            odds_buckets.append({
+                "lo": lo, "hi": hi,
+                "n_bets": n_bets, "n_wins": n_wins or 0,
+                "win_rate": (n_wins / n_bets) if n_bets else 0,
+                "expected_win_rate": None,    # not derivable from ledger alone
+                "stake": round(stake, 2),
+                "payout": round(payout, 2),
+                "roi": ((payout - stake) / stake) if stake > 0 else 0,
+            })
+
+        # ── Segments by track / class / distance ───────────────────────
+        seg_rows = conn.execute(
+            f"""
+            SELECT ra.course, ra.class, ra.distance,
+                   SUM(bl.stake), SUM(bl.payout), COUNT(*), SUM(bl.won = 1)
+            FROM bet_ledger bl
+            JOIN races ra ON ra.id = bl.race_id
+            WHERE {' AND '.join(where)}
+            GROUP BY ra.course, ra.class, ra.distance
+            """,
+            params,
+        ).fetchall()
+
+        def _agg(items):
+            n = sum(i[5] for i in items); w = sum(i[6] for i in items)
+            s = sum(i[3] or 0 for i in items); p = sum(i[4] or 0 for i in items)
+            return {"n_bets": n, "n_wins": w,
+                    "stake": round(s, 2), "payout": round(p, 2),
+                    "pnl": round(p - s, 2),
+                    "win_rate": (w / n) if n else 0,
+                    "roi": ((p - s) / s) if s > 0 else 0}
+        def _class_bucket(cls):
+            try:
+                n = int(float(str(cls or '').strip().replace('CLASS','').replace('C','').strip()))
+                return "C1-2" if n <= 2 else "C3-5"
+            except Exception:
+                s = str(cls or '').upper()
+                return "G/L" if (s.startswith("G") or "LISTED" in s) else "other"
+        def _dist_bucket(d):
+            try: d = int(d or 0)
+            except Exception: return "?"
+            if d <= 1200: return "≤1200m"
+            if d <= 1800: return "1400-1800m"
+            return "≥2000m"
+
+        by_track: dict = {}; by_class: dict = {}; by_distance: dict = {}
+        for course, cls, dist, stake, payout, n_bets, n_wins in seg_rows:
+            row = (course, cls, dist, stake, payout, n_bets, n_wins)
+            by_track.setdefault(course or "?", []).append(row)
+            by_class.setdefault(_class_bucket(cls), []).append(row)
+            by_distance.setdefault(_dist_bucket(dist), []).append(row)
+        segments = {
+            "by_track":    [{"label": k, **_agg(v)} for k, v in by_track.items()    if v],
+            "by_class":    [{"label": k, **_agg(v)} for k, v in by_class.items()    if v],
+            "by_distance": [{"label": k, **_agg(v)} for k, v in by_distance.items() if v],
+        }
+
+        # ── Bankroll path (compounded) ────────────────────────────────
+        bank_path = []
+        bank = 10000.0; peak = bank
+        for entry in cum_pnl:
+            bank += entry["daily_pnl"]
+            peak = max(peak, bank)
+            drawdown = ((peak - bank) / peak * 100) if peak > 0 else 0
+            bank_path.append({
+                "date": entry["date"],
+                "bankroll": round(bank, 2),
+                "drawdown": round(drawdown, 2),
+                "peak": round(peak, 2),
+            })
+
+        totals = {
+            "n_bets": sum(c["daily_bets"] for c in cum_pnl),
+            "n_wins": sum(c["daily_wins"] for c in cum_pnl),
+            "stake": round(sum(c["daily_stake"] for c in cum_pnl), 2),
+            "payout": round(sum(c["daily_stake"] + c["daily_pnl"] for c in cum_pnl), 2),
+        }
+    finally:
+        conn.close()
+
+    return {
+        "bet_strategy_id": bet_strategy_id,
+        "name": name, "name_en": name_en, "name_zh": name_zh,
+        "rule_kind": rule_kind, "chart_color": chart_color,
+        "model_strategy_id": model_id,
+        "from": date_from, "to": date_to,
+        "cumulative_pnl": cum_pnl,
+        "odds_buckets": odds_buckets,
+        "segments": segments,
+        "bankroll_path": bank_path,
+        "totals": totals,
+        # Stubs for charts that don't apply to a bet strategy:
+        "kelly_scenarios": None,
+        "threshold_sweeps": None,
+        "top_n_scenarios": None,
+        "reliability": None,
+    }
+
+
 @router.get("/bet_strategies/{bet_strategy_id}/curve")
 def bet_strategy_curve(bet_strategy_id: int,
                        date_from: str | None = None,
@@ -1348,11 +1549,15 @@ def _compute_feature_drivers(conn, race_id: int, horse_brands: list[str],
 
 
 @router.get("/races/{date}")
-def get_races_for_date(date: str, strategy_id: int | None = None) -> dict:
+def get_races_for_date(date: str, strategy_id: int | None = None,
+                       bet_strategy_id: int | None = None) -> dict:
     """Race cards for `date`, merged with optional strategy predictions and
-    actual results. Powers the SPA's Race Viewer tab. Horses are sorted by
-    calibrated_prob (predictions present) or by position (results present)
-    or by horse_no as a last resort.
+    actual results. Powers the SPA's Race Viewer tab.
+
+    If `bet_strategy_id` is supplied, every race that has bet_ledger rows
+    for that strategy gets a `bets` array listing the picks (brand, pool,
+    stake, won, payout, pnl). The SPA highlights those horses + replaces
+    the "Today's Bets" summary with the bet strategy's actual picks.
     """
     if not DB_PATH.exists():
         raise HTTPException(404, "DB not initialized")
@@ -1444,9 +1649,43 @@ def get_races_for_date(date: str, strategy_id: int | None = None) -> dict:
         ).fetchall()
         div_cols = ("course","race_no","pool","combination","dividend")
         dividends = [dict(zip(div_cols, r)) for r in div_rows]
+
+        # If user selected a bet strategy, attach every bet_ledger row for
+        # this date keyed by race_id. The SPA uses these to highlight
+        # the bet horses + replace the "Today's Bets" summary.
+        bet_strategy_meta = None
+        if bet_strategy_id is not None:
+            bs = conn.execute(
+                "SELECT id, name, name_en, name_zh, rule_kind, chart_color "
+                "FROM bet_strategies WHERE id = ?", (bet_strategy_id,),
+            ).fetchone()
+            if bs:
+                bet_strategy_meta = {
+                    "id": bs[0], "name": bs[1], "name_en": bs[2],
+                    "name_zh": bs[3], "rule_kind": bs[4], "chart_color": bs[5],
+                }
+                ledger_rows = conn.execute(
+                    """
+                    SELECT race_id, brand, pool, stake, odds_at_bet, won,
+                           payout, pnl, pick_rank, reason
+                    FROM bet_ledger
+                    WHERE bet_strategy_id = ? AND race_date = ?
+                    """,
+                    (bet_strategy_id, date),
+                ).fetchall()
+                bets_by_race: dict[int, list] = {}
+                for race_id_, brand, pool, stake, odds, won, payout, pnl, rank, reason in ledger_rows:
+                    bets_by_race.setdefault(race_id_, []).append({
+                        "brand": brand, "pool": pool, "stake": stake,
+                        "odds_at_bet": odds, "won": won, "payout": payout,
+                        "pnl": pnl, "pick_rank": rank, "reason": reason,
+                    })
+                for race in out_races:
+                    race["bets"] = bets_by_race.get(race["id"], [])
     finally:
         conn.close()
-    return {"date": date, "races": out_races, "dividends": dividends}
+    return {"date": date, "races": out_races, "dividends": dividends,
+            "bet_strategy": bet_strategy_meta}
 
 
 # ─── Live status (decision loop heartbeat + circuit breaker) ──────────────────
