@@ -118,6 +118,38 @@ last 5"). It had no way to know that 70 was the highest in a field of
 fourteen 55s vs the lowest in a field of three 80s. Field-z-score gave
 it that context directly.
 
+### Iter 22-25 — confirming the optimum
+
+* 10-seed ensemble (Iter 22): top1 41.7%, ROI +135.9% — WORSE than
+  single model (+185.9%). Racing variance is in the features/data,
+  not in booster initialisation. Skip ensembles.
+* τ sweep (Iter 23, 66-feature set): τ=180d still optimal (+185%).
+  τ=120d at +166%, τ=270d at +155% — 180d hits the regime-shift
+  sweet spot.
+* XGBoost hyperparam grid (Iter 24): max_depth=4 + eta=0.05 still
+  the optimum. Wider/deeper variants lose 20-50pp ROI.
+* Form-change features H184/H185 (Iter 21): mixed cross-val (helped
+  early splits, hurt recent). Excluded from deployment.
+
+### Losing-day pattern
+
+Walk-forward May 2026 has a 30/71 wins distribution but 2 of the 9 race
+days are outliers:
+
+  2026-05-06  9 races,  7 wins (78%)
+  2026-05-17 11 races,  7 wins (64%)
+  2026-05-20  9 races,  1 win  (11%)  ← all 12-horse fields
+  2026-05-24 11 races,  1 win  (9%)   ← 14-15 horse fields, picks at
+                                         model probabilities 0.13-0.30
+                                         vs market odds 23-44 (off-
+                                         consensus longshots that
+                                         didn't pan out)
+
+Big-field races dilute the model's edge — top horse's probability for
+a 14-horse field's winner is structurally close to its rivals. Not
+fixable with feature engineering; this is the irreducible variance
+ceiling for the strategy.
+
 ---
 
 ## Insights that should outlive any specific config
