@@ -2588,10 +2588,11 @@ function _renderBetsSummaryFromLedger(data, bsMeta, lang) {
       .slice(0, 4);
     const betBrandSet = new Set(betBrands);
     const tipHtml = topPicks.length
-      ? topPicks.map((h, i) => {
+      ? topPicks.map(h => {
           const nm = escapeHtml(i18n.horse(h, lang));
           const onBet = betBrandSet.has(h.brand);
-          return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}">${i + 1}. ${nm}</span>`;
+          const gate = h.draw ?? '—';
+          return `<span style="white-space:nowrap;${onBet ? 'font-weight:600' : 'color:var(--muted)'}"><span style="display:inline-block;min-width:1.6em;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${gate}</span> ${nm}</span>`;
         }).join('<br>')
       : '—';
     const pm = isSettled ? (pmByBet[bet.id] || null) : null;
