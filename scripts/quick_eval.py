@@ -47,8 +47,18 @@ def _coerce_int(raw) -> int | None:
     except (TypeError, ValueError): return None
 
 
+_LABEL_SCHEMES = {
+    "ramp":   lambda p: max(0.0, 5 - p),                  # 1→4, 5+→0  (default)
+    "ramp8":  lambda p: max(0.0, 8 - p) if p <= 8 else 0, # 1→7, 8+→0
+    "binary": lambda p: 1.0 if p == 1 else 0.0,           # winner-only
+    "podium": lambda p: 1.0 if p <= 3 else 0.0,           # top-3 binary
+    "steep":  lambda p: ({1:8, 2:4, 3:2, 4:1}.get(p, 0.0)),
+}
+
+
 def _load_split(conn: sqlite3.Connection, before: str | None, between: tuple[str, str] | None,
-                feature_ids: list[str], *, want_dates: bool = False):
+                feature_ids: list[str], *, want_dates: bool = False,
+                label_scheme: str = "ramp"):
     """Return X, y_label (4..0 ranking labels), group sizes, race_ids, positions.
 
     `before`: load races strictly < this date (training).
@@ -110,7 +120,13 @@ def _load_split(conn: sqlite3.Connection, before: str | None, between: tuple[str
             if v is not None:
                 X[i, j] = v
 
-    y = np.array([max(0.0, 5 - p) for p in positions])  # 1st=4, 5th+=0
+    # Label scheme: how to convert finish position → ranking label.
+    # ramp (default): 4/3/2/1/0 — cares about top-5.
+    # binary: 1/0 — only the winner matters (matches our betting rule).
+    # podium: 1/0 for top-3 vs rest.
+    # steep: 8/4/2/1/0 — heavily privileges the winner.
+    label_fn = _LABEL_SCHEMES[label_scheme]
+    y = np.array([label_fn(p) for p in positions])
     rids = [k[0] for k in keys_order]
     if want_dates:
         dates = [race_dates.get(rid) for rid in rids]
@@ -228,7 +244,8 @@ def run(split: str, until: str, *, feature_filter: list[str] | None = None,
         num_round: int = 200, subsample: float = 0.8, colsample: float = 0.8,
         benter_alpha: float = 1.0, benter_beta: float = 0.9,
         use_market: bool = True, select_by: str = "prob",
-        time_decay_tau: float | None = None) -> dict:
+        time_decay_tau: float | None = None,
+        label_scheme: str = "ramp") -> dict:
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA query_only = 1")
 
@@ -239,12 +256,15 @@ def run(split: str, until: str, *, feature_filter: list[str] | None = None,
     want_dates = time_decay_tau is not None
     if want_dates:
         X_tr, y_tr, g_tr, rids_tr, _, dates_tr = _load_split(
-            conn, before=split, between=None, feature_ids=fids, want_dates=True)
+            conn, before=split, between=None, feature_ids=fids, want_dates=True,
+            label_scheme=label_scheme)
     else:
         X_tr, y_tr, g_tr, rids_tr, _ = _load_split(
-            conn, before=split, between=None, feature_ids=fids)
+            conn, before=split, between=None, feature_ids=fids,
+            label_scheme=label_scheme)
         dates_tr = None
-    X_te, y_te, g_te, rids_te, pos_te = _load_split(conn, before=None, between=(split, until), feature_ids=fids)
+    X_te, y_te, g_te, rids_te, pos_te = _load_split(conn, before=None, between=(split, until),
+                                                     feature_ids=fids, label_scheme=label_scheme)
     if len(X_tr) == 0 or len(X_te) == 0:
         return {"error": "empty train or test set"}
 
@@ -375,6 +395,9 @@ def main() -> None:
                    help="rank horses per race by prob (default) or by prob*odds")
     p.add_argument("--time-decay-tau", type=float, default=None,
                    help="time-decay half-life in days (exp weighting). None = uniform.")
+    p.add_argument("--label-scheme", default="ramp",
+                   choices=list(_LABEL_SCHEMES.keys()),
+                   help="position→label conversion. Default 4/3/2/1/0 ramp.")
     p.add_argument("--tag", default="run")
     ns = p.parse_args()
 
@@ -390,6 +413,7 @@ def main() -> None:
         benter_alpha=ns.alpha, benter_beta=ns.beta,
         use_market=not ns.no_market, select_by=ns.select_by,
         time_decay_tau=ns.time_decay_tau,
+        label_scheme=ns.label_scheme,
     )
     out["tag"] = ns.tag
     print(json.dumps(out, indent=2))
