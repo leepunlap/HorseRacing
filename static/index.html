@@ -2706,25 +2706,13 @@ function analyseHorse(h, strat, lang, isTopPick) {
     return `${arrow}${String(nm ?? '')}${num}`;
   }).join('、');
 
-  // Assessment cells on the Races page only need the driver list
-  // (上揚因素 / 下挫因素 / Tailwinds / Headwinds). The "Skip — not top
-  // edge" / "Bet — model X% vs market Y%" preamble was noise users asked
-  // us to drop.
-  const driversZhSkip = [
-    drivers.top.length    ? `上揚因素：${driverLine(drivers.top, '↑')}`    : '',
-    drivers.bottom.length ? `下挫因素：${driverLine(drivers.bottom, '↓')}` : '',
-  ].filter(Boolean).join(' · ');
-  const driversEnSkip = [
-    drivers.top.length    ? `Tailwinds: ${driverLine(drivers.top, '↑')}`    : '',
-    drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
-  ].filter(Boolean).join(' · ');
+  // Assessment cells: just the top tailwind + top headwind in layman
+  // terms. The Skip/Bet preamble and the long multi-driver list were
+  // noise — _laymanDrivers caps at one per side for scannability.
+  const reasonZh = _laymanDrivers(h, 'zh');
+  const reasonEn = _laymanDrivers(h, 'en');
   if (blocks.length) {
-    return {
-      bet: false,
-      reasonZh: driversZhSkip,
-      reasonEn: driversEnSkip,
-      stake: null, pnl: null,
-    };
+    return { bet: false, reasonZh, reasonEn, stake: null, pnl: null };
   }
 
   const kellyF = (p * o - 1) / (o - 1);
@@ -2750,26 +2738,30 @@ function analyseHorse(h, strat, lang, isTopPick) {
     drivers.bottom.length ? `Headwinds: ${driverLine(drivers.bottom, '↓')}` : '',
   ].filter(Boolean).join(' · ');
   // Same simplification for bet rows: drop the "Bet — model 36% vs
-  // market 11% edge 4.1×" preamble that the user found noisy. The bet
-  // tick column already conveys "this is the bet"; the assessment text
-  // is now driver-only.
+  // market 11% edge 4.1×" preamble. The bet tick column already conveys
+  // "this is the bet"; the assessment text is just the top tailwind +
+  // top headwind in layman terms.
   return {
     bet: true,
-    reasonZh: driversZh,
-    reasonEn: driversEn,
+    reasonZh,
+    reasonEn,
     stake, pnl,
   };
 }
 
-// When a bet strategy is selected on the Races page, we don't compute the
-// bet decision here — the server-side bet_runner already wrote bet_ledger
-// rows. This helper turns those rows into the same {bet, reason, stake,
-// pnl} shape that the per-race tables consume.
+// When a bet strategy is selected on the Races page we don't run the JS
+// decision logic — the server-side bet_runner already produced the
+// bet_ledger. This helper takes a horse + the race's ledger rows + the
+// bet-strategy meta and returns {bet, reasonZh/En, stake, pnl}.
+//
+// Reasons are PURE layman drivers (top tailwind / top headwind) for every
+// horse — the bet tick column already conveys "this is the bet"; the
+// "非 X 投注 / not bet by X" label was noise and is dropped.
 function _analyseFromLedger(h, ledgerBets, bsMeta, lang) {
-  if (!ledgerBets.length) {
-    return { bet: false, reasonZh: '—', reasonEn: '—', stake: null, pnl: null };
-  }
-  // A horse is "bet" if it appears in any ledger row's combination.
+  // Always compute the layman driver line (top 1 tailwind, top 1 headwind).
+  const reasonZh = _laymanDrivers(h, 'zh');
+  const reasonEn = _laymanDrivers(h, 'en');
+
   const involved = ledgerBets.filter(b => {
     for (const part of String(b.brand || '').split(/[,>]/)) {
       if (part === h.brand) return true;
@@ -2777,29 +2769,40 @@ function _analyseFromLedger(h, ledgerBets, bsMeta, lang) {
     return false;
   });
   if (!involved.length) {
-    const label = lang === 'zh'
-      ? `非 ${escapeHtml(bsMeta.name_zh || bsMeta.name)} 投注`
-      : `not bet by ${escapeHtml(bsMeta.name_en || bsMeta.name)}`;
-    return { bet: false, reasonZh: label, reasonEn: label, stake: null, pnl: null };
+    return { bet: false, reasonZh, reasonEn, stake: null, pnl: null };
   }
-  // Sum stake/pnl across all rows this horse is part of.
-  let stake = 0, pnl = 0, anyWon = 0, pools = new Set();
+  // Sum stake/pnl across all bets this horse is part of.
+  let stake = 0, pnl = 0;
   for (const b of involved) {
     stake += (b.stake || 0);
     pnl += (b.pnl || 0);
-    if (b.won === 1) anyWon = 1;
-    pools.add(b.pool);
   }
-  const poolLabel = [...pools].join(',');
-  const ruleLabel = lang === 'zh' ? (bsMeta.name_zh || bsMeta.name)
-                                  : (bsMeta.name_en || bsMeta.name);
-  const ranks = involved.map(b => `#${b.pick_rank || '?'}`).join('/');
-  return {
-    bet: true,
-    reasonZh: `${ruleLabel} (${poolLabel}) — 排名 ${ranks}`,
-    reasonEn: `${ruleLabel} (${poolLabel}) — rank ${ranks}`,
-    stake, pnl,
+  return { bet: true, reasonZh, reasonEn, stake, pnl };
+}
+
+// One-line driver string per horse in layman terms. Caps each side at the
+// TOP factor (the highest z-score) so the cell stays scannable. Falls back
+// to '—' when the horse has no predictions (and therefore no drivers).
+function _laymanDrivers(h, lang) {
+  const drivers = h.feature_drivers || { top: [], bottom: [] };
+  const fmt = (d) => {
+    const nm = lang === 'zh' ? (d.name_zh || d.name_en || d.feature_id)
+                             : (d.name_en || d.name_zh || d.feature_id);
+    const hasNum = (typeof d.value === 'number' && typeof d.field_mean === 'number');
+    const num = hasNum ? ` (${formatDriverVal(d.value)} vs ${formatDriverVal(d.field_mean)})` : '';
+    return `${String(nm)}${num}`;
   };
+  const t1 = drivers.top[0];
+  const b1 = drivers.bottom[0];
+  if (!t1 && !b1) return '—';
+  const parts = [];
+  if (t1) {
+    parts.push(lang === 'zh' ? `↑ 上揚: ${fmt(t1)}` : `↑ Tailwind: ${fmt(t1)}`);
+  }
+  if (b1) {
+    parts.push(lang === 'zh' ? `↓ 下挫: ${fmt(b1)}` : `↓ Headwind: ${fmt(b1)}`);
+  }
+  return parts.join(' · ');
 }
 
 function renderRaceBlock(r, data, sid) {
