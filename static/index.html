@@ -2717,27 +2717,40 @@ function _analyseFromLedger(h, ledgerBets, bsMeta, lang) {
   return { bet: true, reasonZh, reasonEn, stake, pnl };
 }
 
-// One-line driver string per horse in layman terms. Caps each side at the
-// TOP factor (the highest z-score) so the cell stays scannable. Falls back
-// to '—' when the horse has no predictions (and therefore no drivers).
+// Driver line per horse — lists EVERY tailwind and headwind the backend
+// returned (currently up to 3 each), with each factor's strength
+// normalised to an integer score in [-9, +9] for at-a-glance comparison.
+//
+// The raw `z` is the field-relative standardised score (this horse's
+// feature value minus race field mean / race field stdev). Typical
+// z-scores fall in [-3, +3]; we map z=3 → +9 (max) by multiplying ×3
+// and clamping. That keeps the number space tidy and visually
+// comparable across rows without exposing raw decimals.
 function _laymanDrivers(h, lang) {
   const drivers = h.feature_drivers || { top: [], bottom: [] };
+  if (!drivers.top.length && !drivers.bottom.length) return '—';
   const fmt = (d) => {
     const nm = lang === 'zh' ? (d.name_zh || d.name_en || d.feature_id)
                              : (d.name_en || d.name_zh || d.feature_id);
-    const hasNum = (typeof d.value === 'number' && typeof d.field_mean === 'number');
-    const num = hasNum ? ` (${formatDriverVal(d.value)} vs ${formatDriverVal(d.field_mean)})` : '';
-    return `${String(nm)}${num}`;
+    let score = 0;
+    if (typeof d.z === 'number' && isFinite(d.z)) {
+      score = Math.max(-9, Math.min(9, Math.round(d.z * 3)));
+    }
+    const sign = score > 0 ? '+' : '';
+    return `${String(nm)} (${sign}${score})`;
   };
-  const t1 = drivers.top[0];
-  const b1 = drivers.bottom[0];
-  if (!t1 && !b1) return '—';
+  const topAll = drivers.top.map(fmt);
+  const botAll = drivers.bottom.map(fmt);
   const parts = [];
-  if (t1) {
-    parts.push(lang === 'zh' ? `↑ 上揚: ${fmt(t1)}` : `↑ Tailwind: ${fmt(t1)}`);
+  if (topAll.length) {
+    parts.push(lang === 'zh'
+      ? `↑ 上揚: ${topAll.join(', ')}`
+      : `↑ Tailwinds: ${topAll.join(', ')}`);
   }
-  if (b1) {
-    parts.push(lang === 'zh' ? `↓ 下挫: ${fmt(b1)}` : `↓ Headwind: ${fmt(b1)}`);
+  if (botAll.length) {
+    parts.push(lang === 'zh'
+      ? `↓ 下挫: ${botAll.join(', ')}`
+      : `↓ Headwinds: ${botAll.join(', ')}`);
   }
   return parts.join(' · ');
 }
