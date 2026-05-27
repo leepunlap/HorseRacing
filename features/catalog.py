@@ -306,10 +306,19 @@ FEATURES: list[Feature] = [
     Feature("H186", 4, "騎師×馬匹勝率", "Jockey × horse WR",
             "Win rate when this jockey rode this horse historically",
             "B9", "h186_jockey_horse_wr"),
+    # ─── Running-style features (added 2026-05-27 Iter 26) ───────────
+    Feature("H187", 10, "平均後上能力", "Avg closing kick",
+            "Average (first-call position − final position) across history "
+            "— positive = horse closes from the back, negative = drops back",
+            "B9", "h187_avg_closing_kick"),
+    Feature("H188", 10, "後上強度z分", "Closing kick z-score",
+            "Last race's closing kick normalised by horse's own history "
+            "stdev — how anomalous was the last performance",
+            "B9", "h188_closing_kick_z"),
 ]
 
-assert len(FEATURES) == 186, f"expected 186 features, got {len(FEATURES)}"
-assert len({f.id for f in FEATURES}) == 186, "duplicate feature ids"
+assert len(FEATURES) == 188, f"expected 188 features, got {len(FEATURES)}"
+assert len({f.id for f in FEATURES}) == 188, "duplicate feature ids"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

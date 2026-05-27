@@ -1165,6 +1165,48 @@ def h186_jockey_horse_wr(c):
     return wins / len(rides)
 
 
+# ─── Running-style features (H187/H188) ──────────────────────────────
+
+def _closing_kick(h: dict) -> float | None:
+    """Compute first-call pos − final pos from history dict's `running` field.
+
+    HKJC race_history.running format: 'first_call mid_call final' e.g. '9 10 7'
+    Positive = horse moved forward (passed others); negative = lost positions.
+    """
+    run = h.get("running")
+    pos = h.get("position")
+    if not run or pos is None:
+        return None
+    try:
+        first = int(str(run).split()[0])
+        return float(first) - float(pos)
+    except (ValueError, IndexError):
+        return None
+
+
+def h187_avg_closing_kick(c):
+    if not c.history:
+        return None
+    kicks = [_closing_kick(h) for h in c.history]
+    kicks = [k for k in kicks if k is not None]
+    return sum(kicks) / len(kicks) if kicks else None
+
+
+def h188_closing_kick_z(c):
+    if not c.history:
+        return None
+    kicks = [_closing_kick(h) for h in c.history]
+    kicks = [k for k in kicks if k is not None]
+    if len(kicks) < 3:
+        return None
+    last = kicks[-1]
+    mean = sum(kicks) / len(kicks)
+    var = sum((k - mean) ** 2 for k in kicks) / len(kicks)
+    if var <= 0:
+        return 0.0
+    return (last - mean) / (var ** 0.5)
+
+
 def h179_sire_dist_winrate(c):
     sire = _sire_for_brand(c, c.entry["brand"])
     dist = c.race.get("distance")
