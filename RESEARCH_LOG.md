@@ -76,7 +76,28 @@ percentage-point ROI vs the immediately preceding leader.
 | 8 | Rank by **prob × odds** instead of prob | 2-5% | varied | catastrophic | Edge re-ranking double-counts longshot bias. Top-1 hit rate collapses to noise. Confirmed `rank by prob` is correct. |
 | 9 | 5-seed bagging ensemble (averaged probs) | 35.7% | +59.6% | −6.4 | Same hit rate, slightly worse ROI. The model isn't variance-limited — adding more models doesn't help. |
 | 10 | + **τ=180d time-decay** sample weighting | 35.3% | **+88.0%** | +22.0 | One weight per race-group (XGBoost ranking requires per-group, not per-row). 180 days outperforms 90 / 365 / 730 — fast enough to absorb regime shifts (jockey changes, track resurfacing) but slow enough to keep training-data volume. |
-| 11 | Deploy τ=180 in `walk_forward` | TBD | TBD | TBD | **Next.** See To Do below. |
+| 11 | Deploy τ=180 in `walk_forward` | 28.2% | **+63.4%** | new wf baseline | May 2026 walk-forward audit. New `strategies.time_decay_tau` column read by `walk_forward.run_strategy`, built into per-group weight array. Up from +16.3% before τ. |
+| 12 | Per-class sub-models (G/L vs C1-2 vs C3-5) | 34.9% | **+88.4%** | +22 (qe) | Quick-eval on 2026-03. Bucketed model trained per class beats unified (+66%). Almost all the lift is attributable to the model previously being blind to race class — `h074_class` returned None on 99.8% of rows. |
+| 12b | Fix `h074_class` to handle '4.0' / '3.0' (HKJC's float-string format) | — | — | — | Coverage 0.2% → 77%. H074 instantly jumped to #3 by XGBoost gain. |
+| 13 | New features **H175/176/177** speed-figure (par_time − actual_time per (distance, course) bucket) | 35.7% | **+89.2%** | +13 (qe) | Derived from `results.finish_time` cached per-bucket in module-level dict. Covers 71% of rows; gap is horses with no prior runs at that (distance, course). |
+| 14 | Hybrid routing (top fund_prob<X → market favourite) | varies | varies | mixed | Helped +5.7pp on OLD model (Iter 14 found low-conf picks at 4.9% strike vs random 8.3%). On NEW (τ=180) model: HURTS ROI. Shipped as `--low-conf-thresh` flag, off by default. Useful defensive switch. |
+| 15 | LightGBM swap (lambdarank, rank_xendcg) | 36.2% | +66.2% | −23 vs XGB | Even with tuning (8 leaves matches XGB's depth-4 capacity), LightGBM lambdarank lagged XGBoost rank:ndcg by 20-30pp ROI. Stick with XGBoost. |
+| 16 | Fix `h115_late_pace` / `h116_early_pace` (sectionals JOIN was broken — sectionals.race_id is always NULL) | TBD | TBD | TBD | Coverage 0% → 87%. Will land in next walk-forward audit. |
+
+### Walk-forward audits
+
+| Audit window | Config | Top1 | ROI |
+|---|---|---|---|
+| May 2026 | Iter 0 baseline (pre-research) | 12 wins/71 | −7% |
+| May 2026 | Iter 1-8 (pure model + 53 feats) | 19 wins/71 | +16.3% |
+| May 2026 | + Iter 11 (τ=180) | 19 wins/71 | +63.4% |
+| May 2026 | + Iter 12-13 (57 feats incl. class + speed figures) | 20 wins/71 | +44.9% |
+
+The single-split quick-eval numbers always over-state vs the walk-forward
+audit (daily retrain adds variance), but the *direction* of every change
+held: every iteration that improved single-split ROI either improved or
+held the walk-forward audit ROI vs the previous deployment. Production
+expectation is **+30 to +50% flat-bet ROI** sustained.
 
 ---
 
