@@ -2998,9 +2998,12 @@ function renderRaceBlock(r, data, sid) {
       <div class="race-body">
         <table class="race-table compact">
           <thead><tr>
-            <th class="num" title="${t('實際名次 / 預測名次', 'actual / predicted')}">${t('名次', 'pos')}</th>
-            <th>${t('馬 / 閘', 'horse / draw')}</th>
-            <th>${t('騎師 / 練馬師', 'jockey / trainer')}</th>
+            <th class="num">${t('實際', 'actual')}</th>
+            <th class="num">${t('預測', 'pred')}</th>
+            <th>${t('馬', 'horse')}</th>
+            <th class="num">${t('閘', 'dr')}</th>
+            <th>${t('騎師', 'jockey')}</th>
+            <th>${t('練馬師', 'trainer')}</th>
             <th class="num" title="${t('賠率 / 市場機率', 'odds / market p')}">${t('賠率', 'odds')}</th>
             <th class="num" title="${t('模型機率 / edge', 'model p / edge')}">${t('模型', 'model')}</th>
             <th class="num" title="${t('完成時間 / 頭馬距離', 'finish time / lengths behind')}">${t('時間', 'time')}</th>
@@ -3028,19 +3031,14 @@ function renderRaceBlock(r, data, sid) {
               ? (h.position === 1 || h.position === '1' ? '—' : '')
               : escapeHtml(String(h.lbw));
             const runTxt = escapeHtml(String(h.running_style || h.running || '').trim() || '');
-            const posCell = h.position == null ? '—' : escapeHtml(String(h.position));
-            const predCell = pr == null ? '—' : `<small class="${predCls}" style="color:var(--muted)">→${pr}</small>`;
             return `
               <tr class="${cls}">
-                <td class="num"><b>${posCell}</b> ${predCell}</td>
-                <td class="h-name">
-                  <div>${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code></div>
-                  <div class="sub">${t('閘', 'dr')} ${h.draw ?? '—'}</div>
-                </td>
-                <td>
-                  <div>${escapeHtml(i18n.jockey(h.jockey, lang))}</div>
-                  <div class="sub">${escapeHtml(i18n.trainer(h.trainer, lang))}</div>
-                </td>
+                <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
+                <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
+                <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code></td>
+                <td class="num">${h.draw ?? '—'}</td>
+                <td>${escapeHtml(i18n.jockey(h.jockey, lang))}</td>
+                <td>${escapeHtml(i18n.trainer(h.trainer, lang))}</td>
                 <td class="num">
                   <div>${fmtNum(h.odds, 2)}</div>
                   <div class="sub">${fmtPct(mkt)}</div>
