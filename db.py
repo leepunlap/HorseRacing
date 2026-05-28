@@ -151,6 +151,37 @@ CREATE INDEX IF NOT EXISTS idx_dividends_race ON dividends(date, course, race_no
 
 # tables. Each is independent; adding more later is additive.
 SCHEMA = """
+-- ─── Multi-leg dividend pools (DBL/TBL/DT/TT/SixUP, HKJC live capture) ──
+-- The per-race `dividends` table covers single-race pools (WIN/PLACE/QIN/
+-- QPL/TRI/TRIO/F4/QTT). Multi-leg pools span 2-6 races each and are
+-- structurally different (one dividend can have multiple legs, the
+-- combination string references multiple horses across races).
+--
+-- IMPORTANT: HKJC's public surface only exposes these LIVE. The
+-- resultMeetings GraphQL query (the only whitelist-friendly source we
+-- found) returns just the next upcoming meeting; once a new meeting
+-- goes on sale, the previous meeting's multi-leg pools are dropped.
+-- There is no archive. `scrape_multi_leg_dividends.py` is intended to
+-- run on race-day evenings, in the window between the last race ending
+-- and the next meeting going on sale.
+CREATE TABLE IF NOT EXISTS multi_leg_dividends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,                    -- meeting date (YYYY-MM-DD)
+    course TEXT NOT NULL,                  -- ST or HV
+    pool TEXT NOT NULL,                    -- DBL, TBL, DT, TT, SixUP
+    leg_races TEXT NOT NULL,               -- JSON array of race numbers, e.g. "[2,5]"
+    leg_count INTEGER NOT NULL,            -- 2 / 3 / 6
+    win_comb TEXT NOT NULL,                -- winning combination string
+    dividend REAL,                         -- per-$10 payout in HK$
+    seq INTEGER DEFAULT 0,                 -- multiple winning combos per pool (e.g. dead heat)
+    type TEXT,                             -- HKJC's `type` field (FAV / NON-FAV / CARRYOVER etc.)
+    guarantee INTEGER DEFAULT 0,           -- 1 if pool was guaranteed (Jackpot)
+    captured_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(date, course, pool, win_comb, seq)
+);
+CREATE INDEX IF NOT EXISTS idx_mldiv_date ON multi_leg_dividends(date, course);
+CREATE INDEX IF NOT EXISTS idx_mldiv_pool ON multi_leg_dividends(pool);
+
 -- ─── Bilingual jockey/trainer registry (HKJC official IDs) ───────────────
 -- Keyed by HKJC's own jockey/trainer profile ID (e.g. 'WPN' for 黃寶妮 /
 -- Pollyann Wong, 'MHT' for 巫顯東 / Mo Hin Tung, 'CAS' for trainer 告東尼).

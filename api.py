@@ -122,6 +122,7 @@ SCRAPERS: dict[str, tuple[str, list[str]]] = {
     "weather":               ("scrapers/scrape_weather.py",               []),  # caller passes --date/--course
     "track_bias":            ("scrapers/compute_track_bias.py",           []),  # caller passes --date or --since/--until
     "persons":               ("scrapers/scrape_persons.py",               ["--since", "2025-09-01"]),  # bilingual jockey/trainer registry keyed by HKJC IDs
+    "multi_leg_dividends":   ("scrapers/scrape_multi_leg_dividends.py",   []),                          # DBL/TBL/DT/TT/SixUP — LIVE capture only (next-meeting window)
 }
 
 
