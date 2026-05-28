@@ -243,7 +243,9 @@ class RaceCardScraper(BaseScraper):
         ).fetchone()
         if existing:
             sets, params = [], []
-            for col in ("horse_no","horse_name","jockey","trainer","draw","act_wt","decl_wt"):
+            for col in ("horse_no", "horse_name", "jockey", "trainer", "draw",
+                        "act_wt", "decl_wt", "weight_delta", "over_wt",
+                        "days_since_last", "gear"):
                 if r.get(col) is not None:
                     sets.append(f"{col} = ?"); params.append(r[col])
             if sets:
@@ -254,13 +256,16 @@ class RaceCardScraper(BaseScraper):
                 """
                 INSERT INTO results
                    (race_id, horse_id, date, race_no, course, brand, horse_no,
-                    horse_name, jockey, trainer, draw, act_wt, decl_wt)
+                    horse_name, jockey, trainer, draw, act_wt, decl_wt,
+                    weight_delta, over_wt, days_since_last, gear)
                 VALUES (?, (SELECT id FROM horses WHERE brand = ?),
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (race_id, brand, date_str, race_no, course, brand,
                  r.get("horse_no"), r.get("horse_name"), r.get("jockey"),
-                 r.get("trainer"), r.get("draw"), r.get("act_wt"), r.get("decl_wt")),
+                 r.get("trainer"), r.get("draw"), r.get("act_wt"),
+                 r.get("decl_wt"), r.get("weight_delta"), r.get("over_wt"),
+                 r.get("days_since_last"), r.get("gear")),
             )
 
     @staticmethod
@@ -306,6 +311,18 @@ class RaceCardScraper(BaseScraper):
                 rating = _to_int(col("Rtg.", cells)) or _to_int(col("Int'l Rtg.", cells))
                 # Strip the saddle number from name when present in cell.
                 horse_name = col("Horse", cells) or None
+                # "Wt.+/- (vs Declaration)" — signed integer like "+11", "-4",
+                # blank for first-time runners. Feeds H008 weight_delta.
+                weight_delta = _to_int(col("Wt.+/- (vs Declaration)", cells))
+                # Apprentice over-weight (lb, e.g. "2" when the rider couldn't
+                # make the assigned weight). Empty for full-license jockeys.
+                over_wt = _to_float(col("Over Wt.", cells))
+                # Days since the horse's previous run — direct freshness signal.
+                days_since_last = _to_int(col("Days since Last Run", cells))
+                # Gear (B/V/P/CP/TT/H etc.) — bilingual scraper writes this
+                # both here and on race_history; per-race row captures
+                # gear-changes the horses-table snapshot would miss.
+                gear = col("Gear", cells) or None
                 out.append({
                     "brand": brand,
                     "horse_no": horse_no,
@@ -319,6 +336,10 @@ class RaceCardScraper(BaseScraper):
                     "sex": col("Sex", cells) or None,
                     "colour": col("Colour", cells) or None,
                     "rating": rating,
+                    "weight_delta": weight_delta,
+                    "over_wt": over_wt,
+                    "days_since_last": days_since_last,
+                    "gear": gear,
                 })
             if out:
                 return out

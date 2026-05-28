@@ -704,11 +704,52 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE horses ADD COLUMN name_en TEXT")
     if "name_zh" not in horses_cols:
         conn.execute("ALTER TABLE horses ADD COLUMN name_zh TEXT")
+    # Career-stats fields populated by scrape_horse_pedigree from the
+    # structured (label, ':', value) table on HKJC's horse-profile page.
+    for col, ctype in (("owner", "TEXT"),
+                       ("current_location", "TEXT"),
+                       ("total_stakes", "REAL"),
+                       ("season_stakes", "REAL"),
+                       ("starts", "INTEGER"),
+                       ("wins", "INTEGER"),
+                       ("seconds", "INTEGER"),
+                       ("thirds", "INTEGER")):
+        if col not in horses_cols:
+            conn.execute(f"ALTER TABLE horses ADD COLUMN {col} {ctype}")
+    pedigree_cols = _columns(conn, "horse_pedigree")
+    if "import_type" not in pedigree_cols:
+        # PP / PPG / ISG — HKJC's import category, materially affects
+        # which races a horse can run in.
+        conn.execute("ALTER TABLE horse_pedigree ADD COLUMN import_type TEXT")
+    # incident_reports is created lazily by scrape_incident_reports.py;
+    # tolerate it not yet existing.
+    try:
+        incident_cols = _columns(conn, "incident_reports")
+    except sqlite3.OperationalError:
+        incident_cols = []
+    if incident_cols and "incident_tags" not in incident_cols:
+        # Structured tags extracted from `incident` by betting/incident_tags.py.
+        conn.execute("ALTER TABLE incident_reports ADD COLUMN incident_tags TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_incidents_tags "
+                     "ON incident_reports(incident_tags)")
     results_cols = _columns(conn, "results")
     if "horse_no" not in results_cols:
         # Saddle number 1..N — used to join `odds_snapshots` rows
         # (which key by horse_no, not brand) for pre-race odds display.
         conn.execute("ALTER TABLE results ADD COLUMN horse_no INTEGER")
+    # Pre-race columns the race-card scraper now extracts. The HTML carries
+    # them in every per-race racecard but the original parser only grabbed
+    # name / brand / jockey / trainer / wt / draw. Populating these unblocks
+    # H008 (weight_delta), H082 (days_since_last), and the apprentice-claim
+    # signal hiding inside `Over Wt.`.
+    if "weight_delta" not in results_cols:
+        conn.execute("ALTER TABLE results ADD COLUMN weight_delta INTEGER")
+    if "over_wt" not in results_cols:
+        conn.execute("ALTER TABLE results ADD COLUMN over_wt REAL")
+    if "days_since_last" not in results_cols:
+        conn.execute("ALTER TABLE results ADD COLUMN days_since_last INTEGER")
+    if "gear" not in results_cols:
+        conn.execute("ALTER TABLE results ADD COLUMN gear TEXT")
     # Backfill name_en from the legacy `name` column when name_en is empty
     # and `name` is ASCII-only (i.e. the historical English-side scrape).
     conn.execute(

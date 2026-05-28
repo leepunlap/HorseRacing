@@ -35,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bs4 import BeautifulSoup
 
 from scrapers._base import BaseScraper, log, txn
+from betting.incident_tags import tag_incident
 
 BRAND_RE = re.compile(r"\(([A-Z]\d{3})\)")
 
@@ -59,10 +60,15 @@ CREATE TABLE IF NOT EXISTS incident_reports (
     draw INTEGER,
     jockey TEXT,
     incident TEXT NOT NULL,
+    -- Comma-joined list of structured tags extracted from `incident` by
+    -- betting/incident_tags.py (e.g. "bumped,raced_wide,vet_inspection").
+    -- Recomputed on every insert; NULL when no tags match.
+    incident_tags TEXT,
     scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(race_id, brand)
 );
 CREATE INDEX IF NOT EXISTS idx_incidents_race ON incident_reports(race_id);
+CREATE INDEX IF NOT EXISTS idx_incidents_tags ON incident_reports(incident_tags);
 """
 
 
@@ -159,13 +165,15 @@ class IncidentReportsScraper(BaseScraper):
                 conn.execute("DELETE FROM incident_reports WHERE race_id = ?",
                              (race_id,))
                 for r in rows:
+                    tags = tag_incident(r.get("incident"))
                     conn.execute(
                         "INSERT OR REPLACE INTO incident_reports "
                         "(race_id, brand, placing, horse_no, horse_name, "
-                        " draw, jockey, incident) "
-                        "VALUES (?,?,?,?,?,?,?,?)",
+                        " draw, jockey, incident, incident_tags) "
+                        "VALUES (?,?,?,?,?,?,?,?,?)",
                         (race_id, r["brand"], r["placing"], r["horse_no"],
-                         r["horse_name"], r["draw"], r["jockey"], r["incident"]),
+                         r["horse_name"], r["draw"], r["jockey"], r["incident"],
+                         tags),
                     )
                     total += 1
         log(f"[{self.name}] {date_str}/{course}: {total} incident rows")

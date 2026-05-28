@@ -156,7 +156,14 @@ async def _fetch_odds(date_str: str, course: str, race_no: int) -> list[dict[str
         "brand": None,                      # GraphQL pmPools doesn't carry brand
         "win_odds": win_by_horse.get(h),
         "place_odds": pla_by_horse.get(h),
-        "pool_total": None,                 # not exposed by this query
+        # `pool_total` (the size of the WIN pool in HK$) is genuinely
+        # NOT available to us. HKJC's GraphQL whitelist rejects any field
+        # we add to the racing query (`Your query doesn't match the
+        # schema`), and the public results page exposes only per-horse
+        # dividends, not pool totals. Reserved-for-paying-customers info.
+        # The schema column stays so a future scrape from a different
+        # endpoint can populate it.
+        "pool_total": None,
     } for h in horses]
 
 

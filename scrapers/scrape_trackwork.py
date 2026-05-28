@@ -104,9 +104,54 @@ def _parse_workout_time(s: str) -> float | None:
     return None
 
 
-# Distance hint: gallops sometimes list "1 Round" or specific furlongs.
-# Heuristic: if Workouts has 2+ splits, distance ≈ (n_splits × 200m) ish.
-# This is rough; HKJC doesn't publish exact gallop distance on this view.
+# Distance hint: HKJC's Workouts column has several formats. We extract the
+# best-effort distance in metres so H095_trackwork can use load volume, not
+# just session count. Three patterns cover ~99% of populated rows:
+#
+#   "1200M (Z Purton) (N/N)"            → explicit metres (most precise)
+#   "SmT 2 Round - Fast (R.B.)"          → N rounds × per-track-round length
+#   "12.5 11.8 (1:00.3) (R.B.)"          → N decimal splits ⇒ N × 200m
+#
+# Canter / Trotting / Treadmill / Swimming / Aqua Walker rows have no
+# meaningful race-distance equivalent and stay NULL (caller can still
+# count sessions via COUNT(*)).
+_M_RE      = re.compile(r"\b(\d{3,4})\s*M\b", re.I)
+_ROUND_RE  = re.compile(r"\b(\d+)\s+Round\b", re.I)
+_SPLIT_RE  = re.compile(r"^(?:\d+\.\d+\s+)+(?:\d+\.\d+|\(\d+(?:[:.]\d+)+\))", re.I)
+# Approx lap length per HKJC training track, in metres. Values from HKJC
+# track-design notes; the Sha Tin Sand Mile Track inner loop is ~1230m,
+# the AWT inner is similar. Olympic Arena is closer to 1200m. These
+# numbers feed a relative volume signal — exact precision isn't critical.
+_ROUND_LENGTH_M = {"SmT": 1230, "AWT": 1230, "Olympic": 1200, "TroR": 800}
+
+
+def _parse_workout_distance(workouts: str, surface: str | None) -> int | None:
+    """Return distance in metres if we can extract one, else None."""
+    if not workouts:
+        return None
+    w = workouts.strip()
+    m = _M_RE.search(w)
+    if m:
+        try:
+            return int(m.group(1))
+        except ValueError:
+            pass
+    m = _ROUND_RE.search(w)
+    if m:
+        # Prefer the explicit track tag in the workouts string; fall back
+        # to the surface column the row was tagged with.
+        track_tag = next((k for k in _ROUND_LENGTH_M if k in w), None) or (surface or "")
+        per_round = _ROUND_LENGTH_M.get(track_tag, 1200)
+        try:
+            return int(m.group(1)) * per_round
+        except ValueError:
+            pass
+    if _SPLIT_RE.match(w):
+        # Each space-separated decimal is a furlong split (≈200m).
+        splits = re.findall(r"\b\d+\.\d+(?!\d)", w.split("(")[0])
+        if splits:
+            return len(splits) * 200
+    return None
 
 
 class TrackworkScraper(BaseScraper):
@@ -214,7 +259,7 @@ class TrackworkScraper(BaseScraper):
                     "date": date,
                     "venue": venue,
                     "surface": surface or wtype,    # fall back to type when no surface tag
-                    "distance": None,                # not reliably parseable
+                    "distance": _parse_workout_distance(workouts, surface or wtype),
                     "time_sec": time_sec,
                     "gear": gear or None,
                     "rider": None,
