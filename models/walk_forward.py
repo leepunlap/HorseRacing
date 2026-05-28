@@ -528,8 +528,42 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
     _write_strategy_run(conn, strategy_id, date_from, date_to,
                         feature_ids, tau, summary)
     conn.commit()
+    # ─── Refresh every bet strategy layered on this model ────────────────
+    # New predictions invalidate the bet_ledger rows produced by each rule,
+    # so re-run them over the same date window. Keeps the dashboard/race
+    # stats coherent with the predictions the user just produced.
+    bet_runs = _refresh_bet_strategies(conn, strategy_id, date_from, date_to)
+    if bet_runs:
+        summary["bet_strategies"] = bet_runs
     conn.close()
     return summary
+
+
+def _refresh_bet_strategies(conn: sqlite3.Connection, strategy_id: int,
+                            date_from: str, date_to: str) -> list[dict]:
+    """Re-run every enabled bet strategy layered on this model over the same
+    date window. Skips silently if betting.bet_runner can't be imported or
+    raises on a specific strategy."""
+    try:
+        from betting.bet_runner import run_for_bet_strategy
+    except Exception as exc:
+        print(f"[walk_forward] bet_runner import failed: {exc}")
+        return []
+    rows = conn.execute(
+        "SELECT id, name FROM bet_strategies "
+        "WHERE model_strategy_id = ? AND enabled = 1 ORDER BY id",
+        (strategy_id,),
+    ).fetchall()
+    out: list[dict] = []
+    for bid, bname in rows:
+        try:
+            r = run_for_bet_strategy(conn, bid, date_from, date_to)
+            print(f"  bet={bname:<24} bets={r.get('n_bets',0):<5} "
+                  f"wins={r.get('n_wins',0):<5} ROI={r.get('roi_pct',0):+.2f}%")
+            out.append(r)
+        except Exception as exc:
+            print(f"  bet={bname}: failed ({exc})")
+    return out
 
 
 def _write_strategy_run(conn, strategy_id, date_from, date_to,
