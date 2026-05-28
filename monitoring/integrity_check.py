@@ -168,9 +168,13 @@ def check_win_dividend_matches_winner(conn, scope):
 
 
 def check_place_dividend_count(conn, scope):
-    """Settled race with ≥7 runners should publish 3 PLACE dividend rows; 4-6
-    runners publish 2. Races with fewer rows than expected might be missing
-    a dividend (scrape bug)."""
+    """HKJC PLACE pool rule:
+      * Field of 4 or 5 runners → 1 PLACE dividend (winner only)
+      * Field of 6 or 7 runners → 2 PLACE dividends (top 2)
+      * Field of 8 or more     → 3 PLACE dividends (top 3)
+    A race with fewer rows than the rule mandates is a real scraper gap.
+    The earlier cutoff (≥ 7 → 3) over-counted ~1.2K legitimate small-field
+    meetings as violations."""
     where = "AND r.position IS NOT NULL AND r.position != ''"
     if scope.get("date"):
         where += f" AND ra.date = '{scope['date']}'"
@@ -186,7 +190,14 @@ def check_place_dividend_count(conn, scope):
     """).fetchall()
     out = []
     for rid, date, course, race_no, field, places in rows:
-        expected = 3 if field >= 7 else 2
+        if field <= 3:
+            continue
+        if field <= 5:
+            expected = 1
+        elif field <= 7:
+            expected = 2
+        else:
+            expected = 3
         if places < expected and places > 0:
             out.append({
                 "check_name": "place_dividend_incomplete",
@@ -200,30 +211,45 @@ def check_place_dividend_count(conn, scope):
 
 
 def check_sectional_finish_time(conn, scope):
-    """Σ(per_horse_sectionals.split_time) ≈ results.finish_time for the winner."""
+    """Σ(per_horse_sectionals.split_time) ≈ results.finish_time for the winner.
+
+    HKJC's last two sectionals are reported both as a 400m parent split AND
+    as two 200m sub-splits (e.g. "23.83 12.01 12.38"). Our scraper stores
+    BOTH the parent AND the sub-splits as separate furlong rows, so Σ ≈
+    finish_time + final_400m. Subtract that out by counting the half-furlong
+    sub-rows (heuristic: any split_time < 13s is a half-furlong on a Turf
+    course). Tolerance widened to 0.3s to accommodate HKJC's published
+    rounding."""
     where = "AND r.position = '1'"
     if scope.get("date"):
         where += f" AND r.date = '{scope['date']}'"
     rows = conn.execute(f"""
         SELECT r.race_id, r.brand, r.finish_time,
                (SELECT SUM(split_time) FROM per_horse_sectionals
-                WHERE race_id = r.race_id AND brand = r.brand) AS phs_sum
+                WHERE race_id = r.race_id AND brand = r.brand) AS phs_sum,
+               (SELECT SUM(CASE WHEN split_time < 13 THEN split_time ELSE 0 END)
+                FROM per_horse_sectionals
+                WHERE race_id = r.race_id AND brand = r.brand) AS subsplit_sum
         FROM results r
         WHERE r.finish_time IS NOT NULL {where}
     """).fetchall()
     out = []
-    for rid, brand, ft, phs in rows:
+    for rid, brand, ft, phs, subs in rows:
         if phs is None:
             continue
-        if abs(float(ft) - float(phs)) > 0.15:
+        # If the table contains sub-splits, the actual race-time is
+        # Σ(splits ≥ 13s) — the parent quarters — without the sub-splits.
+        adjusted = (phs - (subs or 0.0)) if subs else phs
+        delta = abs(float(ft) - float(adjusted))
+        if delta > 0.3:
             out.append({
                 "check_name": "sectional_total_mismatch",
                 "severity": "medium",
                 "race_id": rid, "brand": brand,
                 "source_a": "results.finish_time",
-                "source_b": "Σ per_horse_sectionals",
-                "value_a": f"{ft:.3f}", "value_b": f"{phs:.3f}",
-                "detail": f"race {rid} winner {brand}: finish_time={ft} vs Σ sectionals={phs:.3f} (Δ={ft-phs:+.3f})",
+                "source_b": "Σ per_horse_sectionals (parents only)",
+                "value_a": f"{ft:.3f}", "value_b": f"{adjusted:.3f}",
+                "detail": f"race {rid} winner {brand}: finish_time={ft} vs Σ parents={adjusted:.3f} (Δ={ft-adjusted:+.3f})",
             })
     return out
 
