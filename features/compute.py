@@ -893,29 +893,54 @@ def h155_adjacent_draw(c):
 
 # ─── Category 14: Market ─────────────────────────────────────────────────────
 def _odds_snapshots(c) -> list[tuple[str, float | None]]:
-    """Time-ordered list of (ts, win_odds) for this horse from odds_snapshots.
+    """Time-ordered list of (ts, win_odds) for this horse.
 
-    The HKJC GraphQL feed only carries saddle number (`horse_no`), never the
-    brand — so `odds_snapshots.brand` is NULL across the board. We have to
-    map brand → horse_no via `results` first, then join the snapshots on
-    horse_no. Without this every Cat-14 feature returned NaN for 18 months
-    of races while the poll data was sitting unused."""
+    Source preference:
+      1. `odds_snapshots` — real live ticks polled from HKJC. Joined via
+         saddle number (`horse_no`) because `odds_snapshots.brand` is
+         always NULL (HKJC's GraphQL feed doesn't carry brand). Requires
+         `results.horse_no` to be populated for the brand-to-saddle map.
+      2. `results.odds` — the final pre-race tote SP. Used as a synthetic
+         single-tick fallback when (a) live snapshots don't exist for this
+         race (i.e. the polling era hadn't started yet — most historical
+         races) or (b) the brand-to-horse_no map is missing.
+
+    The synthetic tick's ts is set to `<race_date>T12:00:00` — a fixed
+    point that's "before basis end-of-day" so it never excludes itself
+    via the basis filter; the exact value doesn't matter to any Cat-14
+    feature since fallback rows always have length 1 (no drift, no
+    open/close difference, no late-steam window). Features that need
+    ≥2 ticks (h158_drift, h163_clv_internal, h165_late_steam) correctly
+    return None when only the synthetic tick is available — we honestly
+    don't have the time series, and None beats a fake 0.0."""
     if c.conn is None:
         return []
+    # Path 1: real live snapshots, joined via horse_no.
     hno_row = c.conn.execute(
-        "SELECT horse_no FROM results WHERE race_id = ? AND brand = ?",
+        "SELECT horse_no, odds, date FROM results WHERE race_id = ? AND brand = ?",
         (c.race_id, c.entry["brand"]),
     ).fetchone()
-    if not hno_row or hno_row[0] is None:
-        return []
-    rows = c.conn.execute(
-        "SELECT ts, win_odds FROM odds_snapshots "
-        "WHERE race_id = ? AND horse_no = ? AND win_odds IS NOT NULL "
-        "  AND ts <= ? "
-        "ORDER BY ts ASC",
-        (c.race_id, hno_row[0], c.snapshot_basis or "9999"),
-    ).fetchall()
-    return [(r[0], r[1]) for r in rows]
+    if hno_row and hno_row[0] is not None:
+        rows = c.conn.execute(
+            "SELECT ts, win_odds FROM odds_snapshots "
+            "WHERE race_id = ? AND horse_no = ? AND win_odds IS NOT NULL "
+            "  AND ts <= ? "
+            "ORDER BY ts ASC",
+            (c.race_id, hno_row[0], c.snapshot_basis or "9999"),
+        ).fetchall()
+        if rows:
+            return [(r[0], r[1]) for r in rows]
+    # Path 2: synthetic single-tick fallback from results.odds (final SP).
+    if hno_row and hno_row[1] is not None:
+        try:
+            sp = float(hno_row[1])
+        except (TypeError, ValueError):
+            sp = None
+        if sp and sp > 0:
+            date_str = hno_row[2] or ""
+            ts = f"{date_str}T12:00:00" if date_str else "1970-01-01T00:00:00"
+            return [(ts, sp)]
+    return []
 def h156_open_odds(c):
     s = _odds_snapshots(c); return s[0][1] if s else None
 def h157_close_odds(c):
@@ -927,26 +952,40 @@ def h158_drift(c):
 def h159_implied(c):
     o = h157_close_odds(c)
     return None if o is None or o <= 0 else 1.0 / o
-def h160_concentration(c):
-    if c.conn is None: return None
+def _race_final_odds(c) -> list[float]:
+    """Per-horse final WIN odds for this race. Uses live snapshots when
+    available (the latest tick per horse), falls back to results.odds
+    (final SP) for historical races where no snapshots were polled.
+    Same fallback pattern as _odds_snapshots()."""
+    if c.conn is None:
+        return []
     rows = c.conn.execute(
-        "SELECT brand, win_odds FROM odds_snapshots WHERE race_id = ? AND ts = "
+        "SELECT win_odds FROM odds_snapshots WHERE race_id = ? AND ts = "
         "(SELECT MAX(ts) FROM odds_snapshots WHERE race_id = ?)",
-        (c.race_id, c.race_id)
+        (c.race_id, c.race_id),
     ).fetchall()
-    if not rows: return None
-    inv = [1.0 / r[1] for r in rows if r[1] and r[1] > 0]
+    if rows:
+        return [float(r[0]) for r in rows if r[0] and r[0] > 0]
+    rows = c.conn.execute(
+        "SELECT odds FROM results WHERE race_id = ? AND odds IS NOT NULL",
+        (c.race_id,),
+    ).fetchall()
+    out: list[float] = []
+    for r in rows:
+        try:
+            v = float(r[0])
+        except (TypeError, ValueError):
+            continue
+        if v > 0:
+            out.append(v)
+    return out
+def h160_concentration(c):
+    inv = [1.0 / o for o in _race_final_odds(c)]
     if not inv: return None
     inv.sort(reverse=True)
     return sum(inv[:3]) / sum(inv) if sum(inv) > 0 else None
 def h161_overround(c):
-    if c.conn is None: return None
-    rows = c.conn.execute(
-        "SELECT win_odds FROM odds_snapshots WHERE race_id = ? AND ts = "
-        "(SELECT MAX(ts) FROM odds_snapshots WHERE race_id = ?)",
-        (c.race_id, c.race_id)
-    ).fetchall()
-    inv = [1.0 / r[0] for r in rows if r[0] and r[0] > 0]
+    inv = [1.0 / o for o in _race_final_odds(c)]
     return sum(inv) - 1.0 if inv else None
 def h163_clv_internal(c):
     # Captured at bet-placement time vs. closing odds. Placeholder uses
