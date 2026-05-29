@@ -64,7 +64,10 @@ def invalidate_feature_cache() -> None:
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # 30s timeout because read endpoints can race ablation/backfill writers;
+    # the default 5s was surfacing as "database is locked" 500s mid-request.
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    conn.execute("PRAGMA busy_timeout = 30000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
@@ -1920,7 +1923,21 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                         (race["id"], race["id"], bet_strategy_id),
                     ).fetchone()[0]
                     if have < len(bet_ids):
-                        _pm.tag_race(conn, race["id"])
+                        # Inline write — give up fast (500ms) if a concurrent
+                        # writer holds the lock. Falling through is harmless:
+                        # the missing tags get computed on the next read when
+                        # the lock is free, and the response still carries
+                        # every race + any post_mortem rows already on disk.
+                        # Without this, a single busy writer (ablation backfill,
+                        # decision loop, integrity heal) silently 30s-stalls
+                        # every Races-page load until busy_timeout pops.
+                        conn.execute("PRAGMA busy_timeout = 500")
+                        try:
+                            _pm.tag_race(conn, race["id"])
+                        except sqlite3.OperationalError:
+                            pass
+                        finally:
+                            conn.execute("PRAGMA busy_timeout = 30000")
                     race["post_mortem"] = _pm.fetch_for_race(conn, race["id"])
     finally:
         conn.close()

@@ -126,31 +126,42 @@ _ROUND_LENGTH_M = {"SmT": 1230, "AWT": 1230, "Olympic": 1200, "TroR": 800}
 
 
 def _parse_workout_distance(workouts: str, surface: str | None) -> int | None:
-    """Return distance in metres if we can extract one, else None."""
+    """Return distance in metres if we can extract one, else None.
+
+    Output is sanity-bounded to [200, 10000]. A racehorse gallop below
+    one furlong (200m) or above five rounds (~6000m) is implausible; any
+    parser output outside that range is rejected as a likely false match
+    (e.g. a "1200M" inside a horse name, a "9 Round" typo). Better to
+    return None than store a nonsense distance that downstream features
+    would average into.
+    """
     if not workouts:
         return None
     w = workouts.strip()
+    candidates: list[int] = []
     m = _M_RE.search(w)
     if m:
         try:
-            return int(m.group(1))
+            candidates.append(int(m.group(1)))
         except ValueError:
             pass
     m = _ROUND_RE.search(w)
     if m:
-        # Prefer the explicit track tag in the workouts string; fall back
-        # to the surface column the row was tagged with.
         track_tag = next((k for k in _ROUND_LENGTH_M if k in w), None) or (surface or "")
         per_round = _ROUND_LENGTH_M.get(track_tag, 1200)
         try:
-            return int(m.group(1)) * per_round
+            candidates.append(int(m.group(1)) * per_round)
         except ValueError:
             pass
     if _SPLIT_RE.match(w):
-        # Each space-separated decimal is a furlong split (≈200m).
         splits = re.findall(r"\b\d+\.\d+(?!\d)", w.split("(")[0])
         if splits:
-            return len(splits) * 200
+            candidates.append(len(splits) * 200)
+    # First sane candidate wins; M-pattern is checked first because it's
+    # the most precise (explicit metres > rounds > split-count heuristic).
+    for d in candidates:
+        if 200 <= d <= 10000:
+            return d
     return None
 
 
