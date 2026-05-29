@@ -526,6 +526,45 @@ def run_for_bet_strategy(conn: sqlite3.Connection, bet_strategy_id: int,
             "position": position,
         })
 
+    # ─── Optional: market-overlay adjustment (Cat-14 odds-drift) ─────────
+    # The trained model can't yet use Cat-14 odds-trend features (training
+    # data lacks polled-odds history; only T+0 data exists going forward).
+    # Until we have many race-days of polling for a retrain, we can use
+    # today's live odds drift as a post-prediction adjustment: scale each
+    # horse's calibrated_prob by a factor derived from H158 (closing odds
+    # / opening odds − 1). Positive drift (price grew = market lost faith)
+    # discounts the prob; negative drift (steaming in) boosts it.
+    #
+    # Opt-in via params['market_overlay']. Strength is a multiplier in
+    # [0, 1+] — 0 = off (default), 0.5 = moderate, 1.0 = full lift.
+    # Final factor is clipped to [0.5, 1.5] so a single weird tick can't
+    # swing the bet too far.
+    overlay_strength = float(params.get("market_overlay", 0.0))
+    if overlay_strength > 0 and by_race:
+        rids = list(by_race.keys())
+        placeholders = ",".join("?" * len(rids))
+        drift_rows = conn.execute(
+            f"SELECT race_id, brand, value FROM feature_values "
+            f"WHERE feature_id = 'H158' AND race_id IN ({placeholders}) "
+            f"AND value IS NOT NULL",
+            rids,
+        ).fetchall()
+        drift_by_race_brand = {(rid, b): v for rid, b, v in drift_rows}
+        for rid, info in by_race.items():
+            for row in info["rows"]:
+                drift = drift_by_race_brand.get((rid, row["brand"]))
+                if drift is None or row["prob"] is None:
+                    continue
+                factor = max(0.5, min(1.5, 1.0 - overlay_strength * float(drift)))
+                row["prob"] = row["prob"] * factor
+                row["overlay_factor"] = factor
+            # Per-race renormalise so probs still sum to 1.0
+            s = sum(r["prob"] for r in info["rows"] if r["prob"] is not None)
+            if s > 1e-9:
+                for r in info["rows"]:
+                    if r["prob"] is not None:
+                        r["prob"] = r["prob"] / s
+
     # Prefetch dividends for every race we'll touch (exotic pools only need
     # this; singles use results.odds directly). Keyed by race_id →
     # {pool: {sorted_combo: dividend}} for O(1) settlement lookup.
