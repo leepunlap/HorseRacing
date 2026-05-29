@@ -312,10 +312,51 @@ FEATURES: list[Feature] = [
             "Last race's closing kick normalised by horse's own history "
             "stdev — how anomalous was the last performance",
             "B9", "h188_closing_kick_z"),
+
+    # ─── Category 17: Incident-history features (H189-H195) ─────────────────
+    # Aggregates of HKJC Racing Incident Report tags (via incident_reports
+    # table) across each horse's last 5 starts. Predictive lift verified
+    # against bet_ledger: held_position −31.7pp, wide_no_cover −20.4pp,
+    # sent_for_sampling +13.5pp vs 40.8% baseline. Use as point-in-time
+    # features — each looks back from the target race's date.
+    Feature("H189", 17, "近5仗保位率", "Held-position rate last 5",
+            "Fraction of last 5 starts where the horse held its position "
+            "(|first-call position − final position| ≤ 2). Negative bet-outcome "
+            "predictor (9.1% win-rate when present vs 40.8% baseline).",
+            "B9", "h189_held_position_rate"),
+    Feature("H190", 17, "近5仗走外疊率", "Wide-trip rate last 5",
+            "Fraction of last 5 starts tagged raced_wide (or wide_no_cover) "
+            "in HKJC's Racing Incident Report. Wide trips cost ground.",
+            "B9,B27", "h190_wide_trip_rate"),
+    Feature("H191", 17, "近5仗賽後抽驗率", "Sent-for-sampling rate last 5",
+            "Fraction of last 5 starts where HKJC flagged 'sent for sampling'. "
+            "Counter-intuitive POSITIVE signal — sampling fires both randomly "
+            "and on exceptional performances (+13.5pp win-rate when present).",
+            "B27", "h191_sampling_rate"),
+    Feature("H192", 17, "近5仗賽後驗馬次數", "Vet-inspection count last 5",
+            "Count of stewards' 'vet inspection' tags in last 5 starts. "
+            "Medical-risk proxy.",
+            "B27", "h192_vet_inspection_count"),
+    Feature("H193", 17, "近5仗受阻次數", "Bumped/checked count last 5",
+            "Count of incidents where horse was bumped, steadied, crowded or "
+            "hampered. High counts may mean published positions undervalue "
+            "true ability (horse was hampered, not slow).",
+            "B27", "h193_bumped_count"),
+    Feature("H194", 17, "近5仗後上分", "Closer-style score last 5",
+            "Average (first-call position − final position) across last 5 "
+            "starts. Positive = closer / late kicker; negative = front-runner. "
+            "Same direction as H187 but bounded to recent form, so it weights "
+            "current pace style rather than career.",
+            "B9", "h194_closer_style_score"),
+    Feature("H195", 17, "保位異常分", "Held-position anomaly",
+            "Difference between last-race held_position-rate and 5-race mean. "
+            "Positive = horse is suddenly holding position more than usual "
+            "(losing kick); negative = improving on its baseline.",
+            "B9", "h195_held_position_anomaly"),
 ]
 
-assert len(FEATURES) == 188, f"expected 188 features, got {len(FEATURES)}"
-assert len({f.id for f in FEATURES}) == 188, "duplicate feature ids"
+assert len(FEATURES) == 195, f"expected 195 features, got {len(FEATURES)}"
+assert len({f.id for f in FEATURES}) == 195, "duplicate feature ids"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

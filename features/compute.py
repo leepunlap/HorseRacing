@@ -1402,6 +1402,131 @@ def h188_closing_kick_z(c):
     return (last - mean) / (var ** 0.5)
 
 
+# ─── Category 17: Incident-history features (H189-H195) ───────────────────
+# Cache the last-N incident_reports lookup per (brand, before_date) so the
+# 6 features below share a single DB hit rather than each one querying.
+def _incident_history(c, last_n: int = 5) -> list[tuple[str, set[str]]]:
+    """Return up to `last_n` past incident-report rows for this horse,
+    strictly before the target race's date. Each entry is (date, tag_set)."""
+    if c.conn is None:
+        return []
+    cache_key = f"_ih_{c.entry['brand']}_{last_n}"
+    cached = getattr(c, "_cache", None)
+    if cached is None:
+        c._cache = {}
+        cached = c._cache
+    if cache_key in cached:
+        return cached[cache_key]
+    target_date = c.race.get("date") or "9999-99-99"
+    rows = c.conn.execute(
+        "SELECT r.date, ir.incident_tags FROM incident_reports ir "
+        "JOIN races r ON r.id = ir.race_id "
+        "WHERE ir.brand = ? AND r.date < ? AND ir.incident_tags IS NOT NULL "
+        "ORDER BY r.date DESC LIMIT ?",
+        (c.entry["brand"], target_date, last_n),
+    ).fetchall()
+    out = [(d, set(t.split(","))) for d, t in rows]
+    cached[cache_key] = out
+    return out
+
+
+def h189_held_position_rate(c):
+    """Fraction of last 5 starts where the horse held position (|first call −
+    final| ≤ 2). Source: race_history.running, NOT incident_reports — this
+    is a pure running-position calculation that works even when incident
+    data is missing. Strongest negative predictor in the tag-correlation
+    analysis (9.1% win-rate when tagged vs 40.8% baseline)."""
+    held, total = 0, 0
+    for h in c.history[-5:]:
+        running = _running_positions(h)
+        pos = h.get("position")
+        if not running or pos is None:
+            continue
+        try:
+            pos_i = int(str(pos).strip())
+        except (TypeError, ValueError):
+            continue
+        total += 1
+        if abs(running[0] - pos_i) <= 2:
+            held += 1
+    return None if total == 0 else held / total
+
+
+def h190_wide_trip_rate(c):
+    """Fraction of last 5 starts with raced_wide tag in HKJC incident report."""
+    history = _incident_history(c, last_n=5)
+    if not history:
+        return None
+    wide = sum(1 for _, tags in history if "raced_wide" in tags)
+    return wide / len(history)
+
+
+def h191_sampling_rate(c):
+    """Fraction of last 5 starts where HKJC sent the horse for drug sampling.
+    Counter-intuitively positive — sampling fires on both random selection
+    AND exceptional performances, so frequent sampling is a positive ability
+    signal (+13.5pp win-rate when present)."""
+    history = _incident_history(c, last_n=5)
+    if not history:
+        return None
+    sampled = sum(1 for _, tags in history if "sent_for_sampling" in tags)
+    return sampled / len(history)
+
+
+def h192_vet_inspection_count(c):
+    """Count of vet_inspection tags in last 5 starts. Medical-risk proxy."""
+    history = _incident_history(c, last_n=5)
+    if not history:
+        return None
+    return float(sum(1 for _, tags in history if "vet_inspection" in tags))
+
+
+def h193_bumped_count(c):
+    """Count of any traffic incident tag (bumped/steadied/crowded/hampered)
+    in last 5 starts. High counts may signal that published positions
+    undervalue true ability — the horse was hampered, not slow."""
+    traffic_tags = {"bumped", "steadied", "crowded", "hampered"}
+    history = _incident_history(c, last_n=5)
+    if not history:
+        return None
+    return float(sum(1 for _, tags in history if tags & traffic_tags))
+
+
+def h194_closer_style_score(c):
+    """Avg (first-call position − final position) across last 5 starts.
+    Positive = closer / late kicker; negative = front-runner."""
+    scores: list[float] = []
+    for h in c.history[-5:]:
+        rp = _running_positions(h)
+        pos = h.get("position")
+        if not rp or pos is None:
+            continue
+        try:
+            pos_i = int(str(pos).strip())
+        except (TypeError, ValueError):
+            continue
+        scores.append(rp[0] - pos_i)
+    return _mean(scores)
+
+
+def h195_held_position_anomaly(c):
+    """Boolean (0 or 1) — was the most-recent race held_position? Used as
+    "horse is suddenly holding position more than usual" signal — typical
+    closer that lost its kick last out."""
+    if not c.history:
+        return None
+    last = c.history[-1]
+    rp = _running_positions(last)
+    pos = last.get("position")
+    if not rp or pos is None:
+        return None
+    try:
+        pos_i = int(str(pos).strip())
+    except (TypeError, ValueError):
+        return None
+    return 1.0 if abs(rp[0] - pos_i) <= 2 else 0.0
+
+
 def h179_sire_dist_winrate(c):
     sire = _sire_for_brand(c, c.entry["brand"])
     dist = c.race.get("distance")
