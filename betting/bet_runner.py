@@ -118,6 +118,15 @@ def _rule_kelly_top1(rows, params):
 
 
 def _rule_flat_top1_filtered(rows, params):
+    """Flat top-pick with optional gates:
+      * min_prob       — skip if top pick's calibrated_prob < this
+      * max_field      — skip races bigger than this field size
+      * feature_filters — list of {"feature_id": "H189", "op": "<=", "value": 0.6}
+        Each filter must pass on the TOP PICK's feature value or the
+        bet is skipped. Missing feature value (None) is treated as
+        FAIL — be explicit if you want to allow nulls.
+        Supported ops: "<=", ">=", "<", ">", "=", "!="
+    """
     valid = [r for r in rows if r["prob"] is not None]
     if not valid: return []
     min_prob = float(params.get("min_prob", 0.0))
@@ -128,9 +137,32 @@ def _rule_flat_top1_filtered(rows, params):
     top = valid[0]
     if top["prob"] < min_prob:
         return []                           # skip low-confidence
+    # Feature-based filters — uses row["features"] populated by the driver
+    feat_filters = params.get("feature_filters") or []
+    if feat_filters:
+        feats = top.get("features") or {}
+        for f in feat_filters:
+            fid = f.get("feature_id")
+            op = f.get("op")
+            thr = float(f.get("value"))
+            val = feats.get(fid)
+            if val is None:
+                return []                   # missing feature = skip
+            val = float(val)
+            ok = ((op == "<=" and val <= thr) or
+                  (op == "<"  and val <  thr) or
+                  (op == ">=" and val >= thr) or
+                  (op == ">"  and val >  thr) or
+                  (op == "="  and val == thr) or
+                  (op == "!=" and val != thr))
+            if not ok:
+                return []
+    reason = "top_prob_filtered"
+    if feat_filters:
+        reason += "+feat_gate"
     return [{"brand": top["brand"], "pool": "WIN",
              "stake": params.get("stake", 500.0),
-             "pick_rank": 1, "reason": "top_prob_filtered"}]
+             "pick_rank": 1, "reason": reason}]
 
 
 def _rule_dutch_topN(rows, params):
@@ -525,6 +557,29 @@ def run_for_bet_strategy(conn: sqlite3.Connection, bet_strategy_id: int,
             "odds": _coerce_odds(odds),
             "position": position,
         })
+
+    # ─── Optional: feature pre-fetch for feature_filters strategies ──────
+    # When the strategy uses params.feature_filters (e.g. RCA-as-filter
+    # variants gating on H189 ≤ 0.6), pull the requested features in one
+    # query and attach to each row so the rule fn can inspect them.
+    feat_filters = params.get("feature_filters") or []
+    if feat_filters and by_race:
+        wanted = {f["feature_id"] for f in feat_filters if f.get("feature_id")}
+        if wanted:
+            rids = list(by_race.keys())
+            fid_ph = ",".join("?" * len(wanted))
+            rid_ph = ",".join("?" * len(rids))
+            feat_rows = conn.execute(
+                f"SELECT race_id, brand, feature_id, value FROM feature_values "
+                f"WHERE feature_id IN ({fid_ph}) AND race_id IN ({rid_ph})",
+                list(wanted) + rids,
+            ).fetchall()
+            feat_lookup: dict[tuple, dict] = {}
+            for rid, brand, fid, val in feat_rows:
+                feat_lookup.setdefault((rid, brand), {})[fid] = val
+            for rid, info in by_race.items():
+                for row in info["rows"]:
+                    row["features"] = feat_lookup.get((rid, row["brand"]), {})
 
     # ─── Optional: market-overlay adjustment (Cat-14 odds-drift) ─────────
     # The trained model can't yet use Cat-14 odds-trend features (training
