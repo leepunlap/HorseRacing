@@ -1396,17 +1396,20 @@ def strategy_charts(strategy_id: int,
     try:
         strat = conn.execute(
             "SELECT bet_max_odds, bet_min_odds, min_prob, "
-            "       kelly_fraction, kelly_max_bankroll_pct "
+            "       kelly_fraction, kelly_max_bankroll_pct, edge_threshold "
             "FROM strategies WHERE id = ?",
             (strategy_id,),
         ).fetchone()
         if not strat:
             raise HTTPException(404, f"strategy {strategy_id} not found")
-        bet_max_odds, bet_min_odds, min_prob, kelly_frac, kelly_max_bank = strat
+        bet_max_odds, bet_min_odds, min_prob, kelly_frac, kelly_max_bank, edge_threshold = strat
         bet_max_odds   = float(20.0   if bet_max_odds  is None else bet_max_odds)
         bet_min_odds   = float(2.5    if bet_min_odds  is None else bet_min_odds)
         min_prob       = float(0.05   if min_prob      is None else min_prob)
         kelly_frac     = float(0.25   if kelly_frac    is None else kelly_frac)
+        # Edge gate (prob×odds). Live qualifying no longer gates on edge, so the
+        # other sweeps run with edge_cur = 0; the edge sweep itself varies it.
+        edge_cur       = float(0.0    if edge_threshold is None else edge_threshold)
         kelly_max_bank = float(0.05   if kelly_max_bank is None else kelly_max_bank)
         bankroll = 10000.0
 
@@ -1628,8 +1631,10 @@ def strategy_charts(strategy_id: int,
                 _max  = v if knob == "max_odds" else bet_max_odds
                 _min  = v if knob == "min_odds" else bet_min_odds
                 _mp   = v if knob == "min_prob" else min_prob
+                _me   = v if knob == "min_edge" else edge_cur
                 if not (_min <= odds <= _max): continue
                 if prob < _mp: continue
+                if prob * odds < _me: continue
                 kf = ((prob * odds - 1) / (odds - 1)) if odds > 1 else 0.0
                 if kf <= 0: continue
                 s = (kelly_max_bank * bankroll if kelly_frac == 0
@@ -1653,6 +1658,7 @@ def strategy_charts(strategy_id: int,
         "max_odds":  _sweep([10, 12, 15, 20, 25, 30, 40], "max_odds",  bet_max_odds),
         "min_odds":  _sweep([1.5, 2.0, 2.5, 3.0, 4.0],     "min_odds",  bet_min_odds),
         "min_prob":  _sweep([0.02, 0.05, 0.08, 0.10, 0.15], "min_prob", min_prob),
+        "edge":      _sweep([1.0, 1.05, 1.1, 1.15, 1.2, 1.3, 1.5], "min_edge", edge_cur),
     }
 
     # ── Segment analysis: stratify placed bets by track / class / distance.

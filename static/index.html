@@ -438,6 +438,11 @@
      grid, this lands as ~25% width on wide viewports (4 cards per row) and
      shrinks gracefully on narrower viewports. */
   .chart-card.quarter { /* nothing extra — auto-fit handles it */ }
+  /* 4-up row of equal, fluid (1/4-width) cards; .wide cards still span all 4.
+     Used for the cumulative-PnL / calibration / odds-bucket / Kelly row. */
+  .chart-grid.quad { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 1300px) { .chart-grid.quad { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 680px)  { .chart-grid.quad { grid-template-columns: 1fr; } }
   /* Section headers between rows of charts */
   .chart-section-hdr { margin: 20px 0 10px 0; font-size: 12px; color: var(--muted);
                        text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
@@ -1755,43 +1760,53 @@ function renderPerformanceCharts(charts) {
   }, 0);
   return `
     ${summary}
-    <div class="chart-grid">
+    <div class="chart-grid quad">
       <div class="chart-card wide">
         <h3>${t('每日下注金額與盈虧', 'Daily stake placed & win/loss by race day')}</h3>
         <div id="apex-daily" class="apex-chart"></div>
-        <p class="chart-note">${t('藍線 = 該日總投注金額；綠/紅柱 = 該日盈虧（正/負）。點擊任何柱可跳到該日賽事。', 'blue line = total stake placed that day · green/red columns = daily PnL (positive/negative) · click any column to jump to that day on the Races tab')}</p>
+        <p class="chart-note">${t(
+          '藍線 = 該日投放的總注碼，反映當天市場提供了多少合格機會；綠/紅柱 = 該日結算後的淨盈虧（正綠／負紅）。注碼高但盈虧上落不大代表分散得宜，單日大紅柱多由一兩注大額落敗造成 — 留意注碼與風險是否集中。點擊任何柱可跳到該日賽事細節。',
+          'Blue line = total stake deployed that day, a read on how many qualifying opportunities the market offered; green/red columns = that day\'s net settled profit/loss (green positive, red negative). High stake with small swings means risk is well spread, while a single deep-red day usually traces to one or two large losing bets — watch whether stake and risk are over-concentrated. Click any column to open that day\'s races.'
+        )}</p>
       </div>
       <div class="chart-card wide">
         <h3>${t('每日場次與預測勝場', 'Daily races & predicted wins')}</h3>
         <div id="apex-races-stack" class="apex-chart"></div>
         <p class="chart-note">${t(
-          '堆疊柱顯示每日總場次拆分為：綠 = 我們的下注命中、紅 = 我們的下注落敗、灰 = 該日沒有下注的場次。點擊任何片段跳到該日賽事。',
-          "Stacked bar shows each day's total races split into: green = our placed bet won, red = our placed bet lost, grey = race we did not bet on. Click any segment to jump to that day on the Races tab."
+          '堆疊柱把每日總場次拆成三段：綠 = 我們下注且命中、紅 = 我們下注但落敗、灰 = 當天沒有下注的場次。綠紅合計反映「參與率」（模型覆蓋了多少場），綠占綠紅之比即當日命中率；灰占比高代表策略偏保守、只在高信心場次出手。點擊任何片段跳到該日賽事。',
+          "Each day's total races are stacked into three parts: green = we bet and won, red = we bet and lost, grey = races we sat out. Green+red is the participation rate (how many races the model engaged), and green as a share of green+red is that day's strike-rate; a tall grey block means the strategy is selective, firing only on high-conviction races. Click any segment to jump to that day."
         )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('累計盈虧', 'Cumulative PnL')}</h3>
         <div id="apex-cumpnl" class="apex-chart"></div>
+        <p class="chart-note">${t(
+          '把每一注按時間順序累加盈虧，畫出資金曲線。向上 = 策略在賺錢、平坦 = 打和、向下 = 在輸錢；曲線「最高點到其後最低點」的落差就是最大回撤，反映你要忍受多深的逆境才見回升。重點看斜率是否穩定向上，而非單日波動 — 一條緩慢但持續上升的線，遠比大起大落可持續。',
+          'Adds each settled bet\'s P/L in chronological order to trace the bankroll curve. Rising = making money, flat = break-even, falling = bleeding; the largest peak-to-trough drop along the line is the max drawdown — how deep a losing run you must endure before recovery. Judge the steadiness of the slope rather than any one day: a slow, persistently rising line is far more bankable than one that lurches up and down.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('校準可靠度圖', 'Calibration reliability')}</h3>
         <div id="apex-reliability" class="apex-chart"></div>
         <p class="chart-note">${t(
-          '把所有預測按「模型給的勝率」分成 10 個區間（0-10%、10-20%…），每個區間畫一個泡泡：橫軸是區間平均預測機率，縱軸是該區間裡馬實際的勝率。泡泡大小 = 該區間的樣本數。落在對角線上代表模型誠實（說 30% 勝率，實際就贏 30%）；高於對角線 = 太保守（低估）；低於對角線 = 太樂觀（高估）。',
+          '把所有預測按「模型給的勝率」分成 10 個區間（0-10%、10-20%…），每個區間畫一個泡泡：橫軸是區間平均預測機率，縱軸是該區間裡馬實際的勝率。泡泡大小 = 該區間的樣本數。落在對角線上代表模型誠實（說 30% 勝率，實際就贏 30%）；高於對角線 = 太保守（低估）；低於對角線 = 太樂觀（高估）。上方統計卡的 ECE 就是各泡泡離對角線的平均距離（按樣本數加權）。',
           'Every prediction is bucketed into 10 probability deciles (0-10%, 10-20%, …). For each bucket we plot a bubble: x = average predicted probability, y = actual win-rate of horses in that bucket. Bubble size = sample count. Points on the diagonal mean the model is honest (it said 30% chance, 30% actually won). Above the diagonal = model under-predicted (conservative); below = over-predicted (over-confident). ECE in the stat-cards above is the average distance from the diagonal, weighted by bin size.'
         )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('賠率分段表現', 'Performance by odds bucket')}</h3>
         <div id="apex-oddsbuckets" class="apex-chart"></div>
-        <p class="chart-note">${t('每段顯示勝率（藍）與 ROI（綠/紅）', 'each bucket shows win-rate (blue) and ROI (green/red)')}</p>
+        <p class="chart-note">${t(
+          '把所有下注按賠率分組（熱門→冷門），每組顯示實際勝率（藍）與投資回報率 ROI（綠正／紅負）。市場大致有效時，勝率會隨賠率上升而下降、ROI 接近零；若某一賠率段 ROI 持續為正，代表模型在該段比市場更準，正是真正的盈利來源。特別留意兩端的「熱門—冷門偏差」：短賠大熱常被過度下注（ROI 偏負），極冷門則常被市場錯價。',
+          'Groups every bet by its odds (favourites → longshots) and, per band, shows the realised win-rate (blue) and ROI (green positive / red negative). In an efficient market win-rate falls as odds lengthen and ROI sits near zero; a band whose ROI is persistently positive is where the model genuinely beats the market and your real edge lives. Watch the extremes for the classic favourite-longshot bias — short-priced horses over-bet (negative ROI), big outsiders mispriced.'
+        )}</p>
       </div>
-      <div class="chart-card quarter">
+      <div class="chart-card">
         <h3>${t('Kelly 桶分析', 'Kelly Buckets')}</h3>
         <div id="apex-kelly" class="apex-chart"></div>
         <p class="chart-note">${t(
-          '同一批合格下注用不同 Kelly 倍率重算 ROI（綠/紅）— 平注 = 固定每注 $500、1/4-Full = Kelly 公式比例。當前策略選擇以星號標示。',
-          'Same qualifying bets re-sized at 5 different Kelly fractions — flat = fixed $500/bet, 1/4-full = Kelly formula × fraction. Current strategy choice marked with a star.'
+          '取同一批合格下注，用 5 種注碼策略重算總 ROI 與盈虧：平注（固定每注 $500）對比 1/8、1/4、1/2、全 Kelly（按公式 f =（p×賠率−1）/（賠率−1）的比例下注）。Kelly 倍率越高、複利成長越快，但波動與回撤也越大；全 Kelly 理論上長期增長最快卻極易爆倉，故實務多用 1/4 Kelly 取平衡。當前策略所用的倍率以星號 ★ 標示。',
+          'Re-sizes the same qualifying bets under five staking rules and recomputes total ROI/PnL: flat ($500 per bet) versus 1/8, 1/4, 1/2 and full Kelly, where Kelly stakes a fraction f = (p×odds − 1)/(odds − 1) of the bankroll. Higher Kelly fractions compound faster but swing harder — full Kelly maximises long-run growth in theory yet risks ruin in practice, so 1/4 Kelly is the common compromise. The fraction your current strategy uses is marked with a star ★.'
         )}</p>
       </div>
     </div>
@@ -1801,22 +1816,34 @@ function renderPerformanceCharts(charts) {
       <div class="chart-card">
         <h3>${t('最高賠率', 'Max odds')}</h3>
         <div id="apex-sweep-maxodds" class="apex-chart"></div>
-        <p class="chart-note">${t('排除高於此賠率的冷門。當前 ★。', 'reject horses above this odds. Current ★.')}</p>
+        <p class="chart-note">${t(
+          '把「拒絕高於此賠率的冷門」這道閘門由寬到緊掃描，看每個設定下的 ROI。閘門太鬆會引入高方差的爛注、太緊則砍掉有價值的中長賠機會 — 目標是找出 ROI 見頂的甜蜜點。當前策略值以 ★ 標示。',
+          'Sweeps the "reject anything longer than this price" gate from loose to tight and plots ROI at each cut-off. Too loose lets in high-variance longshots that erode returns; too tight throws away profitable mid-priced value — the aim is the sweet spot where ROI peaks. The strategy\'s current setting is marked ★.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('最低賠率', 'Min odds')}</h3>
         <div id="apex-sweep-minodds" class="apex-chart"></div>
-        <p class="chart-note">${t('排除低於此賠率的熱門。當前 ★。', 'reject heavy favourites below this odds. Current ★.')}</p>
+        <p class="chart-note">${t(
+          '掃描「拒絕低於此賠率的熱門」閘門。過濾掉短賠大熱門可避開低回報、市場已充分定價的注；但設得太高會錯過真正穩贏的熱門。觀察 ROI 對此參數的敏感度，當前值 ★。',
+          'Sweeps the "reject favourites shorter than this price" gate. Filtering out heavy favourites avoids low-payoff, fully-priced bets, but set it too high and you skip genuinely solid short-priced winners. Read how sensitive ROI is to this knob; current value ★.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('最低模型機率', 'Min probability')}</h3>
         <div id="apex-sweep-minprob" class="apex-chart"></div>
-        <p class="chart-note">${t('排除低於此模型機率的馬。當前 ★。', 'reject horses below this model-assigned probability. Current ★.')}</p>
+        <p class="chart-note">${t(
+          '掃描「只下注模型勝率高於此值的馬」門檻。提高門檻 = 更挑剔、注數更少但每注信心更高；降低 = 更廣撒網。看 ROI 與注數如何隨門檻此消彼長，平衡選擇性與樣本量。當前 ★。',
+          'Sweeps the "only bet horses the model rates above this probability" floor. Raising it makes the strategy choosier — fewer bets but higher conviction each; lowering it casts a wider net. Watch how ROI and bet count trade off as the floor moves, balancing selectivity against sample size. Current ★.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('Edge 門檻', 'Edge threshold')}</h3>
         <div id="apex-sweep-edge" class="apex-chart"></div>
-        <p class="chart-note">${t('要求 prob×odds ≥ 此值才下注。當前 ★。', 'require prob×odds ≥ this to bet. Current ★.')}</p>
+        <p class="chart-note">${t(
+          'Edge = 模型勝率 × 賠率，即每一元注碼的期望回報；此圖掃描「要求 edge ≥ 此值才下注」的門檻。1.0 代表只下注期望打和或更好的馬，>1.0 代表只接受有正期望值的注。門檻越高、留下的注越「抵」但數量越少 — 這是價值投注的核心取捨。當前策略門檻以 ★ 標示。',
+          'Edge = model probability × decimal odds = the expected return per $1 staked; this sweep varies the "only bet when edge ≥ this" threshold. A value of 1.0 keeps bets that are break-even-or-better in expectation, and >1.0 admits only positive-expected-value plays. Raising the bar leaves fewer but better-value bets — the central trade-off of value betting. The strategy\'s current threshold is marked ★.'
+        )}</p>
       </div>
     </div>
 
@@ -1825,14 +1852,26 @@ function renderPerformanceCharts(charts) {
       <div class="chart-card">
         <h3>${t('按賽道', 'By track')}</h3>
         <div id="apex-seg-track" class="apex-chart"></div>
+        <p class="chart-note">${t(
+          '把下注按賽道（沙田 vs 跑馬地）分組比較勝率與 ROI。兩地的彎度、直路長度、草地狀況與閘號／步速偏向都不同，模型在某一場地可能系統性更準或更弱；若差異明顯，可考慮按場地調整注碼或篩選。',
+          'Splits bets by track (Sha Tin vs Happy Valley) and compares win-rate and ROI. The two courses differ in turn geometry, run-in length, going and draw/pace bias, so the model can be systematically sharper on one than the other; a clear gap is a cue to weight stakes or filter by venue.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('按班次', 'By class')}</h3>
         <div id="apex-seg-class" class="apex-chart"></div>
+        <p class="chart-note">${t(
+          '按賽事班次（Class 1–5 及分級賽）分組看表現。高班次馬匹資料多、形態穩定，模型通常更準；低班次新馬與弱馬多、變數大、爆冷頻繁。找出模型在哪些班次最有 edge，把資金集中在強項。',
+          'Groups performance by race class (Class 1–5 and Group/Listed). Higher classes have deeper, more stable form so the model is usually more accurate; lower classes are noisier, with more first-starters and upsets. Use this to see which classes carry the model\'s real edge and concentrate stakes where it is strongest.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('按距離', 'By distance')}</h3>
         <div id="apex-seg-distance" class="apex-chart"></div>
+        <p class="chart-note">${t(
+          '按賽事距離分段（短途／一哩／中距離／長途）比較勝率與 ROI。馬匹的距離適性、步速結構與閘號影響在不同距離差異很大；若模型在某距離段持續跑贏或跑輸大市，反映其特徵在該段的解釋力強弱。',
+          'Compares win-rate and ROI across distance bands (sprint / mile / middle / staying). Distance aptitude, pace structure and draw effects vary sharply by trip, so a band where the model consistently beats or lags the market reveals how well its features capture that segment.'
+        )}</p>
       </div>
       <div class="chart-card">
         <h3>${t('每場 Top-N 選股', 'Top-N per race')}</h3>
