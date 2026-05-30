@@ -1112,15 +1112,65 @@ def compute_post_mortem(race_id: int, force: bool = False) -> dict:
 
 @router.get("/horse_eval/{race_id}/{brand}")
 def horse_eval(race_id: int, brand: str, lang: str = "zh",
-               force: bool = False) -> dict:
-    """馬評-style commentary on why this horse won / lost. Cached; first
-    call may take ~3 s when DEEPSEEK_API_KEY is set (DeepSeek round-trip).
-    Subsequent calls return immediately from horse_eval_text."""
+               force: bool = False, cached_only: bool = False) -> dict:
+    """馬評-style RCA commentary on why this horse won / lost (running-comments
+    + post-mortem RCA tags, DeepSeek-polished). Cached; first call may take
+    ~3 s. `cached_only=1` returns the cached row if present else source='absent'
+    WITHOUT generating — used by the auto-loader (click-to-generate for rest)."""
     if not DB_PATH.exists():
         raise HTTPException(404, "DB not initialized")
-    from betting.eval_reason import generate
     conn = _connect()
     try:
+        if cached_only and not force:
+            row = conn.execute(
+                "SELECT text, source FROM horse_eval_text "
+                "WHERE race_id = ? AND brand = ? AND lang = ?",
+                (race_id, brand, lang),
+            ).fetchone()
+            if row:
+                return {"race_id": race_id, "brand": brand, "lang": lang,
+                        "source": row[1], "text": row[0]}
+            # Distinguish 'not run yet' from 'run but not generated'.
+            finished = conn.execute(
+                "SELECT 1 FROM results WHERE race_id = ? AND brand = ? "
+                "AND position IS NOT NULL AND position != '' LIMIT 1",
+                (race_id, brand),
+            ).fetchone()
+            return {"race_id": race_id, "brand": brand, "lang": lang,
+                    "source": "absent" if finished else "pending", "text": ""}
+        from betting.eval_reason import generate
+        text, source = generate(conn, race_id, brand, lang=lang, force_refresh=force)
+    finally:
+        conn.close()
+    return {"race_id": race_id, "brand": brand, "lang": lang,
+            "source": source, "text": text}
+
+
+@router.get("/horse_analysis/{race_id}/{brand}")
+def horse_analysis(race_id: int, brand: str, lang: str = "zh",
+                   force: bool = False, cached_only: bool = False) -> dict:
+    """Deep PRE-race ranking analysis for one horse: every factor driving the
+    model's ranking (feature deviations vs field, form, draw, pace, market).
+    Lazy + cached in horse_rank_analysis; a fresh deepseek-reasoner round-trip
+    takes ~15-25 s. `cached_only=1` returns the cached row if present and
+    otherwise source='absent' WITHOUT generating — used by the auto-loader so
+    pre-warmed analyses appear instantly while the rest stay click-to-generate."""
+    if not DB_PATH.exists():
+        raise HTTPException(404, "DB not initialized")
+    conn = _connect()
+    try:
+        if cached_only and not force:
+            row = conn.execute(
+                "SELECT text, source FROM horse_rank_analysis "
+                "WHERE race_id = ? AND brand = ? AND lang = ?",
+                (race_id, brand, lang),
+            ).fetchone()
+            if row:
+                return {"race_id": race_id, "brand": brand, "lang": lang,
+                        "source": row[1], "text": row[0]}
+            return {"race_id": race_id, "brand": brand, "lang": lang,
+                    "source": "absent", "text": ""}
+        from betting.rank_analysis import generate
         text, source = generate(conn, race_id, brand, lang=lang, force_refresh=force)
     finally:
         conn.close()
@@ -1839,81 +1889,6 @@ def list_predicted_dates(strategy_id: int | None = None) -> dict:
     return {"dates": [dict(zip(cols, r)) for r in rows]}
 
 
-def _compute_feature_drivers(conn, race_id: int, horse_brands: list[str],
-                             max_features: int = 3) -> dict:
-    """For each horse in the race, identify the features that pushed its
-    score up vs the field (top) and down (bottom).
-
-    Method: compute z-score per feature within this race's field — z = (this
-    horse's value − field mean) / field stdev. Features with the largest
-    positive z are 'tailwinds', largest negative z are 'headwinds'. Pure-
-    field-variance comparison is interpretable to a layman ("rating +12 vs
-    field, jockey win rate 22% vs 8% field avg") and doesn't need SHAP /
-    gain attribution which would require the trained booster at request time.
-
-    Returns: {brand: {"top": [..3 drivers..], "bottom": [..3 drivers..]}}
-    Each driver: {feature_id, name_zh, name_en, value, field_mean, z}.
-    """
-    rows = conn.execute(
-        "SELECT brand, feature_id, value FROM feature_values "
-        "WHERE race_id = ? AND value IS NOT NULL",
-        (race_id,),
-    ).fetchall()
-    if not rows:
-        return {b: {"top": [], "bottom": []} for b in horse_brands}
-
-    descriptions = _load_features()  # cached after first call
-
-    # Group values per feature
-    by_feat: dict[str, list[tuple[str, float]]] = {}
-    for brand, fid, val in rows:
-        by_feat.setdefault(fid, []).append((brand, val))
-
-    # Compute z-score per (feature, horse), skip features with no variance
-    # across the field (uninformative for ranking).
-    horse_z: dict[str, list[tuple[str, float, float, float]]] = {b: [] for b in horse_brands}
-    for fid, items in by_feat.items():
-        if len(items) < 2:
-            continue
-        vals = [v for _, v in items]
-        mean = sum(vals) / len(vals)
-        var = sum((v - mean) ** 2 for v in vals) / len(vals)
-        sd = var ** 0.5
-        if sd < 1e-9:
-            continue
-        for brand, v in items:
-            if brand in horse_z:
-                horse_z[brand].append((fid, v, mean, (v - mean) / sd))
-
-    def _enrich(item):
-        fid, val, mean, z = item
-        desc = descriptions.get(fid, {})
-        return {
-            "feature_id": fid,
-            "name_zh": desc.get("name_zh", fid),
-            "name_en": desc.get("name_en", fid),
-            "description_zh": desc.get("description_zh", ""),
-            "description_en": desc.get("description_en", ""),
-            "value": round(val, 3),
-            "field_mean": round(mean, 3),
-            "z": round(z, 2),
-        }
-
-    out: dict[str, dict] = {}
-    for brand, items in horse_z.items():
-        if not items:
-            out[brand] = {"top": [], "bottom": []}
-            continue
-        items.sort(key=lambda x: x[3])
-        bottom = items[:max_features]                  # most negative z
-        top = items[-max_features:][::-1]              # most positive z
-        out[brand] = {
-            "top": [_enrich(t) for t in top if t[3] > 0.5],     # only meaningful tailwinds
-            "bottom": [_enrich(b) for b in bottom if b[3] < -0.5],  # only meaningful headwinds
-        }
-    return out
-
-
 @router.get("/races/{date}")
 def get_races_for_date(date: str, strategy_id: int | None = None,
                        bet_strategy_id: int | None = None) -> dict:
@@ -2089,14 +2064,6 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                     return (1, int(pos))
                 return (2, h.get("draw") or 99)
             horses.sort(key=_sort_key)
-            # Attach per-horse feature drivers (z-scores vs the field) when
-            # we have predictions for this race — explains in layman terms
-            # which features pushed the score up / down.
-            if strategy_id is not None and any(h.get("calibrated_prob") is not None for h in horses):
-                drivers = _compute_feature_drivers(conn, race_id, [h["brand"] for h in horses])
-                for h in horses:
-                    if h.get("calibrated_prob") is not None:
-                        h["feature_drivers"] = drivers.get(h["brand"], {"top": [], "bottom": []})
             # Attach the full odds_snapshots history per horse so the SPA
             # can draw tiny win- and place-odds sparklines next to each
             # odds cell. Ordered by ts so the renderer can map points to

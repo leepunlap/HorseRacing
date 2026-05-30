@@ -42,7 +42,7 @@ def _upcoming_meetings(conn) -> list[tuple[str, str]]:
 
 def main(strategy_id: int = 1) -> int:
     _status.process_up("prepare_upcoming", ptype="oneshot", activity="starting")
-    tid = _status.task_start("prepare_upcoming", "prepare upcoming meetings", total=6)
+    tid = _status.task_start("prepare_upcoming", "prepare upcoming meetings", total=7)
     try:
         # 1. scrape upcoming cards (also enriches new horses: name_zh + pedigree)
         _status.task_step(tid, done=1, msg="scraping race cards (--next)")
@@ -118,6 +118,33 @@ def main(strategy_id: int = 1) -> int:
                         print(f"[prepare_upcoming] {label} {d}/{course}: {exc}")
         except Exception as exc:
             print(f"[prepare_upcoming] AI step skipped: {exc}")
+
+        # 6. Pre-warm the deep ranking analysis (Eval column) for the top
+        #    runners of each upcoming race so race-day cells appear instantly.
+        #    zh only + bounded (top-N per race) to keep the overnight cost sane;
+        #    English and the rest stay click-to-generate. Best-effort.
+        _status.task_step(tid, done=7, msg="pre-warming deep ranking analyses")
+        try:
+            from betting import rank_analysis
+            TOPN = 6
+            for d in dates:
+                races = conn.execute(
+                    "SELECT DISTINCT p.race_id FROM predictions p "
+                    "JOIN races r ON r.id = p.race_id "
+                    "WHERE r.date = ? AND p.strategy_id = ?", (d, strategy_id)).fetchall()
+                for (rid,) in races:
+                    top = conn.execute(
+                        "SELECT brand FROM predictions WHERE race_id = ? AND strategy_id = ? "
+                        "AND calibrated_prob IS NOT NULL ORDER BY calibrated_prob DESC LIMIT ?",
+                        (rid, strategy_id, TOPN)).fetchall()
+                    for (brand,) in top:
+                        try:
+                            rank_analysis.generate(conn, rid, brand, lang="zh",
+                                                   strategy_id=strategy_id)
+                        except Exception as exc:
+                            print(f"[prepare_upcoming] analysis {rid}/{brand}: {exc}")
+        except Exception as exc:
+            print(f"[prepare_upcoming] analysis pre-warm skipped: {exc}")
 
         conn.close()
         msg = f"{len(dates)} meeting(s): {', '.join(dates)}"

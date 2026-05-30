@@ -214,6 +214,10 @@ def _build_structured(conn: sqlite3.Connection, race_id: int, brand: str) -> dic
     if not rs:
         return {}
     hname, jockey, trainer, draw, actwt, declwt, odds, ftime, lbw, running, position = rs
+    # Chinese / English names from the horses registry (results stores EN only).
+    hz = conn.execute("SELECT name_zh, name_en FROM horses WHERE brand = ?", (brand,)).fetchone()
+    name_zh = hz[0] if hz else None
+    name_en = (hz[1] if hz else None) or hname
 
     # Recent history (≤ 6 races)
     hist = conn.execute(
@@ -267,8 +271,8 @@ def _build_structured(conn: sqlite3.Connection, race_id: int, brand: str) -> dic
         "race": {"date": date, "course": course, "race_no": race_no,
                  "distance": distance, "class": race_class, "going": going,
                  "race_name": race_name},
-        "horse": {"brand": brand, "name": hname, "jockey": jockey,
-                  "trainer": trainer, "draw": draw, "act_wt": actwt,
+        "horse": {"brand": brand, "name": hname, "name_zh": name_zh, "name_en": name_en,
+                  "jockey": jockey, "trainer": trainer, "draw": draw, "act_wt": actwt,
                   "decl_wt": declwt, "odds": odds, "finish_time": ftime,
                   "lbw": lbw, "running": running, "position": _coerce_int(position)},
         "history": hist_dicts,
@@ -402,6 +406,10 @@ def _localise_payload(payload: dict, lang: str) -> dict:
         return payload
     out = json.loads(json.dumps(payload, ensure_ascii=False))
     horse = out.get("horse") or {}
+    # Localise the horse name so a zh narrative never shows the English name.
+    _nz, _ne, _nm = horse.get("name_zh"), horse.get("name_en"), horse.get("name")
+    horse["name"] = (_nz or _nm or _ne) if lang == "zh" else (_ne or _nm or _nz)
+    horse.pop("name_zh", None); horse.pop("name_en", None)
     if lang == "en":
         # Translate ZH → EN where we have a map.
         if _has_cjk(horse.get("jockey")):

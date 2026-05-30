@@ -659,6 +659,23 @@ CREATE TABLE IF NOT EXISTS horse_eval_text (
 );
 CREATE INDEX IF NOT EXISTS idx_eval_race ON horse_eval_text(race_id);
 
+-- ─── Per-horse PRE-race deep ranking analysis (betting.rank_analysis) ──────
+-- Detailed AI commentary on every factor driving the model's ranking of a
+-- horse (feature deviations vs field weighted by importance, form, draw,
+-- pace, market). Point-in-time pre-race; cached one row per (race,brand,lang).
+CREATE TABLE IF NOT EXISTS horse_rank_analysis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    race_id INTEGER NOT NULL REFERENCES races(id),
+    brand TEXT NOT NULL,
+    lang TEXT NOT NULL,                  -- 'zh' | 'en'
+    source TEXT NOT NULL,                -- 'rule' | 'deepseek'
+    text TEXT NOT NULL,
+    structured_json TEXT,
+    computed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(race_id, brand, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_rank_analysis_race ON horse_rank_analysis(race_id);
+
 -- ─── HKJC "Comments on Running" per-horse narrative ───────────────────────
 -- Scraped from racing.hkjc.com/.../corunning.aspx. One row per (race, brand,
 -- lang). Fed into betting.eval_reason as authoritative race-incident

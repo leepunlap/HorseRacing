@@ -55,3 +55,5 @@ data/usable_features.json
 # Secrets / API keys — never commit
 .env
 .env.*
+data/*.sqlite
+data/*.sqlite3
