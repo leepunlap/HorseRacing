@@ -704,6 +704,7 @@ const state = {
   raceStrategy: _ui.raceStrategy || null,  // PERSIST — strategy_id filter for Races tab
   raceDates: null,                     // list of {date, races, results, predicted_races}
   raceData: null,                      // current date's race cards
+  raceNews: null,                      // /api/race_news — AI preview overlay
   // Strategy dashboard
   dashStrategy: _ui.dashStrategy || null,  // PERSIST — selected strategy id
   dashData: null,                      // dashboard payload
@@ -1149,8 +1150,10 @@ async function loadRaces() {
     }
     state.raceData = await api(`/api/races/${state.raceDate}${dqs}`)
       .catch(e => ({ races: [], error: e.message }));
+    state.raceNews = await api(`/api/race_news/${state.raceDate}`).catch(() => null);
   } else {
     state.raceData = null;
+    state.raceNews = null;
   }
   state.racesLoading = false;
   render();
@@ -2758,12 +2761,37 @@ function renderRaces() {
       </div>
       ${betPicker}
     </div>
+    ${renderNewsPanel()}
     <div class="races-loading-wrap${loadingCls}" data-loading-text="${loadingTxt}">
       ${betsHtml}
       ${racesHtml}
     </div>
   `;
   wireRaceControls();
+}
+
+// AI news/preview overlay panel (advisory only — never a model input). Shows
+// the DeepSeek meeting preview + specifically-tipped runners, in the active
+// language, with source links.
+function renderNewsPanel() {
+  const n = state.raceNews;
+  if (!n || !n.has_news) return '';
+  const summary = state.lang === 'zh' ? n.summary_zh : n.summary_en;
+  if (!summary && !(n.tipped || []).length) return '';
+  const tipped = (n.tipped || []).map(tp => {
+    const note = state.lang === 'zh' ? tp.note_zh : tp.note_en;
+    return `<li><b>${escapeHtml(tp.name || '')}</b>${tp.brand ? ` <code style="color:var(--muted)">${escapeHtml(tp.brand)}</code>` : ''}${note ? ` — ${escapeHtml(note)}` : ''}</li>`;
+  }).join('');
+  const sources = (n.sources || []).slice(0, 6).map(s =>
+    `<a href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener" style="font-size:11px">${escapeHtml((s.title || '').slice(0, 50))}↗</a>`).join(' · ');
+  return `
+    <div class="panel">
+      <h2>📰 ${t('賽事前瞻（AI 綜合新聞）', 'AI news preview')}
+        <span class="muted" style="font-weight:400;font-size:11px"> · ${t('僅供參考，非模型輸入', 'advisory only — not a model input')} · ${escapeHtml((n.fetched_at || '').replace('T', ' '))}</span></h2>
+      <p style="font-size:13px;line-height:1.6;color:var(--text)">${escapeHtml(summary || '')}</p>
+      ${tipped ? `<div style="font-size:12.5px"><b>${t('新聞貼士', 'Tipped in the news')}:</b><ul style="margin:4px 0 0 0;padding-left:18px">${tipped}</ul></div>` : ''}
+      ${sources ? `<div style="margin-top:8px;color:var(--muted)">${t('來源', 'sources')}: ${sources}</div>` : ''}
+    </div>`;
 }
 
 // Tiny inline SVG sparkline of a horse's odds history. `field` selects

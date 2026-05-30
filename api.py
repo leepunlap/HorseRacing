@@ -564,6 +564,35 @@ def upcoming_race(strategy_id: int = 1) -> dict:
         conn.close()
 
 
+@router.get("/race_news/{date}")
+def race_news(date: str, course: str | None = None) -> dict:
+    """AI news/preview overlay for a meeting (advisory only; never a model
+    feature). Populated by scripts.fetch_race_news for upcoming meetings."""
+    if not DB_PATH.exists():
+        return {"has_news": False}
+    conn = _connect()
+    try:
+        if not conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='race_news'").fetchone():
+            return {"has_news": False}
+        if course:
+            row = conn.execute("SELECT date,course,summary_en,summary_zh,tipped_json,sources_json,fetched_at "
+                               "FROM race_news WHERE date=? AND course=?", (date, course)).fetchone()
+        else:
+            row = conn.execute("SELECT date,course,summary_en,summary_zh,tipped_json,sources_json,fetched_at "
+                               "FROM race_news WHERE date=? ORDER BY course LIMIT 1", (date,)).fetchone()
+        if not row:
+            return {"has_news": False}
+        return {
+            "has_news": True, "date": row[0], "course": row[1],
+            "summary_en": row[2], "summary_zh": row[3],
+            "tipped": _json.loads(row[4] or "[]"),
+            "sources": _json.loads(row[5] or "[]"),
+            "fetched_at": row[6],
+        }
+    finally:
+        conn.close()
+
+
 @router.get("/bibliography")
 def list_bibliography() -> dict:
     """All B-id citations from `features_expanded_zh_hant.md` Appendix B."""
