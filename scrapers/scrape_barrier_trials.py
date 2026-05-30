@@ -144,6 +144,9 @@ class BarrierTrialsScraper(BaseScraper):
                 # No meta = skip; we won't know venue/distance
                 continue
 
+            # First pass: collect all valid runner rows in this trial batch so
+            # we know the field size (count of starters).
+            batch: list[dict] = []
             for tr in table.find_all("tr")[1:]:
                 tds = [td.get_text(" ", strip=True) for td in tr.find_all("td")]
                 if len(tds) < 8:
@@ -152,21 +155,14 @@ class BarrierTrialsScraper(BaseScraper):
                 if not bm:
                     continue
                 brand = bm.group(1)
-                jockey  = tds[1] or None
-                trainer = tds[2] or None
-                draw    = _to_int(tds[3])
-                gear    = tds[4] or None
-                # tds[5] = LBW (running margin); we don't store it for trials
                 running_positions = tds[6] or None    # e.g. "2 2 1"
                 time_sec = _parse_trial_time(tds[7])
-                # Trial finish position = last token of running_positions
                 position = None
                 if running_positions:
                     parts = running_positions.split()
                     if parts:
                         position = _to_int(parts[-1])
-
-                row = {
+                batch.append({
                     "horse_id": lookup_horse_id(conn, brand),
                     "brand": brand,
                     "date": date_str,
@@ -176,10 +172,16 @@ class BarrierTrialsScraper(BaseScraper):
                     "going": going,
                     "position": position,
                     "time_sec": time_sec,
-                    "jockey": jockey,
-                    "trainer": trainer,
-                    "notes": (tds[9][:300] if len(tds) > 9 else None),
-                }
+                    "jockey": tds[1] or None,
+                    "trainer": tds[2] or None,
+                    # Full stewards' trial note (no truncation — we want the
+                    # complete text for AI assessment of the trial).
+                    "notes": (tds[9] if len(tds) > 9 and tds[9] else None),
+                })
+
+            field_size = len(batch)   # number of runners in this trial heat
+            for row in batch:
+                row["field_size"] = field_size
                 with txn(conn):
                     self.upsert("barrier_trials", row,
                                 conflict_cols=("brand", "date", "venue", "distance"))

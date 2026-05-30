@@ -3125,10 +3125,16 @@ function dataBadge(h) {
   if (n === 0) out += ` <span class="pill warn" title="${t('資料庫中無往績，預測信心低', 'no prior runs in DB — low-confidence prediction')}">${t('新馬', 'debut')}</span>`;
   else if (n != null && n < 3) out += ` <span class="pill muted" title="${t('往績少，預測信心較低', 'few prior runs — lower-confidence prediction')}">${t('資料少', 'low data')} ${n}</span>`;
   // Barrier-trial form line — the only form a debutant has. Green if it placed.
+  // Tooltip carries the AI assessment of the trial (genuine/troubled/soft) +
+  // the raw stewards' note, so a bare position isn't taken at face value.
   const tr = h.last_trial;
   if (tr && tr.pos != null) {
     const placed = Number(tr.pos) >= 1 && Number(tr.pos) <= 3;
-    out += ` <span class="pill ${placed ? 'good' : 'muted'}" title="${t('最近試閘', 'last barrier trial')} ${escapeHtml(tr.date || '')}">${t('試閘', 'trial')} ${escapeHtml(String(tr.pos))}${tr.field ? '/' + escapeHtml(String(tr.field)) : ''}</span>`;
+    const ai = state.lang === 'zh' ? tr.ai_zh : tr.ai_en;
+    const tip = `${t('最近試閘', 'last trial')} ${tr.date || ''}`
+      + (ai ? `\n🤖 ${ai}` : '')
+      + (tr.note ? `\n📋 ${tr.note}` : '');
+    out += ` <span class="pill ${placed ? 'good' : 'muted'}" title="${escapeHtml(tip)}">${t('試閘', 'trial')} ${escapeHtml(String(tr.pos))}${tr.field ? '/' + escapeHtml(String(tr.field)) : ''}${ai ? ' 🤖' : ''}</span>`;
   }
   return out;
 }

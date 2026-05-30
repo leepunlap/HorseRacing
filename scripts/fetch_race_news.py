@@ -162,7 +162,8 @@ def main(d: str | None = None, course: str | None = None) -> int:
             "tipped_json=excluded.tipped_json, sources_json=excluded.sources_json, fetched_at=excluded.fetched_at",
             (d, course, out.get("summary_en"), out.get("summary_zh"),
              json.dumps(tipped, ensure_ascii=False),
-             json.dumps([{"title": n["title"], "url": n["url"]} for n in news], ensure_ascii=False)))
+             json.dumps([{"title": n["title"], "url": n["url"], "snippet": n["snippet"]}
+                         for n in news], ensure_ascii=False)))
         conn.commit()
         _status.task_done(tid, f"{len(tipped)} tipped runner(s), {len(news)} sources")
         _status.process_down("race_news", "done")

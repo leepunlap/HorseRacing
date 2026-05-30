@@ -2032,11 +2032,20 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                 # Most recent barrier trial before this date (form line for
                 # debutants especially). ASC order so the latest row wins.
                 _trials: dict[str, dict] = {}
-                for _b, _pos, _fs, _td in conn.execute(
-                    f"SELECT brand, position, field_size, date FROM barrier_trials "
+                for _b, _pos, _fs, _td, _note in conn.execute(
+                    f"SELECT brand, position, field_size, date, notes FROM barrier_trials "
                     f"WHERE brand IN ({_ph2}) AND date < ? ORDER BY date ASC",
                     (*_brands_here, date)):
-                    _trials[_b] = {"pos": _pos, "field": _fs, "date": _td}
+                    _trials[_b] = {"pos": _pos, "field": _fs, "date": _td, "note": _note}
+                # AI assessment of the latest trial (decodes whether the position
+                # was genuine / troubled / soft). horse_trial_eval is keyed by brand.
+                if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='horse_trial_eval'").fetchone():
+                    for _b, _ae, _az in conn.execute(
+                        f"SELECT brand, summary_en, summary_zh FROM horse_trial_eval "
+                        f"WHERE brand IN ({_ph2})", _brands_here):
+                        if _b in _trials:
+                            _trials[_b]["ai_en"] = _ae
+                            _trials[_b]["ai_zh"] = _az
                 for h in horses:
                     h["last_trial"] = _trials.get(h["brand"])
             # Bilingual jockey/trainer names from the persons registry

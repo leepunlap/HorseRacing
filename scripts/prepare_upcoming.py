@@ -94,18 +94,21 @@ def main(strategy_id: int = 1) -> int:
             except SystemExit as exc:
                 print(f"[prepare_upcoming] predict {d}: {exc}")
 
-        # 5. AI news preview per upcoming meeting (advisory; best-effort — a
-        #    failed news fetch must never fail the prediction chain).
-        _status.task_step(tid, done=6, msg="generating AI news previews")
+        # 5. AI overlays per upcoming meeting (advisory; best-effort — a failed
+        #    AI step must never fail the prediction chain): news preview + a
+        #    per-horse assessment of each runner's latest barrier trial.
+        _status.task_step(tid, done=6, msg="generating AI news + trial notes")
         try:
-            from scripts import fetch_race_news
+            from scripts import fetch_race_news, summarize_trials
             for d, course in meetings:
-                try:
-                    fetch_race_news.main(d, course)
-                except Exception as exc:
-                    print(f"[prepare_upcoming] news {d}/{course}: {exc}")
+                for fn, label in ((fetch_race_news.main, "news"),
+                                  (summarize_trials.main, "trials")):
+                    try:
+                        fn(d, course)
+                    except Exception as exc:
+                        print(f"[prepare_upcoming] {label} {d}/{course}: {exc}")
         except Exception as exc:
-            print(f"[prepare_upcoming] news step skipped: {exc}")
+            print(f"[prepare_upcoming] AI step skipped: {exc}")
 
         conn.close()
         msg = f"{len(dates)} meeting(s): {', '.join(dates)}"
