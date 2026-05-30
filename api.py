@@ -1972,6 +1972,20 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                         "finish_time","lbw","running_style","position","horse_no",
                         "age","sex","rating","horse_name_en","horse_name_zh")
             horses = [dict(zip(cols, h)) for h in horse_rows]
+            # Data sufficiency: count each horse's prior completed races in our DB
+            # before this date. Debutants (0) / lightly-raced horses have little
+            # form for the model to use, so the SPA flags them.
+            _brands_here = [h["brand"] for h in horses]
+            if _brands_here:
+                _ph2 = ",".join("?" * len(_brands_here))
+                _prior = dict(conn.execute(
+                    f"SELECT rh.brand, COUNT(*) FROM results rh "
+                    f"JOIN races rah ON rah.id = rh.race_id "
+                    f"WHERE rh.brand IN ({_ph2}) AND rah.date < ? "
+                    f"  AND rh.position IS NOT NULL GROUP BY rh.brand",
+                    (*_brands_here, date)).fetchall())
+                for h in horses:
+                    h["prior_starts"] = _prior.get(h["brand"], 0)
             # Bilingual jockey/trainer names from the persons registry
             # (populated by scrape_persons.py, keyed by HKJC official IDs).
             # We do the lookup in Python so we can strip the apprentice claim

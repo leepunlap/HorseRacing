@@ -2901,7 +2901,7 @@ function renderBetsSummary(data, strat) {
     const isCombo = bet && /[,>]/.test(String(bet.brand || ''));
     const horseLabel = isCombo
       ? `<code>${escapeHtml(bet.brand)}</code>`
-      : `${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code>`;
+      : `${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code>${dataBadge(h)}`;
     // 評估 cell: for finished races, drop an .eval-cell placeholder so
     // _autoLoadEvalCells() hits /api/horse_eval — that endpoint combines
     // HKJC running-comments + post-mortem RCA tags + model drivers, and
@@ -3080,6 +3080,17 @@ const i18n = (() => {
     },
   };
 })();
+
+// Data-sufficiency badge for a runner: debutants (0 prior DB races) and
+// lightly-raced horses have little form, so the model's prediction for them is
+// low-confidence. `prior_starts` comes from /api/races/{date}.
+function dataBadge(h) {
+  const n = h && h.prior_starts;
+  if (n == null) return '';
+  if (n === 0) return ` <span class="pill warn" title="${t('資料庫中無往績，預測信心低', 'no prior runs in DB — low-confidence prediction')}">${t('新馬', 'debut')}</span>`;
+  if (n < 3) return ` <span class="pill muted" title="${t('往績少，預測信心較低', 'few prior runs — lower-confidence prediction')}">${t('資料少', 'low data')} ${n}</span>`;
+  return '';
+}
 
 // Back-compat shims (kept thin while we migrate any third-party callers).
 // New code should call i18n.* directly.
@@ -3366,7 +3377,7 @@ function renderRaceBlock(r, data, sid) {
               <tr class="${cls}">
                 <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
                 <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
-                <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code></td>
+                <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code>${dataBadge(h)}</td>
                 <td class="num">${h.draw ?? '—'}</td>
                 <td>${escapeHtml(i18n.jockey(h, lang))}</td>
                 <td>${escapeHtml(i18n.trainer(h, lang))}</td>
