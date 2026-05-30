@@ -546,6 +546,23 @@
                font-size: 12px; color: var(--muted); line-height: 1.55; white-space: pre-wrap; }
   .imp-card .fc-toggle { background: transparent; border: 0; color: var(--muted);
                          cursor: pointer; font-size: 13px; }
+
+  /* ── Dashboard · Upcoming Race pipeline pane ────────────────────────── */
+  .up-pipeline { display: flex; align-items: stretch; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .up-step { flex: 1 1 0; min-width: 120px; background: var(--bg); border: 1px solid var(--border);
+             border-radius: 6px; padding: 12px 10px; text-align: center; position: relative; }
+  .up-step .up-mark { font-size: 20px; line-height: 1; margin-bottom: 6px; }
+  .up-step .up-label { font-size: 12.5px; font-weight: 600; }
+  .up-step .up-detail { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .up-step.done    { border-color: rgba(77,209,122,0.5); }
+  .up-step.done    .up-mark { color: var(--good); }
+  .up-step.partial { border-color: rgba(240,194,71,0.5); }
+  .up-step.partial .up-mark { color: var(--warn); }
+  .up-step.pending .up-mark { color: var(--bad); }
+  .up-step.pending { border-color: rgba(240,98,98,0.35); }
+  .up-step.waiting { opacity: 0.6; }
+  .up-step.waiting .up-mark { color: var(--muted); }
+  .up-arrow { display: flex; align-items: center; color: var(--muted); font-size: 16px; padding: 0 2px; }
 </style>
 </head>
 <body>
@@ -696,6 +713,7 @@ const state = {
   st: { procs: {}, tasks: {}, skew: 0, wsUp: false, errors: [] },
   stTick: null,                        // setInterval handle for ticking timers
   coverage: [],                        // /api/scrapers/coverage — desc + counts + date range
+  upcoming: null,                      // /api/upcoming — next-meeting pipeline readiness
 };
 
 function pushLog(msg) {
@@ -949,6 +967,7 @@ async function loadDashboard() {
   state.schedules = await api('/api/schedules').catch(() => []);
   await loadStatus();   // seed the live process/task model before first render
   await loadCoverage(); // scraper descriptions + record counts + date ranges
+  state.upcoming = await api('/api/upcoming').catch(() => null);
   render();
 }
 
@@ -1298,6 +1317,8 @@ function layout() {
 function renderDashboard() {
   const main = document.getElementById('main');
   main.innerHTML = `
+    <div class="panel" id="upcomingPane"></div>
+
     <div class="panel">
       <h2>${t('處理程序', 'Processes')}</h2>
       <div id="procGrid" class="proc-grid"></div>
@@ -1323,10 +1344,53 @@ function renderDashboard() {
       <div id="coverageList"></div>
     </div>
   `;
+  renderUpcoming();
   renderStatusSections();
   renderSchedulesPanel();
   renderCoverage();
   startStatusTicker();
+}
+
+// Full-width "Upcoming Race" pipeline-readiness pane: card (entries, stage 1)
+// → features → predictions → odds (stage 2) → bet decisions.
+function renderUpcoming() {
+  const el = document.getElementById('upcomingPane');
+  if (!el) return;
+  const u = state.upcoming;
+  if (!u || !u.has_meeting) {
+    el.innerHTML = `<h2>${t('即將舉行的賽事', 'Upcoming Race')}</h2>
+      <div class="empty">${t('資料庫中沒有即將舉行的賽事（賽馬卡尚未抓取）', 'No upcoming meeting in the DB (race card not scraped yet)')}</div>`;
+    return;
+  }
+  const icon = { done: '✓', partial: '◐', pending: '○', waiting: '⋯' };
+  const post = u.post_time ? ` · ${t('首場', 'first post')} ${u.post_time}` : '';
+  const stageBadge = u.stage === 1
+    ? `<span class="pill warn">${t('第一階段（未開賠率）', 'Stage 1 (no odds yet)')}</span>`
+    : `<span class="pill good">${t('第二階段（已開賠率）', 'Stage 2 (odds live)')}</span>`;
+  const readyBadge = u.core_ready
+    ? `<span class="pill good">${t('已就緒', 'ready')}</span>`
+    : `<span class="pill bad">${t('未就緒', 'not ready')}</span>`;
+
+  const steps = u.steps.map((s, i) => {
+    const label = state.lang === 'zh' ? s.zh : s.en;
+    const detail = s.status === 'waiting'
+      ? t('待第二階段', 'awaits stage 2')
+      : `${s.done}/${s.total}`;
+    const arrow = i < u.steps.length - 1 ? `<span class="up-arrow">→</span>` : '';
+    return `<div class="up-step ${s.status}">
+        <div class="up-mark">${icon[s.status] || '○'}</div>
+        <div class="up-label">${escapeHtml(label)}</div>
+        <div class="up-detail">${escapeHtml(detail)}</div>
+      </div>${arrow}`;
+  }).join('');
+
+  el.innerHTML = `
+    <h2>${t('即將舉行的賽事', 'Upcoming Race')}
+      <span class="muted" style="font-weight:400;font-size:13px"> · ${u.date} ${u.course}
+        · ${u.n_races} ${t('場', 'races')} · ${u.n_runners} ${t('匹', 'runners')}${post}</span>
+      <span style="float:right">${stageBadge} ${readyBadge}</span>
+    </h2>
+    <div class="up-pipeline">${steps}</div>`;
 }
 
 // Read a cron expression into a short human hint (covers the patterns we use).

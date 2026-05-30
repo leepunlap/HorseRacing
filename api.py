@@ -494,6 +494,66 @@ def strategy_feature_cards(strategy_id: int) -> dict:
     }
 
 
+@router.get("/upcoming")
+def upcoming_race(strategy_id: int = 1) -> dict:
+    """Readiness of the pipeline for the next upcoming meeting: race card
+    (entries, stage 1) → features → predictions → odds (stage 2) → bet
+    decisions. Powers the dashboard's 'Upcoming Race' pane."""
+    from datetime import date as _date
+    conn = _connect()
+    try:
+        today = _date.today().isoformat()
+        row = conn.execute(
+            "SELECT date, course FROM races WHERE date >= ? "
+            "GROUP BY date, course ORDER BY date, course LIMIT 1", (today,)).fetchone()
+        if not row:
+            return {"has_meeting": False}
+        d, course = row
+        rids = [r[0] for r in conn.execute(
+            "SELECT id FROM races WHERE date=? AND course=?", (d, course))]
+        ph = ",".join("?" * len(rids))
+
+        def one(sql):
+            return conn.execute(sql, rids).fetchone()[0] or 0
+        n_races = len(rids)
+        n_runners = one(f"SELECT COUNT(*) FROM results WHERE race_id IN ({ph})")
+        n_feat = one(f"SELECT COUNT(DISTINCT race_id || '|' || brand) FROM feature_values WHERE race_id IN ({ph})")
+        n_pred = one(f"SELECT COUNT(*) FROM predictions WHERE strategy_id={int(strategy_id)} AND race_id IN ({ph})")
+        n_odds = one(f"SELECT COUNT(*) FROM odds_snapshots WHERE race_id IN ({ph})")
+        n_bets = one(f"SELECT COUNT(*) FROM bet_ledger WHERE race_id IN ({ph})")
+        post = conn.execute(f"SELECT MIN(post_time) FROM races WHERE id IN ({ph})", rids).fetchone()[0]
+        stage = 2 if n_odds > 0 else 1
+
+        def step(key, zh, en, done, total, *, gate_stage2=False):
+            if gate_stage2 and stage == 1:
+                status = "waiting"           # legitimately not due yet (pre stage-2)
+            elif total and done >= total:
+                status = "done"
+            elif done > 0:
+                status = "partial"
+            else:
+                status = "pending"
+            return {"key": key, "zh": zh, "en": en, "done": int(done),
+                    "total": int(total), "status": status}
+
+        steps = [
+            step("card", "賽馬卡（出馬表）", "Race card (entries)", n_runners, n_runners or 1),
+            step("features", "特徵計算", "Features", n_feat, n_runners or 1),
+            step("predictions", "模型預測", "Predictions", n_pred, n_runners or 1),
+            step("odds", "賠率（第二階段）", "Odds (stage 2)", n_odds, n_runners or 1, gate_stage2=True),
+            step("bets", "下注決策", "Bet decisions", n_bets, n_races or 1, gate_stage2=True),
+        ]
+        # "Ready for race day" once entries + features + predictions are complete.
+        core_ready = all(s["status"] == "done" for s in steps[:3])
+        return {
+            "has_meeting": True, "date": d, "course": course,
+            "n_races": n_races, "n_runners": n_runners, "post_time": post,
+            "stage": stage, "core_ready": core_ready, "steps": steps,
+        }
+    finally:
+        conn.close()
+
+
 @router.get("/bibliography")
 def list_bibliography() -> dict:
     """All B-id citations from `features_expanded_zh_hant.md` Appendix B."""
