@@ -1986,6 +1986,16 @@ def get_races_for_date(date: str, strategy_id: int | None = None,
                     (*_brands_here, date)).fetchall())
                 for h in horses:
                     h["prior_starts"] = _prior.get(h["brand"], 0)
+                # Most recent barrier trial before this date (form line for
+                # debutants especially). ASC order so the latest row wins.
+                _trials: dict[str, dict] = {}
+                for _b, _pos, _fs, _td in conn.execute(
+                    f"SELECT brand, position, field_size, date FROM barrier_trials "
+                    f"WHERE brand IN ({_ph2}) AND date < ? ORDER BY date ASC",
+                    (*_brands_here, date)):
+                    _trials[_b] = {"pos": _pos, "field": _fs, "date": _td}
+                for h in horses:
+                    h["last_trial"] = _trials.get(h["brand"])
             # Bilingual jockey/trainer names from the persons registry
             # (populated by scrape_persons.py, keyed by HKJC official IDs).
             # We do the lookup in Python so we can strip the apprentice claim

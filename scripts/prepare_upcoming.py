@@ -29,6 +29,7 @@ DB = BASE / "data" / "racing.db"
 
 import status as _status                       # noqa: E402
 from scrapers.scrape_race_card import RaceCardScraper  # noqa: E402
+from scrapers.scrape_barrier_trials import BarrierTrialsScraper  # noqa: E402
 from features import pipeline as feat_pipeline # noqa: E402
 from models import walk_forward as wf          # noqa: E402
 
@@ -41,11 +42,15 @@ def _upcoming_meetings(conn) -> list[tuple[str, str]]:
 
 def main(strategy_id: int = 1) -> int:
     _status.process_up("prepare_upcoming", ptype="oneshot", activity="starting")
-    tid = _status.task_start("prepare_upcoming", "prepare upcoming meetings", total=4)
+    tid = _status.task_start("prepare_upcoming", "prepare upcoming meetings", total=5)
     try:
-        # 1. scrape upcoming cards
+        # 1. scrape upcoming cards (also enriches new horses: name_zh + pedigree)
         _status.task_step(tid, done=1, msg="scraping race cards (--next)")
         RaceCardScraper().main(["--next"])
+
+        # 1b. recent barrier trials — debutants' only form line; feeds H094.
+        _status.task_step(tid, msg="scraping recent barrier trials")
+        BarrierTrialsScraper().main(["--recent"])
 
         conn = sqlite3.connect(DB)
         conn.execute("PRAGMA journal_mode = WAL")
@@ -56,7 +61,7 @@ def main(strategy_id: int = 1) -> int:
                      "AND id NOT IN (SELECT DISTINCT race_id FROM results WHERE race_id IS NOT NULL)")
         conn.commit()
         after = conn.execute("SELECT COUNT(*) FROM races WHERE date >= date('now')").fetchone()[0]
-        _status.task_step(tid, done=2, msg=f"cleaned {before - after} stub races")
+        _status.task_step(tid, done=3, msg=f"cleaned {before - after} stub races")
 
         meetings = _upcoming_meetings(conn)
         dates = sorted({d for d, _c in meetings})
@@ -67,7 +72,7 @@ def main(strategy_id: int = 1) -> int:
             return 0
 
         # 3. features for each upcoming date
-        _status.task_step(tid, done=3, msg=f"computing features for {len(dates)} date(s)")
+        _status.task_step(tid, done=4, msg=f"computing features for {len(dates)} date(s)")
         cols = ("id", "date", "course", "race_no", "distance", "class", "going", "participants", "race_name", "prize")
         for d in dates:
             races = conn.execute(
@@ -82,7 +87,7 @@ def main(strategy_id: int = 1) -> int:
         conn.commit()
 
         # 4. predictions for each upcoming date
-        _status.task_step(tid, done=4, msg=f"predicting {len(dates)} date(s)")
+        _status.task_step(tid, done=5, msg=f"predicting {len(dates)} date(s)")
         for d in dates:
             try:
                 wf.run_strategy(strategy_id, d, d)
