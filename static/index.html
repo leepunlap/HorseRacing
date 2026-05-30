@@ -915,10 +915,8 @@ async function logout() {
 // ─── Tab loaders ────────────────────────────────────────────────────────────
 async function loadDashboard() {
   state.health = await api('/api/health').catch(e => ({ error: e.message }));
-  state.liveStatus = await api('/api/live/status').catch(e => ({ error: e.message }));
-  state.killSwitch = await api('/api/kill-switch').catch(e => ({ error: e.message }));
-  state.liveMode = await api('/api/live/mode').catch(e => ({ error: e.message }));
   state.integrity = await api('/api/integrity').catch(() => null);
+  state.schedules = await api('/api/schedules').catch(() => []);
   await loadStatus();   // seed the live process/task model before first render
   await loadCoverage(); // scraper descriptions + record counts + date ranges
   render();
@@ -1261,9 +1259,6 @@ function layout() {
 
 function renderDashboard() {
   const main = document.getElementById('main');
-  const ks = state.killSwitch || {};
-  const lm = state.liveMode || {};
-  const ls = state.liveStatus || {};
   main.innerHTML = `
     <div class="panel">
       <h2>${t('處理程序', 'Processes')}</h2>
@@ -1281,68 +1276,65 @@ function renderDashboard() {
     </div>
 
     <div class="panel">
+      <h2>${t('排程任務', 'Scheduled tasks')}</h2>
+      <div id="schedList"></div>
+    </div>
+
+    <div class="panel">
       <h2>${t('資料來源', 'Data sources')}</h2>
       <div id="coverageList"></div>
     </div>
-
-    <div class="row">
-      <div class="panel">
-        <h2>${t('緊急停止', 'Kill switch')}</h2>
-        <p>${ks.halted
-            ? `<span class="pill bad">${t('已停止', 'halted')}</span> ${escapeHtml(ks.halt_reason || '')}`
-            : `<span class="pill good">${t('運行中', 'running')}</span>`}</p>
-        <div class="kv">
-          <dt>${t('停止時間', 'halted at')}</dt><dd>${ks.halted_at || '—'}</dd>
-          <dt>${t('操作者', 'by')}</dt><dd>${ks.halted_by || '—'}</dd>
-          <dt>${t('上次心跳', 'last heartbeat')}</dt><dd>${ks.last_heartbeat || '—'}</dd>
-        </div>
-        <button id="ksToggle" class="btn ${ks.halted ? '' : 'danger'}" style="margin-top:12px">
-          ${ks.halted ? t('解除停止', 'release halt') : t('啟動緊急停止', 'engage kill switch')}
-        </button>
-      </div>
-      <div class="panel">
-        <h2>${t('即時模式（實盤）', 'Live mode (real money)')}</h2>
-        <p>${lm.live_mode
-            ? `<span class="pill bad">${t('實盤', 'LIVE')}</span>`
-            : `<span class="pill muted">${t('模擬', 'paper')}</span>`}</p>
-        <p style="color:var(--muted);font-size:12px">${escapeHtml(lm.note || '')}</p>
-        <button id="lmToggle" class="btn ${lm.live_mode ? '' : 'danger'}" style="margin-top:8px">
-          ${lm.live_mode ? t('切換到模擬', 'switch to paper') : t('啟用實盤模式', 'enable live mode')}
-        </button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>${t('熔斷器（今日）', 'Circuit breakers (today)')}</h2>
-      ${(ls.circuit_breakers || []).length ? `
-        <table><thead><tr>
-          <th>${t('策略', 'strategy')}</th>
-          <th>${t('當日 P&L', 'daily pnl')}</th>
-          <th>${t('本週 P&L', 'weekly pnl')}</th>
-          <th>${t('狀態', 'halted')}</th>
-          <th>${t('原因', 'reason')}</th>
-        </tr></thead>
-        <tbody>${ls.circuit_breakers.map(c => `
-          <tr><td>${escapeHtml(c.strategy || '')}</td>
-              <td class="num">${c.daily_pnl ?? '—'}</td>
-              <td class="num">${c.weekly_pnl ?? '—'}</td>
-              <td>${c.halted
-                  ? `<span class="pill bad">${t('已停止', 'halted')}</span>`
-                  : `<span class="pill good">${t('正常', 'ok')}</span>`}</td>
-              <td>${escapeHtml(c.halt_reason || '')}</td></tr>
-        `).join('')}</tbody></table>
-      ` : `<div class="empty">${t('沒有啟用的策略,或今日無活動', 'no enabled strategies, or no activity today')}</div>`}
-    </div>
-
-    <div class="panel">
-      <h2>${t('進度日誌', 'Progress log')} <span style="color:var(--muted);font-size:12px">(socket.io)</span></h2>
-      <div id="progressLog" class="log"></div>
-    </div>
   `;
-  renderLog(document.getElementById('progressLog'));
   renderStatusSections();
+  renderSchedulesPanel();
   renderCoverage();
   startStatusTicker();
+}
+
+// Read a cron expression into a short human hint (covers the patterns we use).
+function cronHint(expr) {
+  const days = { '0': t('週日','Sun'), '1': t('週一','Mon'), '2': t('週二','Tue'),
+                 '3': t('週三','Wed'), '4': t('週四','Thu'), '5': t('週五','Fri'), '6': t('週六','Sat') };
+  const p = (expr || '').trim().split(/\s+/);
+  if (p.length !== 5) return expr;
+  const [mi, hr, dom, mon, dow] = p;
+  const hhmm = (/^\d+$/.test(hr) && /^\d+$/.test(mi))
+    ? `${String(hr).padStart(2,'0')}:${String(mi).padStart(2,'0')}` : expr;
+  if (dom === '*' && mon === '*' && dow === '*') return `${t('每天','daily')} ${hhmm}`;
+  if (dom === '*' && mon === '*' && days[dow]) return `${days[dow]} ${hhmm}`;
+  return expr;
+}
+
+// List the cron schedules registered in the in-process scheduler.
+function renderSchedulesPanel() {
+  const el = document.getElementById('schedList');
+  if (!el) return;
+  const rows = state.schedules || [];
+  if (!rows.length) { el.innerHTML = `<div class="empty">${t('沒有排程', 'no schedules')}</div>`; return; }
+  el.innerHTML = `
+    <table><thead><tr>
+      <th>${t('名稱', 'name')}</th>
+      <th>${t('排程', 'schedule')}</th>
+      <th>${t('動作', 'action')}</th>
+      <th>${t('狀態', 'status')}</th>
+      <th>${t('上次觸發', 'last fired')}</th>
+    </tr></thead><tbody>
+    ${rows.map(s => {
+      const fired = s.last_fired_at ? `${s.last_fired_at.replace('T',' ')}` : '—';
+      const stat = !s.enabled ? `<span class="pill muted">${t('停用','disabled')}</span>`
+        : (s.last_fire_status === 'error' ? `<span class="pill bad">${t('錯誤','error')}</span>`
+          : s.last_fire_status === 'skipped' ? `<span class="pill warn">${t('略過','skipped')}</span>`
+          : `<span class="pill good">${t('啟用','armed')}</span>`);
+      return `<tr${s.enabled ? '' : ' style="opacity:0.55"'}>
+        <td>${escapeHtml(s.name || s.id)}</td>
+        <td style="font-family:var(--mono);font-size:11.5px">${escapeHtml(cronHint(s.cron))}
+            <span style="color:var(--muted)"> · ${escapeHtml(s.cron || '')}</span></td>
+        <td><code style="font-size:11.5px">${escapeHtml(s.action || '')}</code></td>
+        <td>${stat}</td>
+        <td style="font-family:var(--mono);font-size:11.5px;color:var(--muted)">${escapeHtml(fired)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
 }
 
 // Re-render ONLY the live-status sections (process grid, to-do list, errors) so
@@ -1439,16 +1431,24 @@ function renderCoverage() {
       <th>${t('說明', 'description')}</th>
       <th style="text-align:right">${t('記錄數', 'records')}</th>
       <th>${t('日期範圍', 'date range')}</th>
+      <th>URL</th>
     </tr></thead><tbody>
     ${rows.map(r => {
       const desc = state.lang === 'zh' ? r.zh : r.en;
       const range = r.date_min ? `${r.date_min} → ${r.date_max}` : '—';
       const empty = (r.records || 0) === 0;
+      let host = '—';
+      if (r.url) { try { host = new URL(r.url).hostname; } catch (e) { host = r.url; } }
+      const urlCell = r.url
+        ? `<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener" title="${escapeHtml(r.url)}"
+              style="color:var(--accent,#6aa3ff)">${escapeHtml(host)} ↗</a>`
+        : `<span style="color:var(--muted)">${t('本地計算', 'computed')}</span>`;
       return `<tr${empty ? ' style="opacity:0.5"' : ''}>
         <td><code style="font-size:11.5px">${escapeHtml(r.slug)}</code></td>
         <td style="color:var(--muted)">${escapeHtml(desc || '')}</td>
         <td class="num" style="text-align:right">${fmtN(r.records)}</td>
         <td style="font-family:var(--mono);font-size:11.5px;color:var(--muted)">${range}</td>
+        <td style="font-size:11.5px">${urlCell}</td>
       </tr>`;
     }).join('')}
     </tbody></table>`;

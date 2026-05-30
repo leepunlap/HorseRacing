@@ -76,6 +76,30 @@ SCRAPERS = [
 
 BY_SLUG = {e["slug"]: e for e in SCRAPERS}
 
+# Upstream source page each scraper pulls from (browsable where possible).
+# track_bias is derived locally from other tables, so it has no external URL.
+_HKJC = "https://racing.hkjc.com"
+URLS = {
+    "results":              f"{_HKJC}/racing/information/English/Racing/LocalResults.aspx",
+    "race_card":            f"{_HKJC}/racing/information/English/Racing/RaceCard.aspx",
+    "incident_reports":     f"{_HKJC}/en-us/local/information/racereportfull",
+    "running_comments":     f"{_HKJC}/racing/information/english/Racing/corunning.aspx",
+    "per_horse_sectionals": f"{_HKJC}/en-us/local/information/displaysectionaltime",
+    "trackwork":            f"{_HKJC}/en-us/local/information/trackworkresult",
+    "barrier_trials":       f"{_HKJC}/en-us/local/information/btresult",
+    "vet_records":          f"{_HKJC}/en-us/local/information/ovedatabase",
+    "roarers":              f"{_HKJC}/en-us/local/information/ovedatabase",
+    "horse_pedigree":       f"{_HKJC}/racing/information/English/Horse/Horse.aspx",
+    "weather":              "https://data.weather.gov.hk/weatherAPI/opendata/weather.php",
+    "dividends_backfill":   f"{_HKJC}/racing/information/English/Racing/LocalResults.aspx",
+    "multi_leg_dividends":  "https://bet.hkjc.com/",
+    "race_card_zh":         f"{_HKJC}/racing/information/English/Racing/RaceCard.aspx",
+    "track_bias":           None,
+    "odds_poller":          "https://bet.hkjc.com/",
+    "backfill_horse_names": f"{_HKJC}/racing/information/English/Racing/RaceCard.aspx",
+    "backfill_horse_no":    f"{_HKJC}/racing/information/English/Racing/RaceCard.aspx",
+}
+
 
 def coverage(conn) -> list[dict]:
     """For each catalog entry: record count + min/max date. Resilient to a
@@ -100,5 +124,6 @@ def coverage(conn) -> list[dict]:
         out.append({
             "slug": e["slug"], "en": e["en"], "zh": e["zh"], "table": tbl,
             "records": cnt, "date_min": dmin, "date_max": dmax,
+            "url": URLS.get(e["slug"]),
         })
     return out
