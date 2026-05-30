@@ -193,6 +193,13 @@ def register_actions(action_registry: dict[str, Callable], scraper_job: dict, is
         _sp.Popen([sys.executable, "-m", "scripts.prepare_upcoming", sid], cwd=str(BASE_DIR))
     action_registry["prepare_upcoming"] = _prepare_upcoming_action
 
+    # Frequent odds-trend poll + near-post Stage-2 re-predict on live odds.
+    # Detached subprocess; self-gates to a fast no-op when nothing is upcoming.
+    def _refresh_upcoming_action(args: dict) -> None:
+        import subprocess as _sp
+        _sp.Popen([sys.executable, "-m", "scripts.refresh_upcoming"], cwd=str(BASE_DIR))
+    action_registry["refresh_upcoming"] = _refresh_upcoming_action
+
 
 # ─── On-demand fire endpoints ────────────────────────────────────────────────
 

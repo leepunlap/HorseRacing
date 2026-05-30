@@ -55,5 +55,17 @@
     "last_fired_at": null,
     "last_fire_status": null,
     "last_skip_reason": null
+  },
+  {
+    "id": "4f4445ffd8bf019e",
+    "name": "Refresh upcoming odds + Stage-2 predictions",
+    "cron": "*/30 * * * *",
+    "action": "refresh_upcoming",
+    "args": {},
+    "enabled": true,
+    "created_at": "2026-05-30T19:59:05",
+    "last_fired_at": null,
+    "last_fire_status": null,
+    "last_skip_reason": null
   }
 ]

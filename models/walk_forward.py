@@ -290,14 +290,23 @@ def _load_test(conn: sqlite3.Connection, date: str, feature_ids: list[str]) -> t
 def _market_implied(conn: sqlite3.Connection, keys: list[tuple[int, str]]) -> np.ndarray:
     pi = np.full(len(keys), np.nan, dtype=float)
     for i, (race_id, brand) in enumerate(keys):
-        # Use the most recent odds snapshot before T-0 (closing), else fall
-        # back to the final settled odds from results.
-        r = conn.execute(
-            "SELECT win_odds FROM odds_snapshots WHERE race_id = ? AND brand = ? "
-            "ORDER BY ts DESC LIMIT 1",
-            (race_id, brand),
-        ).fetchone()
-        odds = _coerce_odds(r[0]) if r else None
+        # odds_snapshots is keyed by horse_no (its `brand` column isn't
+        # populated by the live poller), so map brand -> horse_no via results,
+        # then take the most recent win_odds snapshot (the live/closing market).
+        # Fall back to settled results.odds for historical races with no
+        # snapshots. NB: the old code queried odds_snapshots by `brand` and so
+        # silently found nothing for upcoming races — Stage-2 then degraded to
+        # fundamental-only on every live meeting.
+        odds = None
+        hr = conn.execute("SELECT horse_no FROM results WHERE race_id = ? AND brand = ?",
+                          (race_id, brand)).fetchone()
+        horse_no = hr[0] if hr else None
+        if horse_no is not None:
+            r = conn.execute(
+                "SELECT win_odds FROM odds_snapshots WHERE race_id = ? AND horse_no = ? "
+                "  AND win_odds IS NOT NULL ORDER BY ts DESC LIMIT 1",
+                (race_id, horse_no)).fetchone()
+            odds = _coerce_odds(r[0]) if r else None
         if odds is None:
             r = conn.execute("SELECT odds FROM results WHERE race_id = ? AND brand = ?",
                              (race_id, brand)).fetchone()
