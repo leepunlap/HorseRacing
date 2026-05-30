@@ -1,0 +1,59 @@
+[
+  {
+    "id": "daily_integrity_check",
+    "name": "daily_integrity_check",
+    "cron": "30 4 * * *",
+    "action": "integrity_check",
+    "args": {
+      "heal": true
+    },
+    "enabled": true,
+    "last_fired_at": "2026-05-30T05:09:17",
+    "last_fire_status": "ok",
+    "last_skip_reason": null
+  },
+  {
+    "id": "multi_leg_hv_wed_primary",
+    "name": "Multi-leg dividends — HV Wed (primary)",
+    "cron": "30 23 * * 3",
+    "action": "scrape_multi_leg_dividends",
+    "args": {},
+    "enabled": true
+  },
+  {
+    "id": "multi_leg_hv_thu_fallback",
+    "name": "Multi-leg dividends — HV Thu 03:00 fallback",
+    "cron": "0 3 * * 4",
+    "action": "scrape_multi_leg_dividends",
+    "args": {},
+    "enabled": true
+  },
+  {
+    "id": "multi_leg_st_sun_primary",
+    "name": "Multi-leg dividends — ST Sun (primary)",
+    "cron": "30 18 * * 0",
+    "action": "scrape_multi_leg_dividends",
+    "args": {},
+    "enabled": true
+  },
+  {
+    "id": "multi_leg_st_sun_fallback",
+    "name": "Multi-leg dividends — ST Sun 22:00 fallback",
+    "cron": "0 22 * * 0",
+    "action": "scrape_multi_leg_dividends",
+    "args": {},
+    "enabled": true
+  },
+  {
+    "id": "1b4ceaced8ef44e5",
+    "name": "Prepare upcoming meetings (card→features→predictions)",
+    "cron": "0 5 * * *",
+    "action": "prepare_upcoming",
+    "args": {},
+    "enabled": true,
+    "created_at": "2026-05-30T17:40:51",
+    "last_fired_at": null,
+    "last_fire_status": null,
+    "last_skip_reason": null
+  }
+]

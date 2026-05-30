@@ -1,8 +1,10 @@
 [Unit]
 Description=Horse Racing Prediction API
 Documentation=file:///var/www/horseracing/README.md
-After=network-online.target
-Wants=network-online.target
+# Redis backs the Socket.IO fan-out + the status layer, so we must start after
+# it on a cold boot (the consumer self-heals, but ordering avoids the noise).
+After=network-online.target redis-server.service
+Wants=network-online.target redis-server.service
 
 # Crash-loop guard: tolerate 5 restarts within 60 s, then give up and require
 # manual `systemctl reset-failed racing.service` to clear the state. Avoids
