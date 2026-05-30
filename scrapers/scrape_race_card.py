@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bs4 import BeautifulSoup
 
-from scrapers._base import BaseScraper, log, txn, lookup_race_id
+from scrapers._base import BaseScraper, log, txn, lookup_race_id, lookup_horse_id
 
 
 RAIL_RE = re.compile(r"Course:\s*([A-C][\+\-]?\d*)", re.I)
@@ -136,40 +136,77 @@ class RaceCardScraper(BaseScraper):
                 log(f"[{self.name}] {date_str}/{course} race {rn}: {exc}")
         ok = self._persist(date_str, course, rail_str, per_race, runners)
         if ok:
-            # Follow each runner's horse link to fill in the Chinese name for
-            # horses that don't have one yet (new imports / debutants).
+            # Follow each runner's horse link to enrich new/low-data horses
+            # (Chinese name + pedigree). This lights up the pedigree features
+            # (H011/H178/H179) that are designed for first-time/lightly-raced
+            # runners but were otherwise null for them.
             brand_horseid = {r["brand"]: r.get("horseid")
                              for rns in runners.values() for r in rns if r.get("brand")}
-            self._backfill_zh_names(brand_horseid)
+            self._enrich_new_horses(brand_horseid)
         return ok
 
-    def _backfill_zh_names(self, brand_horseid: dict[str, str | None]) -> None:
-        """For horses missing a Chinese name, fetch the zh-hk horse profile page
-        (by horseid) and read name_zh from the page title
-        (`鵲橋飛昇 - 馬匹資料 - …`). Skips horses that already have one, so it
-        only ever fetches for genuinely new/unnamed horses."""
+    @staticmethod
+    def _horse_profile(body: str) -> dict:
+        """Parse name_zh + pedigree (sire/dam/dam-sire) + import type from a
+        zh-hk horse profile page. Sire/dam names are English on both pages."""
+        out: dict[str, str] = {}
+        mt = re.search(r"<title>\s*(.+?)\s*[-–]\s*馬匹資料", body)
+        if mt:
+            nm = mt.group(1).strip()
+            if nm and not re.fullmatch(r"[A-Za-z0-9 .'\-]+", nm):
+                out["name_zh"] = nm
+        label_map = {"父系": "sire", "母系": "dam", "母系的父系": "dam_sire",
+                     "母系父系": "dam_sire", "進口類別": "import_type"}
+        soup = BeautifulSoup(body, "html.parser")
+        for tr in soup.find_all("tr"):
+            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
+            for i, cell in enumerate(cells):
+                key = label_map.get(cell)
+                if key and key not in out:
+                    for j in range(i + 1, len(cells)):
+                        if cells[j] and cells[j] != ":":
+                            out[key] = cells[j]
+                            break
+        return out
+
+    def _enrich_new_horses(self, brand_horseid: dict[str, str | None]) -> None:
+        """For horses missing a Chinese name OR pedigree, fetch the horse
+        profile page once (by horseid) and fill both. Self-limiting: skips
+        horses that already have name + pedigree, so it only hits the network
+        for genuinely new/unenriched horses."""
         conn = self.db()
-        filled = 0
+        names = peds = 0
         for brand, hid in brand_horseid.items():
             if not hid:
                 continue
             row = conn.execute("SELECT name_zh FROM horses WHERE brand=?", (brand,)).fetchone()
-            if row and row[0]:
+            has_name = bool(row and row[0])
+            has_ped = conn.execute(
+                "SELECT 1 FROM horse_pedigree WHERE brand=?", (brand,)).fetchone() is not None
+            if has_name and has_ped:
                 continue
             try:
                 body = self.fetch(
                     f"https://racing.hkjc.com/zh-hk/local/information/horse?horseid={hid}",
-                    cache_key=f"zh_name_{hid}")
-                m = re.search(r"<title>\s*(.+?)\s*[-–]\s*馬匹資料", body)
-                name_zh = m.group(1).strip() if m else None
-                if name_zh and not re.fullmatch(r"[A-Za-z0-9 .'-]+", name_zh):
-                    conn.execute("UPDATE horses SET name_zh=? WHERE brand=?", (name_zh, brand))
-                    filled += 1
+                    cache_key=f"profile_{hid}")
+                prof = self._horse_profile(body)
+                if not has_name and prof.get("name_zh"):
+                    conn.execute("UPDATE horses SET name_zh=? WHERE brand=?",
+                                 (prof["name_zh"], brand))
+                    names += 1
+                if not has_ped and prof.get("sire"):
+                    self.upsert("horse_pedigree", {
+                        "brand": brand, "horse_id": lookup_horse_id(conn, brand),
+                        "sire": prof.get("sire"), "dam": prof.get("dam"),
+                        "dam_sire": prof.get("dam_sire"),
+                        "import_type": prof.get("import_type"),
+                    }, conflict_cols=("brand",))
+                    peds += 1
             except Exception as exc:
-                log(f"[{self.name}] zh-name {brand}/{hid}: {exc}")
-        if filled:
+                log(f"[{self.name}] enrich {brand}/{hid}: {exc}")
+        if names or peds:
             conn.commit()
-            log(f"[{self.name}] filled {filled} Chinese horse name(s) via horse links")
+            log(f"[{self.name}] enriched via horse links: {names} name(s), {peds} pedigree(s)")
 
     def _scrape_legacy(self, date_str: str, course: str, body: str,
                        base_url: str, cache_key: str) -> bool:
