@@ -42,7 +42,7 @@ def _upcoming_meetings(conn) -> list[tuple[str, str]]:
 
 def main(strategy_id: int = 1) -> int:
     _status.process_up("prepare_upcoming", ptype="oneshot", activity="starting")
-    tid = _status.task_start("prepare_upcoming", "prepare upcoming meetings", total=5)
+    tid = _status.task_start("prepare_upcoming", "prepare upcoming meetings", total=6)
     try:
         # 1. scrape upcoming cards (also enriches new horses: name_zh + pedigree)
         _status.task_step(tid, done=1, msg="scraping race cards (--next)")
@@ -93,6 +93,19 @@ def main(strategy_id: int = 1) -> int:
                 wf.run_strategy(strategy_id, d, d)
             except SystemExit as exc:
                 print(f"[prepare_upcoming] predict {d}: {exc}")
+
+        # 5. AI news preview per upcoming meeting (advisory; best-effort — a
+        #    failed news fetch must never fail the prediction chain).
+        _status.task_step(tid, done=6, msg="generating AI news previews")
+        try:
+            from scripts import fetch_race_news
+            for d, course in meetings:
+                try:
+                    fetch_race_news.main(d, course)
+                except Exception as exc:
+                    print(f"[prepare_upcoming] news {d}/{course}: {exc}")
+        except Exception as exc:
+            print(f"[prepare_upcoming] news step skipped: {exc}")
 
         conn.close()
         msg = f"{len(dates)} meeting(s): {', '.join(dates)}"

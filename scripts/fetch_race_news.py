@@ -60,21 +60,51 @@ def _google_news(query: str, n: int = 8) -> list[dict]:
     return items
 
 
-def _deepseek_json(news: list[dict], runners: list[str]) -> dict | None:
+# Racing-specific sources only (not general news), recent window, deduped.
+_RACING_SITES = "scmp.com OR hkjc.com OR thestandard.com.hk OR racingpost.com OR racenet.com.au"
+
+
+def _gather_news(venue: str, d: str) -> list[dict]:
+    # Anchor every query to the SPECIFIC meeting date — otherwise the recency
+    # window pulls the previous meeting's heavier coverage and confuses the
+    # summary. Add racing-specific sources for quality.
+    queries = [
+        f'{venue} racing {d} tips selections preview',
+        f'"{venue}" racing {d} ({_RACING_SITES})',
+    ]
+    seen, out = set(), []
+    for q in queries:
+        try:
+            items = _google_news(q, 8)
+        except Exception:
+            continue
+        for it in items:
+            key = it["title"].lower()
+            if not key or key in seen or "google news" in key:
+                continue
+            seen.add(key)
+            out.append(it)
+    return out[:10]
+
+
+def _deepseek_json(news: list[dict], runners: list[str], meeting: str) -> dict | None:
     key = os.environ.get("DEEPSEEK_API_KEY")
     if not key:
         return None
     sys_prompt = (
-        "You are a Hong Kong horse-racing analyst. You are given recent news/preview "
-        "snippets for an upcoming meeting and the official runner list. Produce STRICT "
-        "JSON (no markdown) with keys: summary_en, summary_zh (a 3-4 sentence meeting "
-        "preview in English and Traditional Chinese), and tipped (a list of objects "
-        "{name, note_en, note_zh}) for runners SPECIFICALLY mentioned/tipped in the "
-        "news AND present in the runner list — match by horse name, use the exact name "
-        "from the runner list. If the news has nothing material, return empty tipped and "
-        "say so in the summaries. Never invent tips not supported by the snippets."
+        f"You are a Hong Kong horse-racing analyst. The target meeting is {meeting}. "
+        "You are given recent news/preview snippets and the official runner list. "
+        "IMPORTANT: some snippets may discuss OTHER meetings/dates — ignore anything "
+        "not about the target meeting. Produce STRICT JSON (no markdown) with keys: "
+        "summary_en, summary_zh (a 3-4 sentence preview of the target meeting in "
+        "English and Traditional Chinese), and tipped (a list of objects {name, "
+        "note_en, note_zh}) for runners SPECIFICALLY mentioned/tipped for the TARGET "
+        "meeting AND present in the runner list — match by horse name, use the exact "
+        "name from the runner list. If the news has nothing material for the target "
+        "meeting, return empty tipped and say so. Never invent tips not in the snippets."
     )
-    user = ("RUNNERS:\n" + ", ".join(runners) + "\n\nNEWS SNIPPETS:\n"
+    user = (f"TARGET MEETING: {meeting}\n\nRUNNERS:\n" + ", ".join(runners)
+            + "\n\nNEWS SNIPPETS:\n"
             + "\n".join(f"- {n['title']} :: {n['snippet']}" for n in news))
     req = urllib.request.Request(
         DEEPSEEK_URL,
@@ -108,14 +138,14 @@ def main(d: str | None = None, course: str | None = None) -> int:
     _status.process_up("race_news", ptype="oneshot", activity=f"{d} {course}")
     tid = _status.task_start("race_news", f"AI preview {d} {course}", total=3)
     try:
-        _status.task_step(tid, done=1, msg="searching news")
-        news = _google_news(f"{venue} racing {d} preview tips")
+        _status.task_step(tid, done=1, msg="searching racing news")
+        news = _gather_news(venue, d)
         runners = [r[0] for r in conn.execute(
             "SELECT DISTINCT horse_name FROM results WHERE race_id IN "
             "(SELECT id FROM races WHERE date=? AND course=?) AND horse_name IS NOT NULL",
             (d, course))]
         _status.task_step(tid, done=2, msg=f"summarising {len(news)} items via DeepSeek")
-        out = _deepseek_json(news, runners) or {}
+        out = _deepseek_json(news, runners, f"{venue} ({course}) on {d}") or {}
 
         # match tipped names -> brand
         name_to_brand = {n.lower(): b for b, n in conn.execute(
