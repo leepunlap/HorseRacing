@@ -183,6 +183,16 @@ def register_actions(action_registry: dict[str, Callable], scraper_job: dict, is
         _ic_run(scope, heal=bool(args.get("heal", True)))
     action_registry["integrity_check"] = _integrity_action
 
+    # Pre-race chain for upcoming meetings: scrape card -> clean stubs ->
+    # features -> predictions. Trains a model (slow), so run it as a detached
+    # subprocess to keep the scheduler loop responsive; it self-reports via
+    # status.py so the dashboard shows progress.
+    def _prepare_upcoming_action(args: dict) -> None:
+        import subprocess as _sp
+        sid = str(args.get("strategy_id", 1))
+        _sp.Popen([sys.executable, "-m", "scripts.prepare_upcoming", sid], cwd=str(BASE_DIR))
+    action_registry["prepare_upcoming"] = _prepare_upcoming_action
+
 
 # ─── On-demand fire endpoints ────────────────────────────────────────────────
 
