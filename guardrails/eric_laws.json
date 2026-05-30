@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.0",
+    "version": "1.1",
     "updated": "2026-05-31",
     "note_zh": "Eric 定律：由專家讓磅讀法萃取、用以補模型「形勢與條件變化」盲點的結構化護欄。每條定律含方向（加/減分）、可機讀觸發條件、所補的模型盲點、建議特徵、佐證案例及分析師評估。狀態由 proposed → validated → implemented 隨回測推進。",
     "note_en": "Eric's Laws: structured guardrails distilled from expert handicapping reads that patch the model's blind spot around CONTEXT & CONDITION CHANGE (surface, rating trajectory, weight swings). Each law carries a direction, machine-actionable triggers, the model blind spot it fixes, a proposed feature, evidence cases, and the analyst's assessment. Status advances proposed -> validated -> implemented as it is backtested."
@@ -32,6 +32,35 @@
         "description_zh": "(1) 分開計草地/全天候勝率，並對『今仗場地 ≠ 近期取勝場地』降權；(2) 對評分短期急升且達班頂者施加負向修正。兩者相乘下調勝率，把過度樂觀拉回市場區間。",
         "description_en": "(1) Split win-rate by turf vs AWT and down-weight when current surface != recent winning surface; (2) apply a negative correction when the rating has spiked and sits at the class ceiling. Together they trim an over-optimistic probability back toward the market.",
         "links_features": ["H030", "H031", "H032", "H009", "H029"]
+      },
+      "decomposition": {
+        "features": [
+          {
+            "name": "surface_split_winrate",
+            "inputs": ["win_rate_turf", "win_rate_awt", "current_surface", "recent_win_surface", "surface_match"],
+            "links_features": ["H030", "H031", "H032"],
+            "data_density": "high",
+            "rationale_zh": "草地/全天候勝率可逐匹計、樣本充足、可泛化；模型現有 going 適應但未分兩面，屬實實在在缺失的輸入，應入特徵讓模型學權重。",
+            "rationale_en": "Turf/AWT win-rates are per-horse with ample samples and generalize; the model has going-adaptation but not a turf-vs-AWT split — a genuinely missing input. Add as a feature and let the model learn the weight."
+          },
+          {
+            "name": "rating_trajectory_and_ceiling",
+            "inputs": ["rating_slope_season", "rating_minus_class_ceiling"],
+            "links_features": ["H009"],
+            "data_density": "high",
+            "rationale_zh": "評分斜率與距班頂分差對每匹馬都可計、數據多，宜作特徵。",
+            "rationale_en": "Rating slope and distance-to-class-ceiling are computable for every horse with plenty of data — best as features."
+          }
+        ],
+        "guardrails": [
+          {
+            "name": "overconfident_switcher_cap",
+            "kind": "cap",
+            "why_not_feature": "safety",
+            "rationale_zh": "當『今仗場地未贏過 + 評分達班頂 + 模型勝率遠高於市場且短賠』同時成立，對模型勝率設上限/向市場收縮。這是對尾端過度自信的安全界限——即使上面兩個特徵已加入，仍要保留，因為特徵會被平均稀釋、未必管得住個別狂妄高估。",
+            "rationale_en": "When (winless on today's surface) AND (rating at the ceiling) AND (model prob >> market at a short price) all hold, cap/shrink the model's probability toward the market. A safety bound on tail over-confidence — kept even after the two features exist, because features get averaged/diluted and may not rein in an individual blow-up."
+          }
+        ]
       },
       "evidence": [
         {
@@ -89,6 +118,35 @@
         "description_zh": "對每隻馬找出近 N 仗曾同場、今仗再遇之對手，計『上仗實際差距(馬位) + 兩駒今仗負磅變化(磅)』換算預期反超幅度；並對『小差距落敗 + 後上/大冷 + 評分上升』給正向修正。",
         "description_en": "For each horse, find rivals it shared a recent race with and re-meets today; combine the prior beaten margin (lengths) with the weight swing (lb) into an expected reversal, and add a positive correction for 'narrowly beaten + closing/big-odds + rising rating'.",
         "links_features": ["H008", "H064", "H009", "H020", "H021", "H040"]
+      },
+      "decomposition": {
+        "features": [
+          {
+            "name": "rating_slope_progressive",
+            "inputs": ["rating_slope_season"],
+            "links_features": ["H009"],
+            "data_density": "high",
+            "rationale_zh": "評分上升趨勢對每匹馬可計、數據充足，宜作特徵。",
+            "rationale_en": "A rising-rating trajectory is per-horse with ample data — best as a feature."
+          },
+          {
+            "name": "beaten_margin_run_quality",
+            "inputs": ["beaten_margin_lengths_lto", "run_style_closer", "odds_lto"],
+            "links_features": ["H008", "H040"],
+            "data_density": "medium",
+            "rationale_zh": "『只輸一個頭位/後上/大冷』的形勢分可量化為特徵，但較嘈雜、樣本中等，需小心處理（避免把普通敗陣當潛力）。",
+            "rationale_en": "The 'beaten only a head / closing / big-odds' run-quality can be a feature, but it is noisier with medium sample size — handle carefully so an ordinary defeat isn't read as upside."
+          }
+        ],
+        "guardrails": [
+          {
+            "name": "h2h_weight_swing_reconciliation",
+            "kind": "boost",
+            "why_not_feature": "relational",
+            "rationale_zh": "讓磅互換是 pairwise、依賴今場具體對手：『本駒近仗同場負於某駒一個頭位，該駒今仗多孭X磅』。LambdaMART 逐匹獨立評分，看不到場內對手的相對變化，故難以原生表達；加上具體再碰頭樣本稀疏。最自然是做成後驗護欄（或專門的關係型特徵），按『上仗實際差距 + 負磅互換』調整本駒分數。",
+            "rationale_en": "The weight swing is pairwise and depends on the specific field: 'this horse lost to that rival by a head last time; that rival now carries +X lb.' LambdaMART scores each horse independently and cannot see relative changes among the actual rivals, so it is hard to express natively; specific re-matches are also sparse. Most naturally a post-hoc guardrail (or a bespoke relational feature) that nudges the score from prior margin + weight swing."
+          }
+        ]
       },
       "evidence": [
         {

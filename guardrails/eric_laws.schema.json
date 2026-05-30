@@ -59,7 +59,7 @@
         "model_blind_spot_en": {"type": "string"},
         "proposed_feature": {
           "type": "object",
-          "description": "How to encode this as a model input / filter / penalty.",
+          "description": "High-level summary of how to encode this. The detailed routing lives in `decomposition`.",
           "required": ["kind", "name", "description_zh", "description_en"],
           "properties": {
             "kind": {"type": "string", "enum": ["feature", "filter", "penalty", "boost"]},
@@ -69,6 +69,46 @@
             "description_en": {"type": "string"},
             "links_features": {"type": "array", "items": {"type": "string"},
                                 "description": "Related existing catalog feature ids (H###)."}
+          }
+        },
+        "decomposition": {
+          "type": "object",
+          "description": "Explicit routing of the law into the pieces that should become MODEL FEATURES (abundant, per-horse, generalizable — let the model learn the weight) vs the pieces that stay GUARDRAILS (post-hoc corrections, because the signal is sparse, relational/field-dependent, or a safety bound). Decided before backtest; backtest confirms.",
+          "additionalProperties": false,
+          "properties": {
+            "features": {
+              "type": "array",
+              "description": "Feature-able components — add to the catalog and retrain.",
+              "items": {
+                "type": "object",
+                "required": ["name", "rationale_zh", "rationale_en"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "inputs": {"type": "array", "items": {"type": "string"}},
+                  "links_features": {"type": "array", "items": {"type": "string"}},
+                  "data_density": {"type": "string", "enum": ["high", "medium", "low"],
+                                    "description": "How much training signal exists (low = consider guardrail instead)."},
+                  "rationale_zh": {"type": "string"},
+                  "rationale_en": {"type": "string"}
+                }
+              }
+            },
+            "guardrails": {
+              "type": "array",
+              "description": "Guardrail-only components — post-hoc layer, no retrain.",
+              "items": {
+                "type": "object",
+                "required": ["name", "kind", "why_not_feature", "rationale_zh", "rationale_en"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "kind": {"type": "string", "enum": ["penalty", "boost", "filter", "cap"]},
+                  "why_not_feature": {"type": "string", "enum": ["sparse", "relational", "safety", "interpretability"],
+                                       "description": "The reason this can't/shouldn't be a feature."},
+                  "rationale_zh": {"type": "string"},
+                  "rationale_en": {"type": "string"}
+                }
+              }
+            }
           }
         },
         "evidence": {

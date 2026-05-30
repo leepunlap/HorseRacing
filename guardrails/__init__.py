@@ -49,6 +49,21 @@ def active_guardrails() -> list[dict]:
     return [l for l in load_laws() if l["status"] in ("validated", "implemented")]
 
 
+def routing() -> dict:
+    """Aggregate each law's `decomposition` into the work-list: which pieces
+    become model FEATURES (retrain) vs which stay GUARDRAILS (post-hoc). Each
+    item is tagged with its source law id."""
+    features: list[dict] = []
+    guardrails: list[dict] = []
+    for law in load_laws():
+        dec = law.get("decomposition") or {}
+        for f in dec.get("features", []):
+            features.append({"law": law["id"], **f})
+        for g in dec.get("guardrails", []):
+            guardrails.append({"law": law["id"], **g})
+    return {"features": features, "guardrails": guardrails}
+
+
 def validate() -> list[str]:
     """Lightweight structural check against eric_laws.schema.json's required
     fields + enums (avoids a jsonschema dependency). Returns a list of error
@@ -94,9 +109,16 @@ def _main() -> int:
     print(f"Eric 定律 — {len(laws)} law(s) in {DATA.name}")
     for l in laws:
         a = l["assessment"]
+        dec = l.get("decomposition") or {}
         print(f"  {l['id']} [{l['direction']:9}] {l['name_en']:42} "
               f"{a['validity']}/{a['confidence']}  {len(l['triggers'])} triggers  "
-              f"{len(l.get('evidence', []))} case(s)  status={l['status']}")
+              f"{len(l.get('evidence', []))} case(s)  status={l['status']}  "
+              f"-> {len(dec.get('features', []))} feature / {len(dec.get('guardrails', []))} guardrail")
+    rt = routing()
+    print(f"\nrouting: {len(rt['features'])} feature-able component(s) (retrain), "
+          f"{len(rt['guardrails'])} guardrail-only component(s) (post-hoc)")
+    for g in rt["guardrails"]:
+        print(f"  guardrail [{g['kind']}/{g['why_not_feature']}] {g['name']}  ({g['law']})")
     if errs:
         print("\nVALIDATION ERRORS:")
         for e in errs:

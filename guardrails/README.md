@@ -27,8 +27,12 @@ from guardrails import load_laws, get_law, laws_by_direction, active_guardrails
   the law applies. Triggers are AND'd; triggers sharing a `group` are OR'd within
   that group. These are the seed for the eventual feature/filter.
 - **model_blind_spot** — what the model misses today.
-- **proposed_feature** — how to encode it (`feature`/`filter`/`penalty`/`boost`),
-  its inputs, and related existing catalog features (H###).
+- **proposed_feature** — high-level summary of how to encode it.
+- **decomposition** — the explicit routing: which pieces become **model features**
+  (`features[]` — abundant, per-horse, generalizable; add to the catalog + retrain)
+  vs which stay **guardrails** (`guardrails[]` — post-hoc; each tagged with
+  `why_not_feature` = `sparse` / `relational` / `safety` / `interpretability`).
+  `routing()` aggregates these across all laws into one work-list.
 - **evidence** — the concrete cases (race, horse, model vs market view, outcome,
   who was right) that motivated the law.
 - **assessment** — the analyst's take: `validity` (strong/moderate/weak),
@@ -59,3 +63,15 @@ required fields per the schema, set `status: "proposed"`, and run
 > well but under-encodes **trajectory and condition change** (surface turf-vs-AWT,
 > rating slope / class ceiling, pairwise weight swings). These guardrails patch
 > exactly that layer.
+
+## Feature vs guardrail — the routing
+Most of what these laws capture should become **features** (let the model learn the
+weight); only a thin layer stays **guardrails**. A piece stays a guardrail when it
+is **sparse** (too few examples to learn), **relational/field-dependent** (depends
+on the specific other runners — an independent per-horse ranker can't see it),
+**safety** (a hard cap/veto to bound a tail error regardless of what the model
+learned), or needs **interpretability**. Run `python3 -m guardrails` to see the
+current split. As of v1.1: **4 feature-able components** (surface-split win-rate,
+rating slope/ceiling, progressive slope, beaten-margin quality) and **2
+guardrail-only components** — `overconfident_switcher_cap` (safety, EL001) and
+`h2h_weight_swing_reconciliation` (relational, EL002).
