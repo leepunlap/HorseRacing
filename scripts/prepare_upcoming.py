@@ -94,6 +94,15 @@ def main(strategy_id: int = 1) -> int:
             except SystemExit as exc:
                 print(f"[prepare_upcoming] predict {d}: {exc}")
 
+        # 4b. refresh feature importance + value stats (the Features catalog
+        #     page reads data/feature_importance.json). Keeps the stats current
+        #     automatically. Best-effort.
+        try:
+            from scripts import compute_feature_importance
+            compute_feature_importance.main(strategy_id)
+        except Exception as exc:
+            print(f"[prepare_upcoming] importance refresh: {exc}")
+
         # 5. AI overlays per upcoming meeting (advisory; best-effort — a failed
         #    AI step must never fail the prediction chain): news preview + a
         #    per-horse assessment of each runner's latest barrier trial.

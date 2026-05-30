@@ -3547,13 +3547,17 @@ function renderFeatures() {
 
   const tabs = `
     <div class="toolbar" style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:16px">
-      <button class="btn ${state.featTab === 'catalog' ? '' : 'ghost'}" data-feat-tab="catalog">${t('特徵目錄', 'Catalog')} · ${state.features?.total ?? 0}</button>
-      <button class="btn ${state.featTab === 'importance' ? '' : 'ghost'}" data-feat-tab="importance">${t('重要性與統計', 'Importance & stats')}</button>
+      <button class="btn ${state.featTab !== 'bibliography' ? '' : 'ghost'}" data-feat-tab="catalog">${t('特徵目錄（含重要性與統計）', 'Catalog (with importance & stats)')} · ${state.features?.total ?? 0}</button>
       <button class="btn ${state.featTab === 'bibliography' ? '' : 'ghost'}" data-feat-tab="bibliography">${t('文獻', 'Bibliography')} · ${biblioItems.length}</button>
     </div>
   `;
 
-  if (state.featTab === 'importance') { renderFeatureImportance(tabs); return; }
+  // Per-feature importance/stats for the selected strategy (merged into the
+  // catalog). Map by feature id so each catalog card can show its gain + stats.
+  const impCards = state.featureCards?.cards || [];
+  const impByFid = {};
+  for (const c of impCards) impByFid[c.id] = c;
+  const maxGain = impCards.reduce((m, c) => Math.max(m, c.gain || 0), 0) || 1;
 
   if (state.featTab === 'bibliography') {
     main.innerHTML = `
@@ -3618,18 +3622,34 @@ function renderFeatures() {
     activeCats = active ? [active] : [];
   }
 
-  const grids = activeCats.map(cat => `
+  // Within each category, order by model importance (gain desc) so the most
+  // important features surface first.
+  const grids = activeCats.map(cat => {
+    const feats = [...cat.features].sort((a, b) =>
+      (impByFid[b.id]?.gain || 0) - (impByFid[a.id]?.gain || 0));
+    return `
     ${isSearch ? `<h3 class="cat-grid-hdr">${cat.id}. ${escapeHtml(cat[`name_${lang}`])} <span class="cat-count">${cat.features.length}</span></h3>` : ''}
     <div class="feature-grid">
-      ${cat.features.map(f => renderFeatureCard(f, lang)).join('')}
+      ${feats.map(f => renderFeatureCard(f, lang, impByFid[f.id], maxGain)).join('')}
     </div>
-  `).join('');
+  `; }).join('');
+
+  const strategies = state.strategies || [];
+  const fc = state.featureCards;
+  const computedNote = fc?.computed_at
+    ? ` · ${t('模型', 'model')} ${fc.n_used}/${fc.total} ${t('項有增益', 'used')} · ${(fc.n_train_rows || 0).toLocaleString()} ${t('列', 'rows')} · ${fc.computed_at.replace('T', ' ')}`
+    : '';
 
   main.innerHTML = `
     <div class="panel">
-      <h2>${t('特徵目錄', 'Feature catalog')} · ${state.features?.total ?? 0} ${t('項特徵, 共', 'features in')} ${cats.length} ${t('類別', 'categories')}</h2>
+      <h2>${t('特徵目錄', 'Feature catalog')} · ${state.features?.total ?? 0} ${t('項特徵, 共', 'features in')} ${cats.length} ${t('類別', 'categories')}
+        <span class="muted" style="font-weight:400;font-size:11px">${escapeHtml(computedNote)}</span></h2>
       ${tabs}
       <div class="toolbar">
+        <label class="muted" style="font-size:12px">${t('策略', 'Strategy')}:</label>
+        <select id="featStrategySel">
+          ${strategies.map(s => `<option value="${s.id}" ${s.id === state.featStrategy ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+        </select>
         <input class="feature-search" id="featSearch" placeholder="${t('搜尋名稱、id、來源、內容…', 'search by name, id, source, content…')}" value="${escapeHtml(q)}">
         <button id="featExpandAll" class="btn ghost">${t('全部展開', 'expand all')}</button>
         <button id="featCollapseAll" class="btn ghost">${t('全部收起', 'collapse all')}</button>
@@ -3643,18 +3663,32 @@ function renderFeatures() {
   wireFeatureControls();
 }
 
-function renderFeatureCard(f, lang) {
+function renderFeatureCard(f, lang, imp, maxGain) {
   const primary = (f.sources_expanded || [])[0];
   const sources = f.sources_expanded || [];
-  const enabled = f.enabled_default
-    ? ''
-    : `<span class="pill muted">${t('停用', 'disabled')}</span>`;
+  // Enabled state from the selected strategy when available, else the default.
+  const isEnabled = imp ? imp.enabled : f.enabled_default;
+  const enabled = isEnabled ? '' : `<span class="pill muted">${t('停用', 'off')}</span>`;
   const notes = f[`notes_${lang}`];
   const hasNotes = !!notes;
   const hasSources = sources.length > 0;
   // Show the chevron whenever there's anything to reveal (notes OR source links).
   const hasCollapsibleContent = hasNotes || hasSources;
   const open = state.featOpen.has(f.id);
+  // Importance + value statistics for the selected strategy.
+  const gain = imp ? (imp.gain || 0) : 0;
+  const pct = (maxGain && imp) ? Math.round((gain / maxGain) * 100) : 0;
+  const st = (imp && imp.stats) || {};
+  const statBits = imp ? [
+    st.coverage != null ? `${t('涵蓋', 'cov')} ${Math.round(st.coverage * 100)}%` : '',
+    st.mean != null ? `${t('平均', 'mean')} ${st.mean}` : '',
+    (st.min != null && st.max != null) ? `${t('範圍', 'range')} ${st.min}…${st.max}` : '',
+    imp.splits ? `${t('分裂', 'splits')} ${imp.splits}` : '',
+  ].filter(Boolean).join(' · ') : '';
+  const impHead = imp
+    ? `<span class="imp-bar" style="flex:0 0 70px;height:6px" title="${t('增益', 'gain')} ${gain}"><i style="width:${pct}%"></i></span>`
+      + `<span class="imp-gain" style="min-width:46px">${gain > 0 ? gain.toLocaleString() : '—'}</span>`
+    : '';
   return `
     <div class="feature-card ${open ? 'open' : ''}" data-fid="${f.id}">
       <div class="fc-head">
@@ -3662,12 +3696,14 @@ function renderFeatureCard(f, lang) {
         <span class="name">${escapeHtml(f[`name_${lang}`])}</span>
         ${primary ? `<span class="src" title="${escapeHtml(primary.title || '')}">${escapeHtml(primary.compact || primary.id)}</span>` : ''}
         ${enabled}
+        ${impHead}
         ${hasCollapsibleContent ? `
           <button class="fc-toggle" data-feat-toggle="${f.id}"
                   title="${open ? t('收起', 'collapse') : t('展開詳細', 'expand details')}">${open ? '▴' : '▾'}</button>
         ` : ''}
       </div>
       <div class="fc-desc">${escapeHtml(f[`description_${lang}`] || '')}</div>
+      ${statBits ? `<div class="fc-notes" style="font-family:var(--mono);font-size:11px;color:var(--muted)">${escapeHtml(statBits)}</div>` : ''}
       ${hasNotes ? `<div class="fc-notes">${escapeHtml(notes)}</div>` : ''}
       ${hasSources ? `
         <div class="fc-sources">
