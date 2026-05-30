@@ -329,16 +329,33 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
     conn = _conn()
     strat = conn.execute(
         "SELECT name, stage2_enabled, stage2_alpha, stage2_beta, calibration, "
-        "       time_decay_tau "
+        "       time_decay_tau, xgb_params_json "
         "FROM strategies WHERE id = ?",
         (strategy_id,),
     ).fetchone()
     if not strat:
         raise SystemExit(f"strategy id {strategy_id} not found")
-    name, stage2_on, alpha, beta, cal_mode, tau = strat
+    name, stage2_on, alpha, beta, cal_mode, tau, xgb_params_raw = strat
     feature_ids = _feature_ids_for_strategy(conn, strategy_id)
+
+    # Stage-1 XGBoost hyperparameters from the strategy row, overlaid on
+    # DEFAULT_PARAMS. `num_boost_round` is stored in the same JSON blob, so
+    # split it out before passing the rest as `params`. Falling back to the
+    # module defaults keeps behaviour unchanged when the column is null/empty.
+    xgb_params = dict(stage1_xgb.DEFAULT_PARAMS)
+    xgb_rounds = stage1_xgb.DEFAULT_NUM_BOOST_ROUND
+    if xgb_params_raw:
+        try:
+            _raw = dict(json.loads(xgb_params_raw))
+            xgb_rounds = int(_raw.pop("num_boost_round", xgb_rounds))
+            xgb_params.update(_raw)
+        except Exception as exc:
+            print(f"[walk_forward] bad xgb_params_json ({exc}); using defaults")
+
     print(f"[walk_forward] strategy={name}  features={len(feature_ids)}  "
-          f"stage2={bool(stage2_on)}  cal={cal_mode}  tau={tau or 'none'}")
+          f"stage2={bool(stage2_on)}  cal={cal_mode}  tau={tau or 'none'}  "
+          f"xgb(depth={xgb_params.get('max_depth')},eta={xgb_params.get('eta')},"
+          f"rounds={xgb_rounds})")
 
     dates = [r[0] for r in conn.execute(
         "SELECT DISTINCT date FROM races WHERE date BETWEEN ? AND ? ORDER BY date",
@@ -384,7 +401,8 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
                 sample_w = None
         try:
             bst = stage1_xgb.train(X_tr, y_tr, gr_tr,
-                                   num_boost_round=stage1_xgb.DEFAULT_NUM_BOOST_ROUND,
+                                   params=xgb_params,
+                                   num_boost_round=xgb_rounds,
                                    weight=sample_w)
         except Exception as exc:
             print(f"  {d}: stage-1 train failed: {exc}")
