@@ -134,7 +134,42 @@ class RaceCardScraper(BaseScraper):
                     rail_str = rail_str or per_race[rn].get("rail")
             except Exception as exc:
                 log(f"[{self.name}] {date_str}/{course} race {rn}: {exc}")
-        return self._persist(date_str, course, rail_str, per_race, runners)
+        ok = self._persist(date_str, course, rail_str, per_race, runners)
+        if ok:
+            # Follow each runner's horse link to fill in the Chinese name for
+            # horses that don't have one yet (new imports / debutants).
+            brand_horseid = {r["brand"]: r.get("horseid")
+                             for rns in runners.values() for r in rns if r.get("brand")}
+            self._backfill_zh_names(brand_horseid)
+        return ok
+
+    def _backfill_zh_names(self, brand_horseid: dict[str, str | None]) -> None:
+        """For horses missing a Chinese name, fetch the zh-hk horse profile page
+        (by horseid) and read name_zh from the page title
+        (`鵲橋飛昇 - 馬匹資料 - …`). Skips horses that already have one, so it
+        only ever fetches for genuinely new/unnamed horses."""
+        conn = self.db()
+        filled = 0
+        for brand, hid in brand_horseid.items():
+            if not hid:
+                continue
+            row = conn.execute("SELECT name_zh FROM horses WHERE brand=?", (brand,)).fetchone()
+            if row and row[0]:
+                continue
+            try:
+                body = self.fetch(
+                    f"https://racing.hkjc.com/zh-hk/local/information/horse?horseid={hid}",
+                    cache_key=f"zh_name_{hid}")
+                m = re.search(r"<title>\s*(.+?)\s*[-–]\s*馬匹資料", body)
+                name_zh = m.group(1).strip() if m else None
+                if name_zh and not re.fullmatch(r"[A-Za-z0-9 .'-]+", name_zh):
+                    conn.execute("UPDATE horses SET name_zh=? WHERE brand=?", (name_zh, brand))
+                    filled += 1
+            except Exception as exc:
+                log(f"[{self.name}] zh-name {brand}/{hid}: {exc}")
+        if filled:
+            conn.commit()
+            log(f"[{self.name}] filled {filled} Chinese horse name(s) via horse links")
 
     def _scrape_legacy(self, date_str: str, course: str, body: str,
                        base_url: str, cache_key: str) -> bool:
@@ -170,6 +205,7 @@ class RaceCardScraper(BaseScraper):
                  per_race: dict[int, dict[str, str]],
                  runners: dict[int, list[dict]] | None = None) -> bool:
         runners = runners or {}
+        persisted_any = False
 
         conn = self.db()
         with txn(conn):
@@ -181,6 +217,16 @@ class RaceCardScraper(BaseScraper):
                 )
 
             for race_no, info in per_race.items():
+                # Skip empty shells: on a non-meeting day the en-us racecard
+                # page still returns a populated layout, so per_race[1] exists
+                # with no runners and no banner. Creating a race row for it
+                # pollutes the DB with 1-race "stub" meetings. Only persist a
+                # race that actually has runners OR real banner data (distance).
+                has_runners = bool(runners.get(race_no))
+                has_banner = info.get("distance") is not None
+                if not has_runners and not has_banner:
+                    continue
+                persisted_any = True
                 race_id = lookup_race_id(conn, date_str, course, race_no)
                 if race_id is None:
                     # Race row may not exist yet; upsert one with just the keys.
@@ -215,6 +261,8 @@ class RaceCardScraper(BaseScraper):
                                         race_no, runner)
 
         n_runners = sum(len(v) for v in runners.values())
+        if not persisted_any:
+            return False   # non-meeting day — nothing real to record
         log(f"[{self.name}] {date_str}/{course}: rail={rail}, races={len(per_race)}, runners={n_runners}")
         return True
 
@@ -325,8 +373,20 @@ class RaceCardScraper(BaseScraper):
                 # both here and on race_history; per-race row captures
                 # gear-changes the horses-table snapshot would miss.
                 gear = col("Gear", cells) or None
+                # Horse profile link carries the canonical HKJC horseid
+                # (HK_<year>_<brand>) — used to follow through to the Chinese
+                # name + profile stats for new/unnamed horses.
+                horseid = None
+                hi = idx.get("Horse")
+                if hi is not None and hi < len(cells):
+                    a = cells[hi].find("a", href=True)
+                    if a:
+                        mh = re.search(r"horseid=(HK_\d{4}_[A-Za-z0-9]+)", a["href"])
+                        if mh:
+                            horseid = mh.group(1)
                 out.append({
                     "brand": brand,
+                    "horseid": horseid,
                     "horse_no": horse_no,
                     "horse_name": horse_name,
                     "jockey": col("Jockey", cells) or None,
