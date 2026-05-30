@@ -326,8 +326,15 @@
   .assess-row > td { background: rgba(255,255,255,0.015); border-top: 0; }
   .assess-row.eval-row > td { padding: 4px 14px 6px; }
   .assess-row.rca-row  > td { padding: 0 14px 12px; }
+  /* Inline role pill, with the paragraph flowing right after it (no line break). */
+  .role-pill { display: inline-block; font-size: 10px; font-weight: 600;
+               padding: 1px 8px; border-radius: 10px; margin-right: 8px;
+               white-space: nowrap; vertical-align: baseline; }
+  .role-pill.eval { background: rgba(94,192,255,0.16); color: var(--accent); }
+  .role-pill.rca  { background: rgba(255,255,255,0.08); color: var(--muted); }
   .lazy-cell { color: var(--muted); font-size: 11.5px; line-height: 1.6;
                white-space: normal; }
+  .assess-row .lazy-cell { display: inline; }   /* flow inline after the pill */
   .lazy-cell[data-source] { color: var(--text); }
   .race-block table td.pnl-win { color: var(--good); font-weight: 600; }
   .race-block table td.pnl-lose { color: var(--bad); }
@@ -3026,14 +3033,16 @@ function renderBetsSummary(data, strat) {
       </tr>
       <tr class="assess-row eval-row">
         <td colspan="17">
-          <div class="lazy-cell" data-lazy-kind="an" data-rid="${r.id}"
-               data-brand="${escapeHtml(evalBrand || h.brand || '')}">${t('（…）', '(…)')}</div>
+          <span class="role-pill eval">${t('深度評估', 'Deep eval')}</span>
+          <span class="lazy-cell" data-lazy-kind="an" data-rid="${r.id}"
+                data-brand="${escapeHtml(evalBrand || h.brand || '')}">${t('（…）', '(…)')}</span>
         </td>
       </tr>
       <tr class="assess-row rca-row">
         <td colspan="17">
-          <div class="lazy-cell" data-lazy-kind="rca" data-rid="${r.id}"
-               data-brand="${escapeHtml(evalBrand || h.brand || '')}">${t('（…）', '(…)')}</div>
+          <span class="role-pill rca">${t('賽後檢討', 'RCA')}</span>
+          <span class="lazy-cell" data-lazy-kind="rca" data-rid="${r.id}"
+                data-brand="${escapeHtml(evalBrand || h.brand || '')}">${t('（…）', '(…)')}</span>
         </td>
       </tr>
     `;
