@@ -152,6 +152,20 @@
             "recommended_action_en": {"type": "string"}
           }
         },
+        "backtest": {
+          "type": "object",
+          "description": "Latest backtest result for this law (post-hoc re-rank over the prediction history). Records whether it earned promotion.",
+          "properties": {
+            "as_of": {"type": "string", "format": "date"},
+            "method": {"type": "string"},
+            "universe_races": {"type": "integer"},
+            "picks_changed": {"type": "integer"},
+            "better": {"type": "integer"},
+            "worse": {"type": "integer"},
+            "verdict_zh": {"type": "string"},
+            "verdict_en": {"type": "string"}
+          }
+        },
         "status": {"type": "string", "enum": ["proposed", "validated", "implemented", "retired"]},
         "tags": {"type": "array", "items": {"type": "string"}},
         "created": {"type": "string", "format": "date"},
