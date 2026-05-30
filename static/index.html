@@ -2940,6 +2940,13 @@ function renderBetsSummary(data, strat) {
     // Combo bets: 馬 column shows the literal brand-list (e.g. "K123+J456");
     // single-horse bets show name + brand code as before.
     const isCombo = bet && /[,>]/.test(String(bet.brand || ''));
+    // Model's top-4 picks for this race, as saddle-cloth numbers (e.g. "12-11-1-3").
+    const top4 = (r.horses || [])
+      .filter(x => x.calibrated_prob != null && x.horse_no != null)
+      .sort((a, b) => b.calibrated_prob - a.calibrated_prob)
+      .slice(0, 4)
+      .map(x => x.horse_no)
+      .join('-') || '—';
     const horseLabel = isCombo
       ? `<code>${escapeHtml(bet.brand)}</code>`
       : `${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted)">${escapeHtml(h.brand || '')}</code>${dataBadge(h)}`;
@@ -2959,8 +2966,9 @@ function renderBetsSummary(data, strat) {
       : `<span title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</span>`;
     return `
       <tr class="${cls}">
-        <td class="num">${isCombo ? '—' : (h.horse_no ?? '—')}</td>
         <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
+        <td class="num">${isCombo ? '—' : (h.horse_no ?? '—')}</td>
+        <td class="num" style="font-family:var(--mono);font-size:11px">${top4}</td>
         <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
         <td class="h-name">${horseLabel}</td>
         <td>${escapeHtml(i18n.jockey(h, lang))}</td>
@@ -3000,8 +3008,9 @@ function renderBetsSummary(data, strat) {
       <div class="race-body">
         <table>
           <thead><tr>
-            <th class="num">${t('馬號', 'no.')}</th>
             <th>${t('場次', 'race')}</th>
+            <th class="num">${t('馬號', 'no.')}</th>
+            <th class="num" title="${t('模型前4揀（馬號）', 'model top-4 picks (horse no.)')}">${t('前4揀', 'top 4')}</th>
             <th>${t('實際', 'actual')}</th>
             <th>${t('馬', 'horse')}</th>
             <th>${t('騎師', 'jockey')}</th>
