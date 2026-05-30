@@ -166,18 +166,29 @@ def _deepseek_json(news: list[dict], runners: list[str], model_ctx: list[str],
             + "\n".join(model_ctx)
             + "\n\nOFFICIAL RUNNERS:\n" + ", ".join(runners)
             + "\n\nEXPERT ARTICLES:\n" + "\n\n".join(blocks))
+    # deepseek-reasoner (R1) thinks before answering — better for the agree/
+    # diverge cross-read. It ignores temperature/top_p and does NOT support
+    # response_format, so we rely on the "STRICT JSON" instruction + robust
+    # extraction, and allow a longer timeout for the reasoning pass.
     req = urllib.request.Request(
         DEEPSEEK_URL,
-        data=json.dumps({"model": "deepseek-chat",
+        data=json.dumps({"model": "deepseek-reasoner",
                          "messages": [{"role": "system", "content": sys_prompt},
                                       {"role": "user", "content": user}],
-                         "temperature": 0.2, "max_tokens": 4000,
-                         "response_format": {"type": "json_object"}}).encode(),
+                         # reasoning tokens count against max_tokens, so leave
+                         # ample room for the chain-of-thought AND the JSON.
+                         "max_tokens": 8000}).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
-    with urllib.request.urlopen(req, timeout=40) as r:
+    with urllib.request.urlopen(req, timeout=180) as r:
         res = json.loads(r.read().decode("utf-8"))
-    txt = res["choices"][0]["message"]["content"].strip()
+    txt = (res["choices"][0]["message"].get("content") or "").strip()
     txt = re.sub(r"^```(?:json)?|```$", "", txt, flags=re.M).strip()
+    # The final answer should be pure JSON; if any prose slipped in, grab the
+    # outermost {...} object.
+    if not txt.startswith("{"):
+        m = re.search(r"\{.*\}", txt, re.S)
+        if m:
+            txt = m.group(0)
     return json.loads(txt)
 
 
