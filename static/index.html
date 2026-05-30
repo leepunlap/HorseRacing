@@ -192,7 +192,18 @@
                                  font-size: 11px; padding: 2px 6px;
                                  background: rgba(255,255,255,0.04); border-radius: 4px;
                                  flex-shrink: 0; }
-  .feature-card .fc-head .name { font-weight: 500; flex: 1; min-width: 0; }
+  .feature-card .fc-head .name { font-weight: 500; flex: 1 1 auto; min-width: 0;
+                                 white-space: normal; word-break: break-word; }
+  /* Importance bar + score on their own line (never squeezes the name) */
+  .feature-card .fc-imp { display: flex; align-items: center; gap: 8px; }
+  .feature-card .fc-imp-label { font-size: 10px; color: var(--muted); flex: 0 0 auto;
+                                text-transform: uppercase; letter-spacing: .04em; }
+  .feature-card .fc-imp .imp-bar { flex: 1 1 auto; min-width: 60px; max-width: none;
+                                   height: 6px; background: rgba(255,255,255,0.07);
+                                   border-radius: 4px; overflow: hidden; }
+  .feature-card .fc-imp .imp-bar > i { display: block; height: 100%; background: var(--good); }
+  .feature-card .fc-imp .imp-gain { font-family: var(--mono); font-size: 11.5px; color: var(--text);
+                                    min-width: 48px; text-align: right; flex: 0 0 auto; }
   /* Credit pill now lives on the title line, right next to the name */
   .feature-card .fc-head .src { font-family: var(--mono); font-size: 11px;
                                  background: rgba(94,192,255,0.10); color: var(--accent);
@@ -3579,9 +3590,22 @@ function renderFeatures() {
     return;
   }
 
-  // Default category to the first one with features, the first time the user opens this tab.
-  if (state.featCat == null && cats.length) {
-    state.featCat = cats[0].id;
+  // Synthetic "Top 15" category: the highest-gain features across the whole
+  // catalog, gathered in one place. Built from the live importance map; only
+  // shown once importance has been computed (otherwise there's nothing to rank).
+  const top15Feats = cats.flatMap(c => c.features)
+    .filter(f => (impByFid[f.id]?.gain || 0) > 0)
+    .sort((a, b) => (impByFid[b.id]?.gain || 0) - (impByFid[a.id]?.gain || 0))
+    .slice(0, 15);
+  const top15Cat = { id: 'top15', name_zh: '★ 前15重要', name_en: '★ Top 15',
+                     count: top15Feats.length, features: top15Feats };
+  // Tab strip + non-search selection use displayCats; search uses real cats only
+  // (so a Top-15 feature isn't shown twice in search results).
+  const displayCats = top15Feats.length ? [top15Cat, ...cats] : cats;
+
+  // Default to Top 15 (else the first category) the first time the user opens this tab.
+  if (state.featCat == null && displayCats.length) {
+    state.featCat = displayCats[0].id;
     saveUi({ featCat: state.featCat });
   }
   // Search mode: when there's a query we show matches across ALL categories
@@ -3590,14 +3614,14 @@ function renderFeatures() {
 
   // Per-category match counts so the tabs show "12. 交互特徵 (3)" when filtering
   const catCounts = {};
-  for (const cat of cats) {
+  for (const cat of displayCats) {
     catCounts[cat.id] = cat.features.filter(filterFeat).length;
   }
 
   // Build the tab strip — one tab per category, with optional match-count badge
   const catTabs = `
     <div class="cat-tabs">
-      ${cats.map(cat => {
+      ${displayCats.map(cat => {
         const matched = catCounts[cat.id];
         const isActive = !isSearch && cat.id === state.featCat;
         const showZero = isSearch && matched === 0;
@@ -3618,7 +3642,7 @@ function renderFeatures() {
     activeCats = cats.map(cat => ({ ...cat, features: cat.features.filter(filterFeat) }))
                      .filter(c => c.features.length > 0);
   } else {
-    const active = cats.find(c => c.id === state.featCat) || cats[0];
+    const active = displayCats.find(c => c.id === state.featCat) || displayCats[0];
     activeCats = active ? [active] : [];
   }
 
@@ -3685,9 +3709,14 @@ function renderFeatureCard(f, lang, imp, maxGain) {
     (st.min != null && st.max != null) ? `${t('範圍', 'range')} ${st.min}…${st.max}` : '',
     imp.splits ? `${t('分裂', 'splits')} ${imp.splits}` : '',
   ].filter(Boolean).join(' · ') : '';
-  const impHead = imp
-    ? `<span class="imp-bar" style="flex:0 0 70px;height:6px" title="${t('增益', 'gain')} ${gain}"><i style="width:${pct}%"></i></span>`
-      + `<span class="imp-gain" style="min-width:46px">${gain > 0 ? gain.toLocaleString() : '—'}</span>`
+  // Importance bar + score live on their OWN line below the head so the name
+  // is never squeezed into a narrow (vertical-wrapping) column.
+  const impRow = imp
+    ? `<div class="fc-imp" title="${t('增益', 'gain')} ${gain}">
+         <span class="fc-imp-label">${t('重要性', 'importance')}</span>
+         <span class="imp-bar"><i style="width:${pct}%"></i></span>
+         <span class="imp-gain">${gain > 0 ? gain.toLocaleString() : '—'}</span>
+       </div>`
     : '';
   return `
     <div class="feature-card ${open ? 'open' : ''}" data-fid="${f.id}">
@@ -3696,12 +3725,12 @@ function renderFeatureCard(f, lang, imp, maxGain) {
         <span class="name">${escapeHtml(f[`name_${lang}`])}</span>
         ${primary ? `<span class="src" title="${escapeHtml(primary.title || '')}">${escapeHtml(primary.compact || primary.id)}</span>` : ''}
         ${enabled}
-        ${impHead}
         ${hasCollapsibleContent ? `
           <button class="fc-toggle" data-feat-toggle="${f.id}"
                   title="${open ? t('收起', 'collapse') : t('展開詳細', 'expand details')}">${open ? '▴' : '▾'}</button>
         ` : ''}
       </div>
+      ${impRow}
       <div class="fc-desc">${escapeHtml(f[`description_${lang}`] || '')}</div>
       ${statBits ? `<div class="fc-notes" style="font-family:var(--mono);font-size:11px;color:var(--muted)">${escapeHtml(statBits)}</div>` : ''}
       ${hasNotes ? `<div class="fc-notes">${escapeHtml(notes)}</div>` : ''}
@@ -3718,101 +3747,6 @@ function renderFeatureCard(f, lang, imp, maxGain) {
   `;
 }
 
-
-// ─── Features page · Importance & stats view (selectable by strategy) ────────
-function renderFeatureImportance(tabs) {
-  const main = document.getElementById('main');
-  const lang = state.lang;
-  const q = (state.featSearch || '').trim().toLowerCase();
-  const data = state.featureCards;
-  const strategies = state.strategies || [];
-
-  const selector = `
-    <div class="toolbar">
-      <label class="muted" style="font-size:12px">${t('策略', 'Strategy')}:</label>
-      <select id="featStrategySel">
-        ${strategies.map(s => `<option value="${s.id}" ${s.id === state.featStrategy ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
-      </select>
-      <input class="feature-search" id="featSearch" placeholder="${t('搜尋名稱、id、內容…', 'search name, id, content…')}" value="${escapeHtml(q)}">
-    </div>`;
-
-  if (!data || !data.cards) {
-    main.innerHTML = `<div class="panel"><h2>${t('特徵重要性與統計', 'Feature importance & stats')}</h2>${tabs}${selector}
-      <div class="empty">${t('（載入中…）', '(loading…)')}</div></div>`;
-    wireFeatureControls();
-    return;
-  }
-
-  const filt = (c) => {
-    if (!q) return true;
-    return [c.id, c.name_zh, c.name_en, c.description_zh, c.description_en, c.compute_fn]
-      .filter(Boolean).join(' ').toLowerCase().includes(q);
-  };
-  const cards = data.cards.filter(filt);
-  const usedNote = data.computed_at
-    ? `${t('模型', 'model')} ${data.n_used}/${data.total} ${t('項有增益', 'features used')} · ${t('訓練', 'trained on')} ${(data.n_train_rows || 0).toLocaleString()} ${t('列', 'rows')} · ${data.computed_at.replace('T', ' ')}`
-    : t('（尚未計算重要性 — 執行 scripts.compute_feature_importance）', '(importance not computed yet — run scripts.compute_feature_importance)');
-
-  main.innerHTML = `
-    <div class="panel">
-      <h2>${t('特徵重要性與統計', 'Feature importance & stats')}
-        <span class="muted" style="font-weight:400;font-size:12px"> · ${escapeHtml(usedNote)}</span></h2>
-      ${tabs}
-      ${selector}
-      <div class="imp-list">
-        ${cards.length ? cards.map(c => renderImportanceCard(c, lang)).join('')
-                       : `<div class="empty">${t('（無符合）', '(no matches)')}</div>`}
-      </div>
-    </div>`;
-  wireFeatureControls();
-}
-
-function renderImportanceCard(c, lang) {
-  const name = lang === 'zh' ? c.name_zh : c.name_en;
-  const desc = lang === 'zh' ? c.description_zh : c.description_en;
-  const notes = lang === 'zh' ? c.notes_zh : c.notes_en;
-  const cat = lang === 'zh' ? c.category_zh : c.category_en;
-  const pct = Math.round((c.gain_pct || 0) * 100);
-  const st = c.stats || {};
-  const open = state.featOpen.has(c.id);
-  const enabledBadge = c.enabled
-    ? `<span class="pill good">${t('啟用', 'on')}</span>`
-    : `<span class="pill muted">${t('停用', 'off')}</span>`;
-  const stubBadge = c.is_stub ? `<span class="pill warn">${t('未接資料', 'stub')}</span>` : '';
-  const kv = (label, val) => val == null || val === '' ? '' :
-    `<span class="imp-kv"><span class="muted">${label}</span> ${escapeHtml(String(val))}</span>`;
-  const hasMore = !!notes || (c.sources && c.sources.length);
-  return `
-    <div class="imp-card ${c.enabled ? '' : 'off'} ${open ? 'open' : ''}" data-fid="${c.id}">
-      <div class="imp-head">
-        <span class="imp-rank">#${c.rank}</span>
-        <span class="fid">${c.id}</span>
-        <span class="imp-name">${escapeHtml(name)}</span>
-        <span class="imp-cat muted">${escapeHtml(cat)}</span>
-        ${enabledBadge}${stubBadge}
-        <span class="imp-bar" title="${t('增益', 'gain')} ${c.gain}"><i style="width:${pct}%"></i></span>
-        <span class="imp-gain">${c.gain > 0 ? c.gain.toLocaleString() : '—'}</span>
-        ${hasMore ? `<button class="fc-toggle" data-feat-toggle="${c.id}">${open ? '▴' : '▾'}</button>` : ''}
-      </div>
-      <div class="imp-desc">${escapeHtml(desc || '')}</div>
-      <div class="imp-meta">
-        ${kv(t('增益', 'gain'), c.gain)}
-        ${kv(t('分裂次數', 'splits'), c.splits)}
-        ${kv(t('涵蓋率', 'coverage'), st.coverage != null ? Math.round(st.coverage * 100) + '%' : null)}
-        ${kv(t('平均', 'mean'), st.mean)}
-        ${kv(t('最小', 'min'), st.min)}
-        ${kv(t('最大', 'max'), st.max)}
-        ${kv(t('樣本', 'n'), st.n != null ? st.n.toLocaleString() : null)}
-        ${kv(t('計算', 'compute'), c.compute_fn)}
-        ${c.depends_on ? kv(t('依賴', 'depends'), c.depends_on) : ''}
-      </div>
-      ${open && notes ? `<div class="imp-notes">${escapeHtml(notes)}</div>` : ''}
-      ${open && c.sources && c.sources.length ? `
-        <div class="fc-sources">
-          ${c.sources.map(s => `<a href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener" title="${escapeHtml(s.title || '')}">${s.id} · ${escapeHtml(s.compact || '')}</a>`).join('')}
-        </div>` : ''}
-    </div>`;
-}
 
 function wireFeatureControls() {
   // catalog / bibliography / importance sub-tab
