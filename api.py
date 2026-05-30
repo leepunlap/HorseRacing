@@ -398,6 +398,102 @@ def get_feature(feature_id: str) -> dict:
     return {**rec, "sources_expanded": sources_expanded}
 
 
+_NOTES_CACHE = None
+_IMPORTANCE_CACHE = None
+
+
+def _load_notes() -> dict:
+    global _NOTES_CACHE
+    if _NOTES_CACHE is None:
+        p = BASE_DIR / "features" / "notes_rich.json"
+        _NOTES_CACHE = _json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    return _NOTES_CACHE
+
+
+def _load_importance() -> dict:
+    # Re-read each call (cheap file) so a refresh shows up without a restart.
+    p = BASE_DIR / "data" / "feature_importance.json"
+    return _json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
+
+_CAT_LABELS = {
+    1: ("馬匹檔案", "Horse profile"), 2: ("勝率與報酬指標", "Win-rate & returns"),
+    3: ("適應性", "Adaptability"), 4: ("練馬師狀態", "Trainer form"), 5: ("閘號", "Draw"),
+    6: ("負磅", "Weight"), 7: ("賽事背景", "Race context"), 8: ("近期狀態", "Recent form"),
+    9: ("裝備與獸醫", "Gear & vet"), 10: ("步速與跑法", "Pace & style"),
+    11: ("綜合速度與班次指標", "Composite speed/class"), 12: ("交互特徵", "Interactions"),
+    13: ("連贏與序位結構", "Exotic & order"), 14: ("市場訊號", "Market signals"),
+    15: ("場地動態", "Track dynamics"), 16: ("生物力學/外部數據", "Biomechanics"),
+    17: ("事件歷史", "Incident history"),
+}
+
+
+@router.get("/strategies/{strategy_id}/feature_cards")
+def strategy_feature_cards(strategy_id: int) -> dict:
+    """One rich, importance-ranked card per feature for the strategy page:
+    bilingual name + description + technical/layman notes, the compute logic and
+    parameters, source citations, enabled state, XGBoost gain importance, and
+    feature-value statistics. Sorted most → least important."""
+    from features.catalog import FEATURES
+    feats = _load_features()
+    notes = _load_notes()
+    biblio = _load_bibliography()
+    imp = _load_importance()
+    imp_feats = imp.get("features", {})
+    max_gain = imp.get("max_gain") or 1.0
+
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT name, features_enabled_json FROM strategies WHERE id=?", (strategy_id,)).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(404, f"strategy {strategy_id} not found")
+    strat_name, fe_json = row
+    overrides = _json.loads(fe_json) if fe_json else {}
+
+    cards = []
+    for f in FEATURES:
+        d = feats.get(f.id, {})
+        n = notes.get(f.id, {})
+        m = imp_feats.get(f.id, {})
+        zh_cat, en_cat = _CAT_LABELS.get(f.category, (f"類{f.category}", f"Cat {f.category}"))
+        gain = float(m.get("gain", 0) or 0)
+        cards.append({
+            "id": f.id, "category": f.category, "category_zh": zh_cat, "category_en": en_cat,
+            "name_zh": d.get("name_zh") or f.name_zh, "name_en": d.get("name_en") or f.name_en,
+            "description_zh": d.get("description_zh") or f.definition,
+            "description_en": d.get("description_en") or f.definition,
+            "notes_zh": n.get("notes_zh"), "notes_en": n.get("notes_en"),
+            # parameters / logic
+            "compute_fn": f.compute_fn_name,
+            "depends_on": f.depends_on or None,
+            "nan_permitted": bool(f.nan_permitted),
+            "is_stub": f.compute_fn_name == "_nan_stub",
+            "sources": [biblio[b] for b in (d.get("all_sources") or f.source_refs.split(",")) if b in biblio],
+            # state
+            "enabled": bool(overrides.get(f.id, f.enabled_default)),
+            # importance
+            "gain": round(gain, 1),
+            "gain_pct": round(gain / max_gain, 4) if max_gain else 0,
+            "splits": int(m.get("splits", 0) or 0),
+            # statistics
+            "stats": {k: m.get(k) for k in ("n", "coverage", "mean", "min", "max") if k in m},
+        })
+    # Most important first; then enabled; then id.
+    cards.sort(key=lambda c: (-c["gain"], not c["enabled"], c["id"]))
+    for i, c in enumerate(cards, 1):
+        c["rank"] = i
+    return {
+        "strategy": strat_name,
+        "computed_at": imp.get("computed_at"),
+        "n_train_rows": imp.get("n_train_rows"),
+        "n_used": imp.get("n_features_used"),
+        "total": len(cards),
+        "cards": cards,
+    }
+
+
 @router.get("/bibliography")
 def list_bibliography() -> dict:
     """All B-id citations from `features_expanded_zh_hant.md` Appendix B."""
