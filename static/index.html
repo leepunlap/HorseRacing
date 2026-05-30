@@ -713,6 +713,10 @@ function connectWs() {
   // the server's connect handler against the REST API's token set.
   const sock = io({
     auth: { token },
+    // Connect straight over WebSocket (nginx is configured for the upgrade).
+    // Skipping the long-polling phase avoids the polling→WebSocket upgrade
+    // race that logged benign 'Session is disconnected' / 400s server-side.
+    transports: ['websocket'],
     reconnection: true,
     reconnectionDelay: 2000,
     reconnectionDelayMax: 10000,
