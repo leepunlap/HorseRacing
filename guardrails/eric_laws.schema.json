@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://horseracing/guardrails/eric_laws.schema.json",
+  "title": "Eric 定律 (Eric's Laws)",
+  "description": "Structured, version-controlled handicapping principles distilled from expert (Eric) reads where the model's raw-form view fell short. Each law is a candidate GUARDRAIL: a direction (upgrade/downgrade), machine-actionable triggers, the model blind spot it patches, a proposed feature, the evidence cases that motivated it, and the analyst's assessment. Laws graduate proposed -> validated -> implemented as they are backtested and wired in.",
+  "type": "object",
+  "required": ["meta", "laws"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "updated"],
+      "properties": {
+        "version": {"type": "string"},
+        "updated": {"type": "string", "format": "date"},
+        "note_zh": {"type": "string"},
+        "note_en": {"type": "string"}
+      }
+    },
+    "laws": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/law"}
+    }
+  },
+  "$defs": {
+    "law": {
+      "type": "object",
+      "required": ["id", "name_zh", "name_en", "direction", "principle_zh", "principle_en",
+                   "triggers", "model_blind_spot_zh", "model_blind_spot_en",
+                   "assessment", "status", "created", "updated"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^EL[0-9]{3}$", "description": "Stable id, EL001.."},
+        "name_zh": {"type": "string"},
+        "name_en": {"type": "string"},
+        "direction": {"type": "string", "enum": ["upgrade", "downgrade", "either"],
+                       "description": "Does the law push a horse's score up or down?"},
+        "principle_zh": {"type": "string", "description": "Eric's rule, one or two sentences."},
+        "principle_en": {"type": "string"},
+        "rationale_zh": {"type": "string", "description": "Why it works (handicapping logic)."},
+        "rationale_en": {"type": "string"},
+        "triggers": {
+          "type": "array",
+          "description": "Machine-actionable conditions that detect when the law applies. ANDed unless `group` differs.",
+          "items": {
+            "type": "object",
+            "required": ["signal", "op", "note_zh", "note_en"],
+            "additionalProperties": false,
+            "properties": {
+              "signal": {"type": "string", "description": "Derived quantity, e.g. surface_switch, rating_slope_season, beaten_margin_lengths_lto, h2h_weight_swing_lb."},
+              "op": {"type": "string", "enum": ["==", "!=", ">", ">=", "<", "<=", "in", "is_true", "is_false"]},
+              "value": {"description": "Threshold / comparand. Omit for is_true/is_false."},
+              "group": {"type": "string", "description": "Triggers sharing a group are OR'd together; groups are AND'd."},
+              "note_zh": {"type": "string"},
+              "note_en": {"type": "string"}
+            }
+          }
+        },
+        "model_blind_spot_zh": {"type": "string"},
+        "model_blind_spot_en": {"type": "string"},
+        "proposed_feature": {
+          "type": "object",
+          "description": "How to encode this as a model input / filter / penalty.",
+          "required": ["kind", "name", "description_zh", "description_en"],
+          "properties": {
+            "kind": {"type": "string", "enum": ["feature", "filter", "penalty", "boost"]},
+            "name": {"type": "string"},
+            "inputs": {"type": "array", "items": {"type": "string"}},
+            "description_zh": {"type": "string"},
+            "description_en": {"type": "string"},
+            "links_features": {"type": "array", "items": {"type": "string"},
+                                "description": "Related existing catalog feature ids (H###)."}
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "description": "Concrete cases that motivated the law.",
+          "items": {
+            "type": "object",
+            "required": ["date", "race", "horse_brand", "who_was_right"],
+            "properties": {
+              "date": {"type": "string", "format": "date"},
+              "race": {"type": "string", "description": "e.g. HV R7"},
+              "race_id": {"type": "integer"},
+              "horse_brand": {"type": "string"},
+              "horse_zh": {"type": "string"},
+              "horse_en": {"type": "string"},
+              "model_view": {"type": "object", "description": "rank/calibrated_prob/edge/odds the model assigned."},
+              "market_view": {"type": "object"},
+              "outcome": {"type": "object", "description": "finish position, margin, who beat whom."},
+              "who_was_right": {"type": "string", "enum": ["eric", "model", "tie"]},
+              "note_zh": {"type": "string"},
+              "note_en": {"type": "string"}
+            }
+          }
+        },
+        "assessment": {
+          "type": "object",
+          "description": "The analyst's (Claude's) take.",
+          "required": ["verdict_zh", "verdict_en", "validity", "confidence"],
+          "properties": {
+            "verdict_zh": {"type": "string"},
+            "verdict_en": {"type": "string"},
+            "validity": {"type": "string", "enum": ["strong", "moderate", "weak"],
+                          "description": "How sound the handicapping logic is."},
+            "confidence": {"type": "string", "enum": ["high", "medium", "low"],
+                            "description": "Confidence given current evidence (few cases = lower)."},
+            "severity": {"type": "string", "enum": ["high", "medium", "low"],
+                          "description": "How badly the model errs when this law is ignored."},
+            "caveats_zh": {"type": "string"},
+            "caveats_en": {"type": "string"},
+            "recommended_action_zh": {"type": "string"},
+            "recommended_action_en": {"type": "string"}
+          }
+        },
+        "status": {"type": "string", "enum": ["proposed", "validated", "implemented", "retired"]},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "created": {"type": "string", "format": "date"},
+        "updated": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}

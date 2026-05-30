@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "version": "1.0",
+    "updated": "2026-05-31",
+    "note_zh": "Eric 定律：由專家讓磅讀法萃取、用以補模型「形勢與條件變化」盲點的結構化護欄。每條定律含方向（加/減分）、可機讀觸發條件、所補的模型盲點、建議特徵、佐證案例及分析師評估。狀態由 proposed → validated → implemented 隨回測推進。",
+    "note_en": "Eric's Laws: structured guardrails distilled from expert handicapping reads that patch the model's blind spot around CONTEXT & CONDITION CHANGE (surface, rating trajectory, weight swings). Each law carries a direction, machine-actionable triggers, the model blind spot it fixes, a proposed feature, evidence cases, and the analyst's assessment. Status advances proposed -> validated -> implemented as it is backtested."
+  },
+  "laws": [
+    {
+      "id": "EL001",
+      "name_zh": "異面升班懲罰",
+      "name_en": "Surface-switch & rating-ceiling penalty",
+      "direction": "downgrade",
+      "principle_zh": "對一隻近期勝績集中在某一場地（如全天候/泥地），今仗轉去佢未贏過的場地（如草地），同時評分剛被扯高至班頂、要孭重磅的短賠馬，要大幅扣分。",
+      "principle_en": "Heavily downgrade a short-priced horse whose recent wins came on one surface (e.g. all-weather/dirt) that is now switching to a surface it has not won on (e.g. turf), while its rating has just been pushed to the top of its class and it carries top weight.",
+      "rationale_zh": "好狀態與好時間是在原場地賺回來的，搬面並不對等；評分升到班頂等於孭重磅打更強對手。兩個獨立減分理由疊加，往往令模型用『通用近績』高估其勝算。",
+      "rationale_en": "The horse's form figures were earned on the other surface and don't transfer; a rating at the class ceiling means top weight against tougher rivals. Two independent negatives stack, and the model tends to over-rate it on 'generic recent form'.",
+      "triggers": [
+        {"signal": "surface_switch", "op": "is_true", "note_zh": "今仗場地 ≠ 近 N 仗取勝場地（草地 vs 全天候）", "note_en": "this race surface != surface of recent win(s) (turf vs all-weather)"},
+        {"signal": "won_on_target_surface", "op": "is_false", "note_zh": "今仗場地上歷來未贏過（最好僅亞軍/落敗）", "note_en": "no career win on the current surface (best is placed/beaten)"},
+        {"signal": "rating_slope_season_pts", "op": ">=", "value": 12, "note_zh": "季內評分急升（約 +12 分或以上）", "note_en": "rating has risen sharply this season (~+12 pts or more)"},
+        {"signal": "rating_vs_class_ceiling_pts", "op": "<=", "value": 3, "note_zh": "評分已達/逼近本班天花板（距上限 ≤ 3 分）", "note_en": "rating at/near the class ceiling (<= 3 pts from the cap)"},
+        {"signal": "model_minus_market_prob", "op": ">=", "value": 0.15, "group": "overconfidence", "note_zh": "模型勝率明顯高於市場隱含（過度自信）", "note_en": "model prob far above market-implied (over-confident)"},
+        {"signal": "market_odds", "op": "<=", "value": 6.0, "group": "overconfidence", "note_zh": "市場短賠/熱門", "note_en": "short-priced in the market"}
+      ],
+      "model_blind_spot_zh": "模型有『going 適應』特徵但不分 turf/AWT 兩種面；對評分升頂/孭重磅缺乏懲罰；過度信任原始近績與速度（賺自另一場地）。",
+      "model_blind_spot_en": "The model has a 'going adaptation' feature but does not separate turf vs AWT surface; it has no penalty for a rating pushed to the class ceiling / top weight; it over-trusts raw recent form and speed figures earned on the other surface.",
+      "proposed_feature": {
+        "kind": "penalty",
+        "name": "surface_specific_form_and_rating_ceiling",
+        "inputs": ["win_rate_turf", "win_rate_awt", "current_surface", "recent_win_surface", "rating_slope_season", "rating_minus_class_ceiling"],
+        "description_zh": "(1) 分開計草地/全天候勝率，並對『今仗場地 ≠ 近期取勝場地』降權；(2) 對評分短期急升且達班頂者施加負向修正。兩者相乘下調勝率，把過度樂觀拉回市場區間。",
+        "description_en": "(1) Split win-rate by turf vs AWT and down-weight when current surface != recent winning surface; (2) apply a negative correction when the rating has spiked and sits at the class ceiling. Together they trim an over-optimistic probability back toward the market.",
+        "links_features": ["H030", "H031", "H032", "H009", "H029"]
+      },
+      "evidence": [
+        {
+          "date": "2026-05-20",
+          "race": "HV R7",
+          "race_id": 2433,
+          "horse_brand": "K054",
+          "horse_zh": "滿心星",
+          "horse_en": "SKY VINO",
+          "model_view": {"rank": 1, "calibrated_prob": 0.45, "edge": 2.43, "odds": 5.4, "recommendation": "bet"},
+          "market_view": {"implied_prob": 0.185, "odds": 5.4},
+          "outcome": {"position": 6, "beaten_lengths": 3.5, "running": "6-5-5-6", "winner": "L149 VIOLET STAR"},
+          "who_was_right": "eric",
+          "note_zh": "今季兩冠(2/14、5/6)皆在沙田全天候；今仗跑馬地草地。評分65→80(+15)、孭頂磅。模型給45%(全場第一)而市場僅18.5%；結果第六。",
+          "note_en": "Both this-season wins (Feb-14, May-06) were on Sha Tin all-weather; this race was Happy Valley turf. Rating 65->80 (+15), top weight. Model 45% (clear top) vs market 18.5%; finished 6th."
+        }
+      ],
+      "assessment": {
+        "verdict_zh": "強烈成立。模型把一隻『泥地之駒、草地未贏、剛被加到班頂』的馬高估到45%（市場才18.5%），是可指認的過度自信，而非隨機失手。Eric 避開正確。",
+        "verdict_en": "Strongly valid. The model rated a 'dirt horse, winless on turf, just pushed to the class ceiling' at 45% (market only 18.5%) — identifiable over-confidence, not variance. Eric's avoid was correct.",
+        "validity": "strong",
+        "confidence": "medium",
+        "severity": "high",
+        "caveats_zh": "目前僅一個案例；屬方向性正確但需回測確認幅度。並非所有異面馬都該大跌——須配合『未贏過該面 + 升頂 + 短賠』三者同時成立。",
+        "caveats_en": "Only one case so far; directionally sound but needs a backtest to size it. Not every surface-switcher should drop — requires the trio (winless on surface + at ceiling + short price) together.",
+        "recommended_action_zh": "做『異面降權 + 評分升頂懲罰』後驗特徵，回測對近期 top-1 命中率與此類短賠馬的校準影響。",
+        "recommended_action_en": "Build the 'surface down-weight + rating-ceiling penalty' as post-hoc features and backtest the impact on recent top-1 hit-rate and calibration of such short-priced runners."
+      },
+      "status": "proposed",
+      "tags": ["surface", "turf-vs-awt", "rating-trend", "class-ceiling", "over-confidence", "downgrade"],
+      "created": "2026-05-31",
+      "updated": "2026-05-31"
+    },
+    {
+      "id": "EL002",
+      "name_zh": "進步馬與讓磅互換",
+      "name_en": "Progressive horse & head-to-head weight swing",
+      "direction": "upgrade",
+      "principle_zh": "對近仗僅以小差距（頭/頸位）落敗、又屬後上或大冷的進步馬加分；尤其當佢與近仗同場的對手今仗再碰頭，而對手被加磅令兩駒讓磅明顯向本駒傾斜時，預期形勢反轉。",
+      "principle_en": "Upgrade a progressive horse narrowly beaten last time (head/neck), especially one that closed or was unfancied; and most of all when it re-meets a rival from a recent same race whose weight has risen so the weight terms now swing in this horse's favour — expect the form to reverse.",
+      "rationale_zh": "原始名次掩蓋了『只輸一個頭位』的形勢分；評磅員追在進步馬後面，今仗的負磅互換（對手多孭X磅）在1200米可值3-4個馬位，足以反超上仗的毫釐之差。",
+      "rationale_en": "Raw finishing position hides a 'beaten only a head' run; the handicapper is chasing a progressive horse, and the weight swing (rival now carries +X lb) is worth several lengths over 1200m — enough to reverse a hair-thin prior margin.",
+      "triggers": [
+        {"signal": "rating_slope_season_pts", "op": ">", "value": 8, "note_zh": "評分呈上升趨勢（進步馬，季內明顯上升）", "note_en": "rising rating trajectory (progressive; clearly up this season)"},
+        {"signal": "beaten_margin_lengths_lto", "op": "<=", "value": 0.5, "group": "quality_run", "note_zh": "上仗僅以頭/頸位落敗", "note_en": "beaten only a head/neck last time out"},
+        {"signal": "closed_or_bigprice_lto", "op": "is_true", "group": "quality_run", "note_zh": "上仗後上殺到或屬冷門（形勢分被低估）", "note_en": "closed strongly or was at big odds last time (under-rated run)"},
+        {"signal": "h2h_weight_swing_lb", "op": ">=", "value": 5, "note_zh": "與近仗同場再遇之對手，今仗負磅互換 ≥ 5 磅向本駒傾斜", "note_en": "vs a rival from a recent same race, the weight terms have swung >= 5 lb in this horse's favour"}
+      ],
+      "model_blind_spot_zh": "模型睇原始名次（亞軍就是亞軍，不理只輸一個頭位）；沒有『同一對手、再碰頭、負磅此消彼長』的 pairwise 重評；亦低估進步馬的評分上升趨勢。",
+      "model_blind_spot_en": "The model reads raw finishing position (a 2nd is a 2nd regardless of margin); it has no pairwise re-match that accounts for a specific rival's weight change; and it under-weights a progressive horse's rising-rating trajectory.",
+      "proposed_feature": {
+        "kind": "boost",
+        "name": "h2h_weight_swing_and_beaten_margin_quality",
+        "inputs": ["rating_slope_season", "beaten_margin_lengths_lto", "run_style_closer", "odds_lto", "h2h_rival_weight_delta_lb", "h2h_prior_margin_lengths"],
+        "description_zh": "對每隻馬找出近 N 仗曾同場、今仗再遇之對手，計『上仗實際差距(馬位) + 兩駒今仗負磅變化(磅)』換算預期反超幅度；並對『小差距落敗 + 後上/大冷 + 評分上升』給正向修正。",
+        "description_en": "For each horse, find rivals it shared a recent race with and re-meets today; combine the prior beaten margin (lengths) with the weight swing (lb) into an expected reversal, and add a positive correction for 'narrowly beaten + closing/big-odds + rising rating'.",
+        "links_features": ["H008", "H064", "H009", "H020", "H021", "H040"]
+      },
+      "evidence": [
+        {
+          "date": "2026-05-20",
+          "race": "HV R8",
+          "race_id": 2434,
+          "horse_brand": "J290",
+          "horse_zh": "東來欣賞",
+          "horse_en": "FLYING WROTE",
+          "model_view": {"rank": 3, "calibrated_prob": 0.14, "edge": 0.74, "odds": 5.3, "recommendation": "skip"},
+          "market_view": {"implied_prob": 0.189, "odds": 5.3},
+          "outcome": {"position": 1, "won_by_lengths": 1.5, "running": "7-7-1", "beat": "K451 踏雪尋梅 (2nd)"},
+          "who_was_right": "eric",
+          "note_zh": "唯一真正同場交手為 2026-04-29：K451 讓3磅勝 J290 一個頭位。今仗 K451 評69→76、孭124→133(+9磅)即讓10磅；J290 121→123。讓磅向 J290 多傾斜7磅(1200米約3-4個馬位)。模型仍給 K451 43.9% vs J290 14%。結果 J290 勝、K451 居次1.5馬位。",
+          "note_en": "The only genuine same-race meeting was 2026-04-29: K451 gave 3 lb and beat J290 by a head. This time K451 rated 69->76, weight 124->133 (+9 lb) = giving 10 lb; J290 121->123. The weight swung ~7 lb further toward J290 (~3-4 lengths at 1200m). Model still had K451 43.9% vs J290 14%. Result: J290 won, K451 2nd by 1.5L."
+        }
+      ],
+      "assessment": {
+        "verdict_zh": "成立。模型『找對了前三』，但 K451 與 J290 的差距判斷錯：上仗同場只差一個頭位、今仗對手多讓7磅，仍給三倍差距，根源是欠『讓磅互換 + 小差距形勢分』。屬 within-cluster 排序錯（非如 EL001 的狂妄高估）。",
+        "verdict_en": "Valid. The model 'found the right three' but mis-sized the K451-vs-J290 gap: a head apart in a shared race last time, with the rival now giving 7 lb more, yet still a 3:1 gap — rooted in the missing weight-swing + beaten-margin quality. This is a within-cluster ordering miss (not the wild over-confidence of EL001).",
+        "validity": "strong",
+        "confidence": "high",
+        "severity": "medium",
+        "caveats_zh": "K451 孭頂磅133仍跑亞軍、只負1.5馬位，本身是好馬/進步馬，模型睇好它沒錯——錯的只是『差距幅度』。讓磅互換需可靠的同場對手+負磅數據（results.act_wt / race_history.actwt）。",
+        "caveats_en": "K451 still ran 2nd under top weight (133), beaten just 1.5L — it is a genuine good/progressive horse and rating it highly was not wrong; only the GAP was. The weight swing needs reliable same-race rival + carried-weight data (results.act_wt / race_history.actwt).",
+        "recommended_action_zh": "做『近期同場對手 head-to-head + 負磅互換』特徵與『beaten-margin 形勢分 + 評分斜率』，回測對 top-1 命中率與第二梯隊排序的影響。",
+        "recommended_action_en": "Build the 'recent same-race head-to-head + weight swing' feature plus 'beaten-margin quality + rating slope', and backtest the impact on top-1 hit-rate and second-tier ordering."
+      },
+      "status": "proposed",
+      "tags": ["weight-swing", "head-to-head", "progressive", "beaten-margin", "rating-trend", "upgrade"],
+      "created": "2026-05-31",
+      "updated": "2026-05-31"
+    }
+  ]
+}
