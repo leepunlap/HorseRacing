@@ -3563,7 +3563,17 @@ function renderRaceBlock(r, data, sid) {
 
 function wireRaceControls() {
   const printBtn = document.getElementById('racePrintBtn');
-  if (printBtn) printBtn.addEventListener('click', () => window.print());
+  if (printBtn) printBtn.addEventListener('click', () => {
+    // Browsers seed the "Save as PDF" filename from document.title, so set it
+    // to the selected race date (yyyy-mm-dd) for the print, then restore.
+    const prevTitle = document.title;
+    const d = state.raceDate || 'races';
+    const restore = () => { document.title = prevTitle; window.removeEventListener('afterprint', restore); };
+    window.addEventListener('afterprint', restore);
+    document.title = d;                 // → suggested filename "yyyy-mm-dd.pdf"
+    window.print();
+    setTimeout(restore, 1000);          // fallback if afterprint never fires
+  });
   const sel = document.getElementById('raceStrat');
   if (sel) sel.addEventListener('change', () => {
     state.raceStrategy = sel.value === '' ? null : parseInt(sel.value);
