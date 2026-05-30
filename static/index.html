@@ -332,6 +332,9 @@
                white-space: nowrap; vertical-align: baseline; }
   .role-pill.eval { background: rgba(94,192,255,0.16); color: var(--accent); }
   .role-pill.rca  { background: rgba(255,255,255,0.08); color: var(--muted); }
+  /* 賽後檢討 pill reflects the bet outcome once settled. */
+  .role-pill.rca.win  { background: rgba(77,209,122,0.18); color: var(--good); }
+  .role-pill.rca.lose { background: rgba(240,98,98,0.18); color: var(--bad); }
   .lazy-cell { color: var(--muted); font-size: 11.5px; line-height: 1.6;
                white-space: normal; }
   .assess-row .lazy-cell { display: inline; }   /* flow inline after the pill */
@@ -2822,6 +2825,8 @@ function renderRaces() {
       <div class="races-toolbar">
         <div class="races-toolbar-strat">${stratPicker}</div>
         ${datePicker}
+        <button id="racePrintBtn" class="btn ghost" style="margin-left:auto"
+                title="${t('列印此頁', 'print this page')}">🖨 ${t('列印', 'Print')}</button>
       </div>
       ${betPicker}
     </div>
@@ -3040,7 +3045,7 @@ function renderBetsSummary(data, strat) {
       </tr>
       <tr class="assess-row rca-row">
         <td colspan="17">
-          <span class="role-pill rca">${t('賽後檢討', 'RCA')}</span>
+          <span class="role-pill rca ${pnl == null ? '' : (pnl > 0 ? 'win' : (pnl < 0 ? 'lose' : ''))}">${t('賽後檢討', 'RCA')}</span>
           <span class="lazy-cell" data-lazy-kind="rca" data-rid="${r.id}"
                 data-brand="${escapeHtml(evalBrand || h.brand || '')}">${t('（…）', '(…)')}</span>
         </td>
@@ -3557,6 +3562,8 @@ function renderRaceBlock(r, data, sid) {
 }
 
 function wireRaceControls() {
+  const printBtn = document.getElementById('racePrintBtn');
+  if (printBtn) printBtn.addEventListener('click', () => window.print());
   const sel = document.getElementById('raceStrat');
   if (sel) sel.addEventListener('change', () => {
     state.raceStrategy = sel.value === '' ? null : parseInt(sel.value);
