@@ -2784,18 +2784,25 @@ function renderNewsPanel() {
   if (!n || !n.has_news) return '';
   const summary = state.lang === 'zh' ? n.summary_zh : n.summary_en;
   if (!summary && !(n.tipped || []).length) return '';
+  // Alignment vs the model: agree (corroborates) / diverge (challenges) /
+  // added_info (the model can't see this).
+  const alignTag = (a) => ({
+    agree: `<span class="pill good" style="font-size:10px">${t('一致', 'agree')}</span>`,
+    diverge: `<span class="pill warn" style="font-size:10px">${t('分歧', 'diverge')}</span>`,
+    added_info: `<span class="pill muted" style="font-size:10px">${t('補充', 'added-info')}</span>`,
+  })[a] || '';
   const tipped = (n.tipped || []).map(tp => {
     const note = state.lang === 'zh' ? tp.note_zh : tp.note_en;
-    return `<li><b>${escapeHtml(tp.name || '')}</b>${tp.brand ? ` <code style="color:var(--muted)">${escapeHtml(tp.brand)}</code>` : ''}${note ? ` — ${escapeHtml(note)}` : ''}</li>`;
+    return `<li>${alignTag(tp.alignment)} <b>${escapeHtml(tp.name || '')}</b>${tp.brand ? ` <code style="color:var(--muted)">${escapeHtml(tp.brand)}</code>` : ''}${note ? ` — ${escapeHtml(note)}` : ''}</li>`;
   }).join('');
   const sources = (n.sources || []).slice(0, 6).map(s =>
     `<a href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener" style="font-size:11px">${escapeHtml((s.title || '').slice(0, 50))}↗</a>`).join(' · ');
   return `
     <div class="panel">
-      <h2>📰 ${t('賽事前瞻（AI 綜合新聞）', 'AI news preview')}
+      <h2>📰 ${t('賽事前瞻（AI 對照模型）', 'AI preview (cross-read vs model)')}
         <span class="muted" style="font-weight:400;font-size:11px"> · ${t('僅供參考，非模型輸入', 'advisory only — not a model input')} · ${escapeHtml((n.fetched_at || '').replace('T', ' '))}</span></h2>
       <p style="font-size:13px;line-height:1.6;color:var(--text)">${escapeHtml(summary || '')}</p>
-      ${tipped ? `<div style="font-size:12.5px"><b>${t('新聞貼士', 'Tipped in the news')}:</b><ul style="margin:4px 0 0 0;padding-left:18px">${tipped}</ul></div>` : ''}
+      ${tipped ? `<div style="font-size:12.5px"><b>${t('專家觀點（對照模型）', 'Expert view vs model')}:</b><ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">${tipped}</ul></div>` : ''}
       ${sources ? `<div style="margin-top:8px;color:var(--muted)">${t('來源', 'sources')}: ${sources}</div>` : ''}
     </div>`;
 }

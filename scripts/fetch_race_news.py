@@ -66,12 +66,11 @@ def _google_news(query: str, n: int = 8) -> list[dict]:
 
 # Racing-specific sources only (not general news), recent window, deduped.
 _RACING_SITES = "scmp.com OR hkjc.com OR thestandard.com.hk OR racingpost.com OR racenet.com.au"
-# Tavily domain allow-list — HK racing previews/tips. Constraining to these
-# turns a noisy general search (which returned US Belmont/Indy) into the right
-# Sha Tin/Happy Valley previews at high relevance.
-_TAVILY_DOMAINS = ["thestandard.com.hk", "scmp.com", "racenet.com.au",
-                   "racingandsports.com.au", "hkjc.com", "idol.hkjc.com",
-                   "hollywoodbets.net", "racingpost.com"]
+# Tavily domain allow-list — EXPERT HK racing journalism only. Excludes
+# bookmaker tip-bots, auto-generated form guides, simulations and YouTube, which
+# add noise and "limited data" tips. SCMP + The Standard are the core HK expert
+# desks; Racing Post for the big internationals.
+_TAVILY_DOMAINS = ["scmp.com", "thestandard.com.hk", "racingpost.com"]
 
 
 def _tavily_search(query: str, n: int = 6) -> list[dict]:
@@ -125,30 +124,48 @@ def _gather_news(venue: str, d: str) -> list[dict]:
     return out[:10]
 
 
-def _deepseek_json(news: list[dict], runners: list[str], meeting: str) -> dict | None:
+def _deepseek_json(news: list[dict], runners: list[str], model_ctx: list[str],
+                   meeting: str) -> dict | None:
     key = os.environ.get("DEEPSEEK_API_KEY")
     if not key:
         return None
     sys_prompt = (
-        f"You are a Hong Kong horse-racing analyst. The target meeting is {meeting}. "
-        "You are given the FULL TEXT of recent racing previews/tips and the official "
-        "runner list. IMPORTANT: some articles may discuss OTHER meetings/dates — use "
-        "only material about the target meeting. Produce STRICT JSON (no markdown):\n"
-        "  summary_en, summary_zh: a detailed 4-6 sentence preview of the target "
-        "meeting (key contenders, pace/draw/jockey angles, market shape) in English "
-        "and Traditional Chinese, grounded in the articles.\n"
-        "  tipped: a list of {name, note_en, note_zh} for runners SPECIFICALLY "
-        "tipped/analysed for the TARGET meeting AND present in the runner list — match "
-        "by exact name from the runner list; note_* gives the reasoning the article "
-        "gave (why it's fancied).\n"
-        "Never invent tips or reasoning not supported by the article text."
+        f"You are a Hong Kong racing analyst working ALONGSIDE a quantitative model "
+        f"for {meeting}. The model already estimates each horse's win probability from "
+        "form, ratings, jockey/trainer stats, pace and the market. Do NOT write a "
+        "competing tip sheet. Your sole value is to add what the model CANNOT see — "
+        "soft/qualitative information in expert previews (trainer/jockey comments, "
+        "fitness & trial reports, first-time/again gear, stable confidence, intended "
+        "tactics, market moves, awkward draws, scratchings) — and to CROSS-READ it "
+        "against the model's picks.\n"
+        "You are given: the MODEL'S top picks per race (with win %), the FULL TEXT of "
+        "EXPERT previews, and the official runner list. Some articles may cover other "
+        "meetings — use only material about the target meeting.\n"
+        "For each race the experts actually cover, classify the relationship to the "
+        "model as one of: 'agree' (experts back the model's top pick — give the "
+        "corroborating angle), 'diverge' (experts fancy a different runner or warn off "
+        "the model's pick — name it and give the SOFT reason the model can't quantify), "
+        "or 'added_info' (a material fact absent from the model's features).\n"
+        "Rules: ground every claim in the article text — never invent; OMIT races the "
+        "experts don't cover; do NOT restate form/ratings the model already encodes — "
+        "only the qualitative delta; match horses by the exact name in the runner list.\n"
+        "Output STRICT JSON (no markdown):\n"
+        "  summary_en, summary_zh: 4-6 sentences in English and Traditional Chinese — "
+        "the meeting's key model-vs-expert AGREEMENTS (confidence) and the most "
+        "actionable DIVERGENCES / added-info.\n"
+        "  tipped: [{name, alignment, note_en, note_zh}] where alignment is "
+        "'agree'|'diverge'|'added_info' — only runners with a real expert angle that "
+        "relates to the model; note_* states the soft angle and how it complements or "
+        "challenges the model."
     )
     blocks = []
     for n in news:
         body = (n.get("content") or n.get("snippet") or "")[:3500]
         blocks.append(f"### {n['title']}\n{body}")
-    user = (f"TARGET MEETING: {meeting}\n\nRUNNERS:\n" + ", ".join(runners)
-            + "\n\nARTICLES:\n" + "\n\n".join(blocks))
+    user = (f"TARGET MEETING: {meeting}\n\nMODEL TOP PICKS PER RACE (win %):\n"
+            + "\n".join(model_ctx)
+            + "\n\nOFFICIAL RUNNERS:\n" + ", ".join(runners)
+            + "\n\nEXPERT ARTICLES:\n" + "\n\n".join(blocks))
     req = urllib.request.Request(
         DEEPSEEK_URL,
         data=json.dumps({"model": "deepseek-chat",
@@ -187,8 +204,21 @@ def main(d: str | None = None, course: str | None = None) -> int:
             "SELECT DISTINCT horse_name FROM results WHERE race_id IN "
             "(SELECT id FROM races WHERE date=? AND course=?) AND horse_name IS NOT NULL",
             (d, course))]
-        _status.task_step(tid, done=2, msg=f"summarising {len(news)} items via DeepSeek")
-        out = _deepseek_json(news, runners, f"{venue} ({course}) on {d}") or {}
+        # The model's top-3 picks per race — so the AI relates news to the model
+        # rather than producing an independent tip sheet.
+        model_ctx = []
+        for rid, rno in conn.execute(
+            "SELECT id, race_no FROM races WHERE date=? AND course=? ORDER BY race_no", (d, course)):
+            rows = conn.execute(
+                "SELECT r.horse_name, p.calibrated_prob FROM predictions p "
+                "JOIN results r ON r.race_id=p.race_id AND r.brand=p.brand "
+                "WHERE p.strategy_id=1 AND p.race_id=? AND p.calibrated_prob IS NOT NULL "
+                "ORDER BY p.calibrated_prob DESC LIMIT 3", (rid,)).fetchall()
+            if rows:
+                model_ctx.append(f"R{rno}: " + "; ".join(
+                    f"{nm} {round((pp or 0)*100)}%" for nm, pp in rows))
+        _status.task_step(tid, done=2, msg=f"cross-reading {len(news)} expert sources vs model")
+        out = _deepseek_json(news, runners, model_ctx, f"{venue} ({course}) on {d}") or {}
 
         # match tipped names -> brand
         name_to_brand = {n.lower(): b for b, n in conn.execute(
