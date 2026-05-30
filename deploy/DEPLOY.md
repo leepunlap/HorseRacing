@@ -29,6 +29,7 @@ sudo bash deploy/install.sh
 - **Port 8006** (not the documented 8005, which is held by an unrelated service).
 - **TLS cert** is the shared `lvoyage.aero` multi-domain cert (includes
   `horseracing.privatedns.org` as a SAN); managed by Certbot, not this repo.
+- **`TAVILY_API_KEY`** (optional) in `.env` enables full-article news analysis; without it the preview falls back to Google News headlines.
 - **`data/` is gitignored** (DB + caches) — copy it separately or re-scrape.
 
 ## Verify after deploy

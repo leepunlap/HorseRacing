@@ -1,10 +1,13 @@
 """fetch_race_news — AI news/preview overlay for the UPCOMING meeting only.
 
 Pipeline (advisory, never a model feature — point-in-time, no backtest leak):
-  1. Google News RSS (no API key) for the meeting's preview/tips articles.
-  2. DeepSeek summarises the snippets against the actual runner list into a
-     bilingual meeting preview + a list of specifically-tipped runners.
-  3. Store in `race_news` keyed by (date, course); the race page displays it.
+  1. Tavily content search (TAVILY_API_KEY) returns the FULL TEXT of HK racing
+     previews/tips, constrained to racing domains. Falls back to Google News RSS
+     (headlines only) when no key.
+  2. DeepSeek analyses the article text against the actual runner list into a
+     detailed bilingual preview + specifically-tipped runners (with reasoning).
+  3. Store in `race_news` keyed by (date, course) — including the source full
+     text; the race page displays the preview + tips.
 
 Usage:  python3 -m scripts.fetch_race_news [date] [course]   (defaults: next meeting)
 """
@@ -41,8 +44,9 @@ def _load_env():
     p = BASE / ".env"
     if p.exists():
         for line in p.read_text().splitlines():
-            if line.startswith("DEEPSEEK_API_KEY"):
-                os.environ.setdefault("DEEPSEEK_API_KEY", line.split("=", 1)[1].strip())
+            for k in ("DEEPSEEK_API_KEY", "TAVILY_API_KEY"):
+                if line.startswith(k):
+                    os.environ.setdefault(k, line.split("=", 1)[1].strip())
 
 
 def _google_news(query: str, n: int = 8) -> list[dict]:
@@ -62,12 +66,45 @@ def _google_news(query: str, n: int = 8) -> list[dict]:
 
 # Racing-specific sources only (not general news), recent window, deduped.
 _RACING_SITES = "scmp.com OR hkjc.com OR thestandard.com.hk OR racingpost.com OR racenet.com.au"
+# Tavily domain allow-list — HK racing previews/tips. Constraining to these
+# turns a noisy general search (which returned US Belmont/Indy) into the right
+# Sha Tin/Happy Valley previews at high relevance.
+_TAVILY_DOMAINS = ["thestandard.com.hk", "scmp.com", "racenet.com.au",
+                   "racingandsports.com.au", "hkjc.com", "idol.hkjc.com",
+                   "hollywoodbets.net", "racingpost.com"]
+
+
+def _tavily_search(query: str, n: int = 6) -> list[dict]:
+    """Content search: returns each result's EXTRACTED article text (not just a
+    headline), constrained to HK racing domains."""
+    key = os.environ.get("TAVILY_API_KEY")
+    if not key:
+        return []
+    body = {"query": query, "search_depth": "advanced", "max_results": n,
+            "include_raw_content": True, "include_domains": _TAVILY_DOMAINS}
+    req = urllib.request.Request(
+        "https://api.tavily.com/search", data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+    res = json.loads(urllib.request.urlopen(req, timeout=45).read())
+    out = []
+    for it in res.get("results", []):
+        content = (it.get("content") or it.get("raw_content") or "").strip()
+        out.append({"title": it.get("title", ""), "url": it.get("url", ""),
+                    "snippet": content[:400], "content": content[:4000],
+                    "score": it.get("score"), "date": ""})
+    return out
 
 
 def _gather_news(venue: str, d: str) -> list[dict]:
-    # Anchor every query to the SPECIFIC meeting date — otherwise the recency
-    # window pulls the previous meeting's heavier coverage and confuses the
-    # summary. Add racing-specific sources for quality.
+    # Prefer Tavily (returns real article CONTENT). Fall back to Google News RSS
+    # (headlines only) when no Tavily key. Anchor to the specific meeting date.
+    tav = []
+    try:
+        tav = _tavily_search(f"{venue} Hong Kong racing {d} tips preview selections")
+    except Exception as exc:
+        print(f"[race_news] tavily failed ({exc}); falling back to Google News")
+    if tav:
+        return tav[:8]
     queries = [
         f'{venue} racing {d} tips selections preview',
         f'"{venue}" racing {d} ({_RACING_SITES})',
@@ -83,6 +120,7 @@ def _gather_news(venue: str, d: str) -> list[dict]:
             if not key or key in seen or "google news" in key:
                 continue
             seen.add(key)
+            it.setdefault("content", it.get("snippet", ""))
             out.append(it)
     return out[:10]
 
@@ -93,25 +131,30 @@ def _deepseek_json(news: list[dict], runners: list[str], meeting: str) -> dict |
         return None
     sys_prompt = (
         f"You are a Hong Kong horse-racing analyst. The target meeting is {meeting}. "
-        "You are given recent news/preview snippets and the official runner list. "
-        "IMPORTANT: some snippets may discuss OTHER meetings/dates — ignore anything "
-        "not about the target meeting. Produce STRICT JSON (no markdown) with keys: "
-        "summary_en, summary_zh (a 3-4 sentence preview of the target meeting in "
-        "English and Traditional Chinese), and tipped (a list of objects {name, "
-        "note_en, note_zh}) for runners SPECIFICALLY mentioned/tipped for the TARGET "
-        "meeting AND present in the runner list — match by horse name, use the exact "
-        "name from the runner list. If the news has nothing material for the target "
-        "meeting, return empty tipped and say so. Never invent tips not in the snippets."
+        "You are given the FULL TEXT of recent racing previews/tips and the official "
+        "runner list. IMPORTANT: some articles may discuss OTHER meetings/dates — use "
+        "only material about the target meeting. Produce STRICT JSON (no markdown):\n"
+        "  summary_en, summary_zh: a detailed 4-6 sentence preview of the target "
+        "meeting (key contenders, pace/draw/jockey angles, market shape) in English "
+        "and Traditional Chinese, grounded in the articles.\n"
+        "  tipped: a list of {name, note_en, note_zh} for runners SPECIFICALLY "
+        "tipped/analysed for the TARGET meeting AND present in the runner list — match "
+        "by exact name from the runner list; note_* gives the reasoning the article "
+        "gave (why it's fancied).\n"
+        "Never invent tips or reasoning not supported by the article text."
     )
+    blocks = []
+    for n in news:
+        body = (n.get("content") or n.get("snippet") or "")[:3500]
+        blocks.append(f"### {n['title']}\n{body}")
     user = (f"TARGET MEETING: {meeting}\n\nRUNNERS:\n" + ", ".join(runners)
-            + "\n\nNEWS SNIPPETS:\n"
-            + "\n".join(f"- {n['title']} :: {n['snippet']}" for n in news))
+            + "\n\nARTICLES:\n" + "\n\n".join(blocks))
     req = urllib.request.Request(
         DEEPSEEK_URL,
         data=json.dumps({"model": "deepseek-chat",
                          "messages": [{"role": "system", "content": sys_prompt},
                                       {"role": "user", "content": user}],
-                         "temperature": 0.2, "max_tokens": 900,
+                         "temperature": 0.2, "max_tokens": 4000,
                          "response_format": {"type": "json_object"}}).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
     with urllib.request.urlopen(req, timeout=40) as r:
@@ -162,7 +205,8 @@ def main(d: str | None = None, course: str | None = None) -> int:
             "tipped_json=excluded.tipped_json, sources_json=excluded.sources_json, fetched_at=excluded.fetched_at",
             (d, course, out.get("summary_en"), out.get("summary_zh"),
              json.dumps(tipped, ensure_ascii=False),
-             json.dumps([{"title": n["title"], "url": n["url"], "snippet": n["snippet"]}
+             json.dumps([{"title": n["title"], "url": n["url"], "snippet": n["snippet"],
+                          "content": n.get("content", ""), "score": n.get("score")}
                          for n in news], ensure_ascii=False)))
         conn.commit()
         _status.task_done(tid, f"{len(tipped)} tipped runner(s), {len(news)} sources")
