@@ -106,7 +106,9 @@ class IncidentReportsScraper(BaseScraper):
             return 2
 
         courses = [ns.course] if ns.course else ["ST", "HV"]
+        self.set_total(len(dates) * len(courses))
         total = 0
+        seen = 0
         for date_str in dates:
             if self.should_stop():
                 break
@@ -115,6 +117,8 @@ class IncidentReportsScraper(BaseScraper):
                     total += self._scrape_meeting(date_str, course, ns.force_refresh)
                 except Exception as exc:
                     log(f"[{self.name}] {date_str}/{course}: {exc}")
+                seen += 1
+                self.progress(done=seen, msg=f'{date_str}/{course} ({total} rows)')
         log(f"[{self.name}] done: {total} incident rows")
         return 0
 

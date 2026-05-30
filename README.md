@@ -44,7 +44,7 @@ cd /var/www/horseracing
 # 1. Start the server (defaults to port 8005, password 168888)
 python3 app.py --port 8005
 # or with uvicorn directly:
-uvicorn app:app --host 0.0.0.0 --port 8005
+uvicorn app:asgi --host 0.0.0.0 --port 8005
 
 # 2. Open the dashboard
 #    http://<server>:8005/    → password: 168888

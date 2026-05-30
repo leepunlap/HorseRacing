@@ -63,6 +63,7 @@ class WeatherScraper(BaseScraper):
             return 0
 
         rows = 0
+        self.set_total(len(races))
         for race_id, race_no in races:
             if self.should_stop():
                 break
@@ -83,6 +84,7 @@ class WeatherScraper(BaseScraper):
                 self.upsert("weather_observations", row,
                             conflict_cols=("date", "course", "race_no"))
             rows += 1
+            self.progress(done=rows, msg=f'R{race_no}')
         self.checkpoint({"date": ns.date, "course": ns.course, "rows": rows})
         log(f"[{self.name}] {ns.date}/{ns.course}: {rows} race-weather rows")
         return 0

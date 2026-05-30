@@ -73,7 +73,8 @@ class RaceCardScraper(BaseScraper):
             return 2
 
         ok = 0
-        for date_str, course in targets:
+        self.set_total(len(targets))
+        for i, (date_str, course) in enumerate(targets, 1):
             if self.should_stop():
                 break
             try:
@@ -82,6 +83,7 @@ class RaceCardScraper(BaseScraper):
                     self.checkpoint({"last_date": date_str, "last_course": course})
             except Exception as exc:
                 log(f"[{self.name}] {date_str}/{course} failed: {exc}")
+            self.progress(done=i, msg=f'{date_str}/{course} ({ok} cards)')
         log(f"[{self.name}] done: {ok} cards updated")
         return 0
 

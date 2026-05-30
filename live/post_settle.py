@@ -97,10 +97,14 @@ async def settle_loop(race_id: int, course: str, race_no: int,
                       post_time: datetime, broadcast) -> None:
     """Wait for results, then trigger scrape + settle. One task per race.
     Spawned by live.scheduler at post_time + 3 min."""
+    import status as _status
     date_str = post_time.date().isoformat()
     label = f"{date_str}/{course}/R{race_no}"
     deadline = post_time.timestamp() + DEADLINE_MIN * 60
 
+    tid = _status.task_start('live_scheduler', f'Settle {course} R{race_no}',
+                             group='live_scheduler')
+    _status.task_step(tid, msg='polling HKJC for results')
     await _broadcast(broadcast, {
         "type": "scraper_log", "task": "post_settle",
         "text": f"[post_settle] {label}: armed; polling every {POLL_INTERVAL_SEC}s",
@@ -117,6 +121,7 @@ async def settle_loop(race_id: int, course: str, race_no: int,
             break
         await asyncio.sleep(POLL_INTERVAL_SEC)
     else:
+        _status.task_error(tid, 'deadline reached without results')
         await _broadcast(broadcast, {
             "type": "scraper_log", "task": "post_settle",
             "text": f"[post_settle] {label}: deadline reached without results; giving up",
@@ -124,7 +129,12 @@ async def settle_loop(race_id: int, course: str, race_no: int,
         return
 
     # Phase 2: results landed → settle every bet strategy for the day.
+    _status.task_step(tid, msg='results in; settling ledger')
     rc = await _run_settle(date_str)
+    if rc == 0:
+        _status.task_done(tid, 'settled')
+    else:
+        _status.task_error(tid, f'settle exit {rc}')
     await _broadcast(broadcast, {
         "type": "race_settled",
         "race_id": race_id, "date": date_str,

@@ -63,21 +63,36 @@ def _enabled_strategies(conn: sqlite3.Connection) -> list[tuple]:
 
 async def race_loop(race_id: int, course: str, race_no: int, post_time: datetime, broadcast) -> None:
     """T-10 → T-0 decision loop for a single race."""
+    import status as _status
     end = post_time + timedelta(seconds=60)
-    while datetime.now() < end:
-        try:
-            await _tick(race_id, course, race_no, broadcast)
-        except Exception as exc:
-            if broadcast is not None:
-                try:
-                    await broadcast.broadcast({
-                        "type": "scraper_log",
-                        "text": f"[decision_loop r#{race_no}] error: {exc}",
-                        "task": "decision_loop",
-                    })
-                except Exception:
-                    pass
-        await asyncio.sleep(60)
+    total_ticks = max(1, int((end - datetime.now()).total_seconds() // 60) + 1)
+    tid = _status.task_start('live_scheduler', f'Decision {course} R{race_no}',
+                             total=total_ticks, group='live_scheduler')
+    done = 0
+    try:
+        while datetime.now() < end:
+            try:
+                await _tick(race_id, course, race_no, broadcast)
+                tmin = max(0, int((post_time - datetime.now()).total_seconds() // 60))
+                msg = f'T-{tmin}m'
+            except Exception as exc:
+                msg = f'tick error: {exc}'
+                if broadcast is not None:
+                    try:
+                        await broadcast.broadcast({
+                            "type": "scraper_log",
+                            "text": f"[decision_loop r#{race_no}] error: {exc}",
+                            "task": "decision_loop",
+                        })
+                    except Exception:
+                        pass
+            done += 1
+            _status.task_step(tid, done=done, msg=msg)
+            await asyncio.sleep(60)
+        _status.task_done(tid, 'race started')
+    except asyncio.CancelledError:
+        _status.task_done(tid, 'cancelled (shutdown)')
+        raise
 
 
 async def _tick(race_id: int, course: str, race_no: int, broadcast) -> None:

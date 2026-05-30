@@ -144,7 +144,9 @@ class PerHorseSectionalScraper(BaseScraper):
             return 2
 
         courses = [ns.course] if ns.course else ["ST", "HV"]
+        self.set_total(len(dates) * len(courses))
         total_rows = 0
+        seen = 0
         for d in dates:
             if self.should_stop():
                 break
@@ -157,6 +159,8 @@ class PerHorseSectionalScraper(BaseScraper):
                                          "rows": total_rows})
                 except Exception as exc:
                     log(f"[{self.name}] {d}/{course}: {exc}")
+                seen += 1
+                self.progress(done=seen, msg=f'{d}/{course} ({total_rows} rows)')
         log(f"[{self.name}] done: {total_rows} per-horse-sectional rows")
         return 0
 

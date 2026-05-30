@@ -45,10 +45,13 @@ async def run_forever(broadcast=None) -> None:
     # be armed independently even after the decision loop window closes.
     watched: set[int] = set()
     settled_watched: set[int] = set()
+    import status as _status
+    _status.process_up('live_scheduler', ptype='loop', activity='watching race calendar')
     try:
         while True:
             try:
                 if not DB_PATH.exists():
+                    _status.heartbeat('live_scheduler', 'waiting for DB')
                     await asyncio.sleep(60)
                     continue
                 today = datetime.now().date().isoformat()
@@ -59,6 +62,9 @@ async def run_forever(broadcast=None) -> None:
                 ).fetchall()
                 conn.close()
                 now = datetime.now()
+                _status.heartbeat('live_scheduler',
+                                  f'{len(rows)} race(s) today; {len(watched)} watched, '
+                                  f'{len(settled_watched)} settling')
                 for race_id, course, race_no, post_time in rows:
                     if not post_time:
                         continue
@@ -90,3 +96,8 @@ async def run_forever(broadcast=None) -> None:
             await asyncio.sleep(60)
     except asyncio.CancelledError:
         return
+    finally:
+        try:
+            _status.process_down('live_scheduler')
+        except Exception:
+            pass

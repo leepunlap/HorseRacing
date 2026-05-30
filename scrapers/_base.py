@@ -69,9 +69,27 @@ class BaseScraper:
         self.db_path = db_path
         self._stop = False
         self._conn: sqlite3.Connection | None = None
+        # Status instrumentation (wired by main()); helpers below are no-ops
+        # until a task is started, so run() can call self.set_total()/progress()
+        # unconditionally.
+        self._status = None
+        self._task_id: str | None = None
         CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
         (RAW_CACHE_DIR / self.name).mkdir(parents=True, exist_ok=True)
         self._install_signals()
+
+    # ─── status helpers (safe no-ops when not instrumented) ────
+    def set_total(self, total: int) -> None:
+        """Declare the unit count so the dashboard shows a progress bar + ETA."""
+        if self._status and self._task_id:
+            self._status.task_step(self._task_id, total=total)
+
+    def progress(self, done: int | None = None, advance: int = 1,
+                 total: int | None = None, msg: str | None = None) -> None:
+        """Advance this scraper's task. Pass absolute `done` or advance by N."""
+        if self._status and self._task_id:
+            self._status.task_step(self._task_id, done=done, advance=advance,
+                                   total=total, msg=msg)
 
     # ─── lifecycle ─────────────────────────────────────────────
     def _install_signals(self) -> None:
@@ -202,11 +220,34 @@ class BaseScraper:
     @classmethod
     def main(cls, args: list[str] | None = None) -> int:
         s = cls()
+        # Wire structured status so every scraper appears on the dashboard as a
+        # task under the single logical 'scraper' process — with progress + ETA
+        # when run() calls self.set_total()/self.progress(). Works out-of-process
+        # because status.py publishes to Redis (scrapers run as subprocesses).
         try:
-            return s.run(args or sys.argv[1:])
+            import status as _status
+            _status.process_up('scraper', ptype='oneshot', activity=cls.name)
+            s._status = _status
+            s._task_id = _status.task_start('scraper', f'scraper: {cls.name}')
+        except Exception:
+            _status = None
+        try:
+            rc = s.run(args or sys.argv[1:])
+            if s._task_id:
+                if rc == 0:
+                    s._status.task_done(s._task_id, 'done')
+                else:
+                    s._status.task_error(s._task_id, f'exit code {rc}')
+            return rc
         except RuntimeError as exc:
             log(f"[{s.name}] aborted: {exc}")
+            if s._task_id:
+                s._status.task_error(s._task_id, str(exc))
             return 1
+        except Exception as exc:
+            if s._task_id:
+                s._status.task_error(s._task_id, str(exc))
+            raise
         finally:
             s.close()
 

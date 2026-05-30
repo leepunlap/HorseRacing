@@ -87,7 +87,8 @@ class BarrierTrialsScraper(BaseScraper):
             return 2
 
         total = 0
-        for d in dates:
+        self.set_total(len(dates))
+        for i, d in enumerate(dates, 1):
             if self.should_stop():
                 break
             try:
@@ -97,6 +98,7 @@ class BarrierTrialsScraper(BaseScraper):
                     self.checkpoint({"last_date": d, "rows": total})
             except Exception as exc:
                 log(f"[{self.name}] {d}: {exc}")
+            self.progress(done=i, msg=f'{d} ({total} rows)')
         log(f"[{self.name}] done: {total} trial rows")
         return 0
 

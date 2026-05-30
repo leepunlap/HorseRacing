@@ -202,6 +202,7 @@ class TrackworkScraper(BaseScraper):
         log(f"[{self.name}] processing {len(brands)} horses "
             f"({'last 14d' if ns.recent else 'all history'})")
         total = 0
+        self.set_total(len(brands))
         for i, brand in enumerate(brands, start=1):
             if self.should_stop():
                 break
@@ -212,6 +213,7 @@ class TrackworkScraper(BaseScraper):
                     self.checkpoint({"horses_done": i, "rows": total})
             except Exception as exc:
                 log(f"[{self.name}] {brand}: {exc}")
+            self.progress(done=i, msg=f'{brand} ({total} rows)')
         self.checkpoint({"horses_done": len(brands), "rows": total})
         log(f"[{self.name}] done: {total} trackwork rows across {len(brands)} horses")
         return 0

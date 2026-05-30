@@ -267,7 +267,9 @@ class MultiLegDividendsScraper(BaseScraper):
             return 0
 
         rows: list[dict] = []
-        for m in meetings:
+        self.set_total(len(meetings))
+        for _i, m in enumerate(meetings, 1):
+            self.progress(done=_i, msg=f'{m.get("id") or "meeting"} ({len(rows)} rows)')
             mid = m.get("id") or ""
             date, course_short = _meeting_to_date_course(mid)
             # MTG_-prefixed meetings don't carry a venue letter — match

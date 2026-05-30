@@ -83,6 +83,8 @@ class RunningCommentsScraper(BaseScraper):
 
         courses = [ns.course] if ns.course else ["ST", "HV"]
         total = 0
+        self.set_total(len(dates) * len(courses))
+        seen = 0
         for d in dates:
             if self.should_stop():
                 break
@@ -91,6 +93,8 @@ class RunningCommentsScraper(BaseScraper):
                     total += self._scrape_meeting(d, course, ns.force_refresh)
                 except Exception as exc:
                     log(f"[{self.name}] {d}/{course}: {exc}")
+                seen += 1
+                self.progress(done=seen, msg=f'{d}/{course} ({total} rows)')
         log(f"[{self.name}] done: {total} comment rows")
         return 0
 

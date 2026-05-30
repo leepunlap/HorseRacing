@@ -32,6 +32,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import socketio
 import uvicorn
 from fastapi import (Depends, FastAPI, HTTPException, Query, Request,
                      WebSocket, WebSocketDisconnect)
@@ -68,6 +69,8 @@ def _load_env_file() -> None:
         os.environ.setdefault(k, v)
 _load_env_file()
 
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
 HARDCODED_PASSWORD = "168888"
 TOKENS: set[str] = set()
 
@@ -85,34 +88,69 @@ def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(s
     return True
 
 
-# ─── WebSocket broadcaster ───────────────────────────────────────────────────
+# ─── Socket.IO server (Redis-backed fan-out) ─────────────────────────────────
+# The client_manager is an AsyncRedisManager: when we `sio.emit('progress', …)`
+# the message goes through Redis, so ANY process that publishes to the same
+# Redis channel reaches every connected browser. That's what lets cron scripts
+# (via utils.emit.emit(), a write-only RedisManager) stream into the UI without
+# importing the app or holding a WebSocket. See SOCKET_EVENT below.
+SOCKET_EVENT = "progress"   # single event name; payload's `type` field routes in the UI
+
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    client_manager=socketio.AsyncRedisManager(REDIS_URL),
+    cors_allowed_origins="*",   # same-origin in practice; token-gated on connect
+)
+
+
+# ─── Broadcaster shim ────────────────────────────────────────────────────────
+# Kept as a thin compatibility wrapper so every existing call site
+# (`progress_broadcast.broadcast(payload)` in the scheduler, odds_poller, live
+# decision loop, lifespan, GracefulServer) works unchanged. Fan-out now goes
+# through Socket.IO + Redis instead of a private WebSocket client list.
 class Broadcaster:
-    """Fan-out helper for /ws/progress. Used by scrapers and decision loop
-    to stream scraper_log / lifecycle messages."""
-
-    def __init__(self) -> None:
-        self.clients: list[WebSocket] = []
-
-    async def connect(self, ws: WebSocket) -> None:
-        await ws.accept()
-        self.clients.append(ws)
-
-    def disconnect(self, ws: WebSocket) -> None:
-        if ws in self.clients:
-            self.clients.remove(ws)
+    """Compat wrapper: .broadcast(dict) → sio.emit over Redis."""
 
     async def broadcast(self, data: dict) -> None:
-        dead: list[WebSocket] = []
-        for ws in self.clients:
-            try:
-                await ws.send_json(data)
-            except Exception:
-                dead.append(ws)
-        for ws in dead:
-            self.clients.remove(ws)
+        try:
+            await sio.emit(SOCKET_EVENT, data)
+        except Exception as exc:   # telemetry must never crash a caller
+            print(f"[broadcast] sio.emit failed: {exc}", flush=True)
+
+    # Legacy no-ops — the old raw /ws/progress endpoint used these. Retained so
+    # nothing breaks if a stray caller still invokes them.
+    async def connect(self, ws: "WebSocket") -> None:
+        await ws.accept()
+
+    def disconnect(self, ws: "WebSocket") -> None:
+        pass
 
 
 progress_broadcast = Broadcaster()
+
+
+# ─── Socket.IO connection handlers ───────────────────────────────────────────
+@sio.event
+async def connect(sid, environ, auth):
+    """Token-gate the connection (same TOKENS set the REST API uses), then
+    replay the on-connect state the old /ws/progress endpoint sent so a freshly
+    loaded UI immediately knows lifecycle + in-flight scraper status."""
+    token = (auth or {}).get("token") if isinstance(auth, dict) else None
+    if not token or token not in TOKENS:
+        raise socketio.exceptions.ConnectionRefusedError("unauthorized")
+
+    await sio.emit(SOCKET_EVENT, {
+        "type": "lifecycle",
+        "phase": "draining" if SHUTTING_DOWN else "ready",
+        "startup_id": STARTUP_ID, "pid": os.getpid(),
+    }, to=sid)
+
+    if scraper_job.get("active"):
+        await sio.emit(SOCKET_EVENT, {
+            "type": "scraper_start", "_resumed": True,
+            "started_at": scraper_job["started_at"],
+            "current_task": scraper_job["current_task"],
+        }, to=sid)
 
 
 # ─── Shared scraper-job slot ─────────────────────────────────────────────────
@@ -210,6 +248,18 @@ async def lifespan(app: FastAPI):
         run_scheduler_loop(progress_broadcast, lambda: SHUTTING_DOWN)
     )
 
+    # Status consumer: subscribes to the hr:status Redis channel, folds events
+    # into the in-memory registry, and forwards them to browsers as 'status'
+    # events. This is what powers the live dashboard (GET /api/status snapshot
+    # + real-time deltas).
+    status_task = None
+    try:
+        import status as _status
+        status_task = asyncio.create_task(_status.consume_forever(sio))
+        print("[startup] status consumer started", flush=True)
+    except Exception as exc:
+        print(f"[startup] status consumer failed: {exc}", flush=True)
+
     print(f"[startup] horseracing app ready (PID {os.getpid()})", flush=True)
     await progress_broadcast.broadcast({
         "type": "lifecycle", "phase": "ready",
@@ -234,6 +284,7 @@ async def lifespan(app: FastAPI):
         (scheduler_task, "scheduler"),
         (odds_poller_task, "odds_poller"),
         (live_scheduler_task, "live_scheduler"),
+        (status_task, "status_consumer"),
     ):
         if task is None:
             continue
@@ -276,6 +327,17 @@ async def health() -> dict:
         "startup_id": STARTUP_ID,
         "scraper_active": bool(scraper_job.get("active")),
     }
+
+
+@app.get("/api/status")
+async def status_snapshot(auth=Depends(verify_token)) -> dict:
+    """Full live snapshot of processes + tasks for the dashboard. The UI calls
+    this on load/reconnect, then applies real-time 'status' socket.io deltas."""
+    import status as _status
+    snap = _status.registry.snapshot()
+    snap["startup_id"] = STARTUP_ID
+    snap["app_pid"] = os.getpid()
+    return snap
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -384,6 +446,15 @@ async def spa_index() -> str:
     )
 
 
+# ─── ASGI app (Socket.IO in front of FastAPI) ────────────────────────────────
+# socketio.ASGIApp serves the Engine.IO/Socket.IO handshake on `/socket.io/*`
+# and delegates everything else (REST, static, SPA, the legacy /ws/progress) to
+# the FastAPI `app`. It forwards the ASGI `lifespan` scope to FastAPI, so the
+# existing startup/shutdown logic still runs. Serve THIS object, not `app`
+# (e.g. `uvicorn app:asgi`), or the /socket.io route won't exist.
+asgi = socketio.ASGIApp(sio, other_asgi_app=app)
+
+
 # ─── Entrypoint ──────────────────────────────────────────────────────────────
 class GracefulServer(uvicorn.Server):
     """Broadcast a `draining` lifecycle event over /ws/progress before tearing
@@ -419,6 +490,6 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8005)
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
-    config = uvicorn.Config(app, host=args.host, port=args.port)
+    config = uvicorn.Config(asgi, host=args.host, port=args.port)
     server = GracefulServer(config)
     server.run()

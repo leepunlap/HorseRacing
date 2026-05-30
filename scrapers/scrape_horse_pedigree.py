@@ -117,8 +117,9 @@ class HorsePedigreeScraper(BaseScraper):
             brands = [r[0] for r in rows]
 
         log(f"[{self.name}] fetching pedigree for {len(brands)} horses")
+        self.set_total(len(brands))
         done = 0
-        for brand in brands:
+        for i, brand in enumerate(brands, 1):
             if self.should_stop():
                 break
             try:
@@ -128,6 +129,7 @@ class HorsePedigreeScraper(BaseScraper):
                         self.checkpoint({"last_brand": brand, "done": done})
             except Exception as exc:
                 log(f"[{self.name}] {brand}: {exc}")
+            self.progress(done=i, msg=brand)
         self.checkpoint({"done": done})
         log(f"[{self.name}] done: {done} pedigree records")
         return 0

@@ -288,6 +288,9 @@ async def run_scheduler_loop(broadcast_obj, is_shutting_down: Callable[[], bool]
     global _broadcast
     _broadcast = broadcast_obj.broadcast if hasattr(broadcast_obj, 'broadcast') else None
 
+    import status as _status
+    _status.process_up('scheduler', ptype='loop', activity='waiting for next cron tick')
+
     # Sleep to the next minute boundary so each tick lines up with cron.
     async def _sleep_to_next_minute():
         now = datetime.now()
@@ -302,7 +305,10 @@ async def run_scheduler_loop(broadcast_obj, is_shutting_down: Callable[[], bool]
             if is_shutting_down():
                 break
             now = datetime.now().replace(second=0, microsecond=0)
-            for sched in _load_schedules():
+            all_scheds = _load_schedules()
+            n_armed = sum(1 for s in all_scheds if s.get('enabled', True))
+            _status.heartbeat('scheduler', f'{n_armed} schedule(s) armed; tick {now:%H:%M}')
+            for sched in all_scheds:
                 if not sched.get('enabled', True):
                     continue
                 try:
@@ -313,7 +319,14 @@ async def run_scheduler_loop(broadcast_obj, is_shutting_down: Callable[[], bool]
                     # strings on create, so we only get here if the JSON
                     # was hand-edited to something invalid.
                     continue
+                _tid = _status.task_start('scheduler', f"fire: {sched['name']}")
                 status, reason = await fire_schedule(sched)
+                if status == 'ok':
+                    _status.task_done(_tid, reason or 'fired')
+                elif status == 'skipped':
+                    _status.task_done(_tid, f'skipped: {reason or "busy"}')
+                else:
+                    _status.task_error(_tid, reason or 'error')
                 _mark_fire(sched['id'], status, reason)
                 await _broadcast_event({
                     'type':   'schedule_fired',
@@ -327,3 +340,8 @@ async def run_scheduler_loop(broadcast_obj, is_shutting_down: Callable[[], bool]
     except asyncio.CancelledError:
         # Normal path on shutdown.
         raise
+    finally:
+        try:
+            _status.process_down('scheduler')
+        except Exception:
+            pass

@@ -84,6 +84,8 @@ class TrackBiasComputer(BaseScraper):
         par_lookup = self._par_lookup(conn)
 
         total = 0
+        self.set_total(len(dates) * 2)
+        seen = 0
         for d in dates:
             if self.should_stop():
                 break
@@ -93,6 +95,8 @@ class TrackBiasComputer(BaseScraper):
                         total += 1
                 except Exception as exc:
                     log(f"[{self.name}] {d}/{course}: {exc}")
+                seen += 1
+                self.progress(done=seen, msg=f'{d}/{course} ({total} rows)')
         self.checkpoint({"rows": total})
         log(f"[{self.name}] done: {total} (date,course) rows")
         return 0

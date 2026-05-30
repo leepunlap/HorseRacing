@@ -108,6 +108,7 @@ def main() -> int:
                    help="earliest date to backfill (default 2024-11-01)")
     ns = p.parse_args()
 
+    import status as _status
     conn = sqlite3.connect(DB_PATH)
     races = conn.execute(
         "SELECT id, date, course, race_no FROM races "
@@ -115,6 +116,8 @@ def main() -> int:
         (ns.since,),
     ).fetchall()
     print(f"Walking {len(races)} races…")
+    _status.process_up('scraper', ptype='oneshot', activity='backfill_horse_no')
+    _tid = _status.task_start('scraper', 'scraper: backfill_horse_no', total=len(races))
 
     # Cache per-(date, course) parsed runners so we don't re-read the
     # whole-meeting HTML for every race.
@@ -123,7 +126,8 @@ def main() -> int:
     skipped = 0
     no_html = 0
 
-    for race_id, date_str, course, race_no in races:
+    for _i, (race_id, date_str, course, race_no) in enumerate(races, 1):
+        _status.task_step(_tid, done=_i, msg=f'{date_str}/{course} R{race_no} ({updated} fixed)')
         # Skip if every result row already has horse_no
         nullc = conn.execute(
             "SELECT COUNT(*) FROM results WHERE race_id = ? AND horse_no IS NULL",
@@ -189,6 +193,8 @@ def main() -> int:
     conn.commit()
     conn.close()
     print(f"updated={updated}  skipped={skipped}  no_html={no_html}")
+    _status.task_done(_tid, f'{updated} fixed, {skipped} skipped, {no_html} no-html')
+    _status.process_down('scraper', 'idle')
     return 0
 
 

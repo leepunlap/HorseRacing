@@ -85,10 +85,14 @@ class DividendsBackfillScraper(BaseScraper):
         # Borrow the parser from ResultsScraper
         results_scraper = ResultsScraper()
 
+        self.set_total(len(dates) * len(courses))
+        seen = 0
         for i, date_str in enumerate(dates, start=1):
             if self.should_stop():
                 break
             for course in courses:
+                seen += 1
+                self.progress(done=seen, msg=f'{date_str}/{course} ({total_rows} rows)')
                 # Discover races for this (date, course) from the races table.
                 race_rows = conn.execute(
                     "SELECT id, race_no FROM races WHERE date = ? AND course = ? "

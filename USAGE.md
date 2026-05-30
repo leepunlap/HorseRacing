@@ -192,7 +192,7 @@ See **STRATEGIES.md** for 9 worked variant recipes (穩健保守, 深度推算, 
 ```bash
 python3 app.py --port 8005
 # or
-uvicorn app:app --host 0.0.0.0 --port 8005
+uvicorn app:asgi --host 0.0.0.0 --port 8005
 ```
 
 Default password: `168888` (see `HARDCODED_PASSWORD` in `app.py`).

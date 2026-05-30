@@ -247,6 +247,8 @@ async def run_forever(broadcast=None) -> None:  # broadcast: optional Broadcaste
     teardown (no explicit signal handler needed — we live in the same event
     loop as FastAPI).
     """
+    import status as _status
+    _status.process_up('odds_poller', ptype='loop', activity='idle (no race today)')
     try:
         while True:
             now = datetime.now()
@@ -254,6 +256,8 @@ async def run_forever(broadcast=None) -> None:  # broadcast: optional Broadcaste
                 today = now.strftime("%Y-%m-%d")
                 try:
                     n, s = await _poll_once(today)
+                    _status.heartbeat('odds_poller',
+                                      f'polling — {n} changes / {s} unchanged @ {now:%H:%M:%S}')
                     if (n or s) and broadcast is not None:
                         await broadcast.broadcast({
                             "type": "scraper_log",
@@ -262,6 +266,7 @@ async def run_forever(broadcast=None) -> None:  # broadcast: optional Broadcaste
                             "task": "odds_poller",
                         })
                 except Exception as exc:
+                    _status.heartbeat('odds_poller', f'error: {exc}')
                     if broadcast is not None:
                         await broadcast.broadcast({
                             "type": "scraper_log",
@@ -270,6 +275,12 @@ async def run_forever(broadcast=None) -> None:  # broadcast: optional Broadcaste
                         })
                 await asyncio.sleep(30)
             else:
+                _status.heartbeat('odds_poller', 'idle (no race today)')
                 await asyncio.sleep(60)
     except asyncio.CancelledError:
         return
+    finally:
+        try:
+            _status.process_down('odds_poller')
+        except Exception:
+            pass

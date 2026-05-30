@@ -112,9 +112,11 @@ class PersonsScraper(BaseScraper):
         races_touched = 0
         races_skipped = 0
 
-        for date, course, race_no in rows:
+        self.set_total(len(rows))
+        for _i, (date, course, race_no) in enumerate(rows, 1):
             if self.should_stop():
                 break
+            self.progress(done=_i, msg=f'{date}/{course} R{race_no} ({len(merged)} persons)')
             ymd = date.replace("-", "")
             try:
                 en_html = self._fetch_card("English", ymd, course, race_no,

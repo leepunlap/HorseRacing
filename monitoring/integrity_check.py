@@ -437,9 +437,12 @@ def auto_heal(conn, violation: dict) -> bool:
 
 # ─── Driver ──────────────────────────────────────────────────────────────────
 def run(scope: dict, heal: bool = False) -> dict:
+    import status as _status
     conn = _conn()
     all_violations: list[dict] = []
-    for chk in CHECKS:
+    _status.process_up('integrity_check', ptype='oneshot', activity='running checks')
+    _tid = _status.task_start('integrity_check', 'integrity check', total=len(CHECKS))
+    for i, chk in enumerate(CHECKS, 1):
         try:
             vs = chk(conn, scope) or []
         except Exception as exc:
@@ -450,6 +453,8 @@ def run(scope: dict, heal: bool = False) -> dict:
                 "detail": f"{chk.__name__} raised: {exc}",
             }]
         all_violations.extend(vs)
+        _name = chk.__name__.replace("check_", "")
+        _status.task_step(_tid, done=i, msg=f'{_name}: {len(vs)} issue(s)')
 
     scope_str = scope.get("date") or scope.get("scope") or "full"
     cur = conn.execute(
@@ -489,6 +494,8 @@ def run(scope: dict, heal: bool = False) -> dict:
           f"{len(all_violations)} violations, {healed} auto-healed")
     for name, b in sorted(summary.items(), key=lambda x: -x[1]["count"]):
         print(f"  {b['severity']:<8} {name:<40} {b['count']}")
+    _status.task_done(_tid, f'{len(all_violations)} violations, {healed} healed')
+    _status.process_down('integrity_check', f'{len(all_violations)} violations')
     conn.close()
     return {"run_id": run_id, "violations": len(all_violations),
             "healed": healed, "summary": summary}

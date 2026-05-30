@@ -5,6 +5,7 @@
 <title>HorseLab</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="/static/vendor/apexcharts.min.js"></script>
+<script src="/static/vendor/socket.io.min.js"></script>
 <style>
   :root {
     --bg: #0f1115;
@@ -465,6 +466,62 @@
   }
   .apex-tip { padding: 8px 10px; font-size: 12px; }
   .apex-tip .muted { color: var(--muted); margin-top: 2px; font-size: 11px; }
+
+  /* ── Live status dashboard ─────────────────────────────────────────── */
+  .proc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+               gap: 12px; margin-bottom: 4px; }
+  .proc-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+               padding: 12px 14px; position: relative; overflow: hidden; }
+  .proc-card .pname { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 7px; }
+  .proc-card .pmeta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+  .proc-card .pmeta .up { color: var(--text); }
+  .proc-card .pact { font-size: 11.5px; color: var(--muted); margin-top: 7px;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proc-card.running { border-left: 3px solid var(--good); }
+  .proc-card.idle    { border-left: 3px solid var(--muted); }
+  .proc-card.stalled { border-left: 3px solid var(--warn); }
+  .proc-card.stopped { border-left: 3px solid var(--border); opacity: 0.72; }
+  .sdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--muted); flex: 0 0 auto; }
+  .sdot.running { background: var(--good); box-shadow: 0 0 0 0 rgba(77,209,122,0.6); animation: pulse 1.8s infinite; }
+  .sdot.idle    { background: var(--muted); }
+  .sdot.stalled { background: var(--warn); }
+  .sdot.stopped { background: var(--bad); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(77,209,122,0.5); }
+                     70% { box-shadow: 0 0 0 7px rgba(77,209,122,0); }
+                     100% { box-shadow: 0 0 0 0 rgba(77,209,122,0); } }
+  .perr { color: var(--bad); }
+
+  .todo-group { margin-bottom: 16px; }
+  .todo-group > .ghdr { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+                        text-transform: uppercase; letter-spacing: 0.4px; margin: 0 0 6px 2px; }
+  .todo { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 5px;
+          font-size: 13px; border: 1px solid transparent; }
+  .todo + .todo { margin-top: 2px; }
+  .todo .mark { flex: 0 0 18px; text-align: center; font-size: 13px; }
+  .todo .ttitle { flex: 0 0 auto; min-width: 150px; }
+  .todo .tmsg { color: var(--muted); font-size: 11.5px; flex: 1 1 auto;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .todo .teta { font-family: var(--mono); font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+  .todo.running { background: rgba(77,209,122,0.06); border-color: rgba(77,209,122,0.18); }
+  .todo.running .mark { color: var(--good); }
+  .todo.done    { opacity: 0.62; }
+  .todo.done .mark { color: var(--good); }
+  .todo.done .ttitle { text-decoration: line-through; text-decoration-color: var(--muted); }
+  .todo.error   { background: rgba(240,98,98,0.07); border-color: rgba(240,98,98,0.22); }
+  .todo.error .mark { color: var(--bad); }
+  .todo.pending .mark { color: var(--muted); }
+  .todo.pending .ttitle { color: var(--muted); }
+  .pbar { flex: 1 1 auto; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden;
+          min-width: 80px; max-width: 260px; }
+  .pbar > i { display: block; height: 100%; background: var(--good); transition: width 0.4s ease; }
+  .todo.error .pbar > i { background: var(--bad); }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .err-row { font-family: var(--mono); font-size: 11.5px; color: var(--bad); padding: 3px 0;
+             border-bottom: 1px solid var(--border); }
+  .err-row .ewhen { color: var(--muted); margin-right: 8px; }
+  header .procs-badge { font-family: var(--mono); font-size: 12px; color: var(--muted);
+                        display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -607,6 +664,12 @@ const state = {
   // Strategy dashboard
   dashStrategy: _ui.dashStrategy || null,  // PERSIST — selected strategy id
   dashData: null,                      // dashboard payload
+  // Live status model (processes + tasks). Seeded by GET /api/status, then
+  // kept current by folding 'status' socket.io events. Times are in server
+  // epoch seconds; `skew` aligns them to the browser clock for live ticking.
+  st: { procs: {}, tasks: {}, skew: 0, wsUp: false, errors: [] },
+  stTick: null,                        // setInterval handle for ticking timers
+  coverage: [],                        // /api/scrapers/coverage — desc + counts + date range
 };
 
 function pushLog(msg) {
@@ -622,32 +685,212 @@ function pushLog(msg) {
 // (cron, JSON, etc.) stay in English.
 function t(zh, en) { return state.lang === 'zh' ? zh : en; }
 
-// ─── WebSocket /ws/progress ─────────────────────────────────────────────────
+// ─── Socket.IO progress stream (backed by Redis; see utils/emit.py) ──────────
+// One Socket.IO connection replaces the old raw /ws/progress WebSocket. The
+// server emits a single 'progress' event; we route on the payload's `type`
+// exactly as before. Out-of-process jobs (cron scripts) publish the same
+// payloads via Redis, so they land here too. socket.io handles reconnect, so
+// the old manual 5s retry loop is gone.
+function handleProgress(m) {
+  if (m.type === 'scraper_log') pushLog(m.text || JSON.stringify(m));
+  else if (m.type === 'lifecycle') pushLog(`[lifecycle] ${m.phase} pid=${m.pid || ''}`);
+  else if (m.type === 'race_settled') {
+    pushLog(`[race_settled] ${m.date} ${m.course} R${m.race_no}`);
+    // If the user is on the 賽事 page viewing the just-settled date, reload so
+    // the row flips from "未派彩" to 命中/失敗 + pnl. Skip otherwise so we
+    // don't fight other tabs.
+    if (state.tab === 'races' && state.raceDate === m.date) {
+      loadRaces().catch(() => {});
+    }
+  }
+}
+
 function connectWs() {
   const token = getToken();
   if (!token) return;
-  if (state.ws) { try { state.ws.close(); } catch (e) {} }
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${location.host}/ws/progress?token=${encodeURIComponent(token)}`);
-  ws.onmessage = (evt) => {
-    try {
-      const m = JSON.parse(evt.data);
-      if (m.type === 'scraper_log') pushLog(m.text || JSON.stringify(m));
-      else if (m.type === 'lifecycle') pushLog(`[lifecycle] ${m.phase} pid=${m.pid || ''}`);
-      else if (m.type === 'race_settled') {
-        pushLog(`[race_settled] ${m.date} ${m.course} R${m.race_no}`);
-        // If the user is on the 賽事 page viewing the just-settled date,
-        // reload the data so the row flips from "未派彩" to 命中/失敗 + pnl.
-        // Skip otherwise so we don't fight other tabs.
-        if (state.tab === 'races' && state.raceDate === m.date) {
-          loadRaces().catch(() => {});
-        }
+  if (state.ws) { try { state.ws.disconnect(); } catch (e) {} }
+  // Same-origin; socket.io defaults to path /socket.io. Token is validated in
+  // the server's connect handler against the REST API's token set.
+  const sock = io({
+    auth: { token },
+    reconnection: true,
+    reconnectionDelay: 2000,
+    reconnectionDelayMax: 10000,
+  });
+  sock.on('progress', (m) => {
+    try { handleProgress(m); }
+    catch (e) { pushLog(`[ws-bad-payload] ${JSON.stringify(m)}`); }
+  });
+  sock.on('status', (ev) => {
+    try { applyStatusEvent(ev); scheduleStatusRender(); }
+    catch (e) { /* ignore malformed */ }
+  });
+  sock.on('connect', () => {
+    state.st.wsUp = true;
+    // Reconcile against the authoritative snapshot on every (re)connect so we
+    // never drift after a dropped socket.
+    loadStatus().then(scheduleStatusRender).catch(() => {});
+  });
+  sock.on('connect_error', (err) => { state.st.wsUp = false; pushLog(`[ws] ${err && err.message === 'unauthorized' ? 'auth rejected' : 'connect error'}`); scheduleStatusRender(); });
+  sock.on('disconnect', (reason) => { state.st.wsUp = false; pushLog(`[ws] disconnected (${reason})`); scheduleStatusRender(); });
+  state.ws = sock;
+}
+
+// ─── Live status model ───────────────────────────────────────────────────────
+// serverNow(): current time in the server's epoch-seconds frame (so deltas vs
+// started_at / finished_at are correct even if the browser clock differs).
+function serverNow() { return Date.now() / 1000 - state.st.skew; }
+
+async function loadCoverage() {
+  const r = await api('/api/scrapers/coverage').catch(() => null);
+  if (r && Array.isArray(r.sources)) state.coverage = r.sources;
+}
+let _covTimer = null;
+function refreshCoverageSoon() {
+  // A scraper just finished — record counts / date ranges changed. Debounce so
+  // a burst of completions triggers a single refetch.
+  if (_covTimer) clearTimeout(_covTimer);
+  _covTimer = setTimeout(() => { loadCoverage().then(() => { if (state.tab === 'dashboard') renderCoverage(); }); }, 1500);
+}
+function descForSlug(slug) {
+  const e = state.coverage.find(c => c.slug === slug);
+  if (!e) return null;
+  return state.lang === 'zh' ? e.zh : e.en;
+}
+
+async function loadStatus() {
+  const snap = await api('/api/status').catch(() => null);
+  if (!snap) return;
+  state.st.skew = Date.now() / 1000 - (snap.now || Date.now() / 1000);
+  const procs = {}, tasks = {};
+  for (const p of (snap.processes || [])) {
+    procs[p.name] = {
+      name: p.name, ptype: p.ptype, started_at: p.started_at,
+      last_beat: (snap.now || 0) - (p.last_beat_s_ago || 0),
+      activity: p.activity, stopped: p.state === 'stopped',
+      error_count: p.error_count || 0, pid: p.pid,
+    };
+  }
+  for (const t of (snap.tasks || [])) {
+    tasks[t.task_id] = {
+      task_id: t.task_id, process: t.process, group: t.group, title: t.title,
+      state: t.state, done: t.done || 0, total: t.total,
+      started_at: t.started_at, finished_at: t.finished_at,
+      msg: t.msg, error: t.error,
+    };
+  }
+  state.st.procs = procs;
+  state.st.tasks = tasks;
+}
+
+// Fold one live 'status' event into the client model (mirrors status.Registry).
+function applyStatusEvent(ev) {
+  const ts = ev.ts || serverNow();
+  if (ev.kind === 'process') {
+    const p = state.st.procs[ev.name] || (state.st.procs[ev.name] = {
+      name: ev.name, started_at: ts, error_count: 0,
+    });
+    p.ptype = ev.ptype || p.ptype || 'loop';
+    p.last_beat = ts;
+    if (ev.event === 'up') { p.started_at = ts; p.stopped = false; }
+    if (ev.activity) p.activity = ev.activity;
+    if (ev.pid != null) p.pid = ev.pid;
+    if (ev.event === 'down') { p.stopped = true; p.activity = ev.activity || 'stopped'; }
+  } else if (ev.kind === 'task') {
+    const id = ev.task_id;
+    if (ev.event === 'start') {
+      state.st.tasks[id] = {
+        task_id: id, process: ev.process || '?', group: ev.group || ev.process || '?',
+        title: ev.title || id, state: 'running', done: 0, total: ev.total,
+        started_at: ts, finished_at: null, msg: null, error: null,
+      };
+    } else {
+      const t = state.st.tasks[id] || (state.st.tasks[id] = {
+        task_id: id, process: '?', group: '?', title: id, state: 'running',
+        done: 0, total: null, started_at: ts, finished_at: null, msg: null, error: null,
+      });
+      if (ev.event === 'step') {
+        if (ev.done != null) t.done = ev.done; else t.done = (t.done || 0) + (ev.advance || 1);
+        if (ev.total != null) t.total = ev.total;
+        if (ev.msg) t.msg = ev.msg;
+      } else if (ev.event === 'done') {
+        t.state = 'done'; t.finished_at = ts;
+        if (t.total) t.done = t.total;
+        if (ev.msg) t.msg = ev.msg;
+        if (t.process === 'scraper') refreshCoverageSoon();
+      } else if (ev.event === 'error') {
+        t.state = 'error'; t.finished_at = ts; t.error = ev.error || 'error';
+        const p = state.st.procs[t.process];
+        if (p) p.error_count = (p.error_count || 0) + 1;
+        state.st.errors.unshift({ when: ts, process: t.process, title: t.title, error: t.error });
+        state.st.errors = state.st.errors.slice(0, 12);
+        if (t.process === 'scraper') refreshCoverageSoon();
       }
-    } catch (e) { pushLog(`[ws-bad-json] ${evt.data}`); }
-  };
-  ws.onerror = () => pushLog('[ws] error');
-  ws.onclose = () => { pushLog('[ws] closed; retrying in 5s'); setTimeout(connectWs, 5000); };
-  state.ws = ws;
+    }
+  }
+}
+
+// Throttled re-render of the dashboard (only when it's the active tab).
+let _stRenderQueued = false;
+function scheduleStatusRender() {
+  updateProcsBadge();
+  if (state.tab !== 'dashboard') return;
+  if (_stRenderQueued) return;
+  _stRenderQueued = true;
+  requestAnimationFrame(() => { _stRenderQueued = false; renderStatusSections(); });
+}
+
+// 1s ticker so uptimes / ETAs advance smoothly between events.
+function startStatusTicker() {
+  if (state.stTick) return;
+  state.stTick = setInterval(() => {
+    if (state.tab === 'dashboard') renderStatusSections();
+    updateProcsBadge();
+  }, 1000);
+}
+
+function updateProcsBadge() {
+  const el = document.getElementById('procsBadge');
+  if (!el) return;
+  const procs = Object.values(state.st.procs);
+  const now = serverNow();
+  const up = procs.filter(p => procState(p, now) === 'running').length;
+  el.innerHTML = `<span class="sdot ${state.st.wsUp ? 'running' : 'stopped'}"></span>`
+    + `${up} ${t('運行中', 'up')} · ${state.st.wsUp ? t('已連線', 'live') : t('斷線', 'offline')}`;
+}
+
+// ─── status formatting helpers ───────────────────────────────────────────────
+function procState(p, now) {
+  if (p.stopped) return 'stopped';
+  if (p.ptype === 'oneshot') {
+    const running = Object.values(state.st.tasks).some(t => t.process === p.name && t.state === 'running');
+    return running ? 'running' : 'idle';
+  }
+  return (now - (p.last_beat || p.started_at || now)) > 150 ? 'stalled' : 'running';
+}
+function fmtDur(s) {
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (h) return `${h}h ${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;
+  if (m) return `${m}m ${String(sec).padStart(2,'0')}s`;
+  return `${sec}s`;
+}
+function fmtClock(epoch) {
+  return new Date(epoch * 1000).toTimeString().slice(0, 8);
+}
+function taskView(t, now) {
+  const done = t.done || 0, total = t.total;
+  const end = t.finished_at || now;
+  const elapsed = end - (t.started_at || now);
+  let pct = null, eta_s = null, eta_ts = null;
+  if (total && total > 0) {
+    pct = Math.max(0, Math.min(1, done / total));
+    if (t.state === 'running' && done > 0) {
+      eta_s = Math.round((elapsed / done) * Math.max(0, total - done));
+      eta_ts = now + eta_s;
+    }
+  }
+  return { done, total, pct, eta_s, eta_ts, elapsed };
 }
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
@@ -676,6 +919,8 @@ async function loadDashboard() {
   state.killSwitch = await api('/api/kill-switch').catch(e => ({ error: e.message }));
   state.liveMode = await api('/api/live/mode').catch(e => ({ error: e.message }));
   state.integrity = await api('/api/integrity').catch(() => null);
+  await loadStatus();   // seed the live process/task model before first render
+  await loadCoverage(); // scraper descriptions + record counts + date ranges
   render();
 }
 
@@ -934,6 +1179,7 @@ function render() {
     case 'schema':     renderSchema(); break;
   }
   wire();
+  updateProcsBadge();   // header was just rebuilt — repopulate the live badge
 }
 
 function loginView() {
@@ -1001,6 +1247,7 @@ function layout() {
         return `<span class="pill ${cls}" title="latest integrity run: ${ic.latest.ts}"
                        style="cursor:pointer" id="integrityBadge">${label}</span>`;
       })()}
+      <span class="procs-badge" id="procsBadge"></span>
       <span class="status ${statusCls}"><span class="dot"></span>${state.health?.status || 'unknown'} · pid ${state.health?.pid || '?'}</span>
       <div class="lang-toggle" title="${t('切換語言', 'Switch language')}">
         <button class="${state.lang === 'zh' ? 'active' : ''}" data-lang="zh">中文</button>
@@ -1018,6 +1265,26 @@ function renderDashboard() {
   const lm = state.liveMode || {};
   const ls = state.liveStatus || {};
   main.innerHTML = `
+    <div class="panel">
+      <h2>${t('處理程序', 'Processes')}</h2>
+      <div id="procGrid" class="proc-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>${t('任務清單（即時）', 'Tasks (live)')}</h2>
+      <div id="todoList"></div>
+    </div>
+
+    <div class="panel" id="errPanel" style="display:none">
+      <h2>${t('近期錯誤', 'Recent errors')}</h2>
+      <div id="errList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>${t('資料來源', 'Data sources')}</h2>
+      <div id="coverageList"></div>
+    </div>
+
     <div class="row">
       <div class="panel">
         <h2>${t('緊急停止', 'Kill switch')}</h2>
@@ -1068,11 +1335,123 @@ function renderDashboard() {
     </div>
 
     <div class="panel">
-      <h2>${t('進度日誌', 'Progress log')} <span style="color:var(--muted);font-size:12px">(/ws/progress)</span></h2>
+      <h2>${t('進度日誌', 'Progress log')} <span style="color:var(--muted);font-size:12px">(socket.io)</span></h2>
       <div id="progressLog" class="log"></div>
     </div>
   `;
   renderLog(document.getElementById('progressLog'));
+  renderStatusSections();
+  renderCoverage();
+  startStatusTicker();
+}
+
+// Re-render ONLY the live-status sections (process grid, to-do list, errors) so
+// the 1s ticker and event deltas don't rebuild the controls/log or lose state.
+function renderStatusSections() {
+  const grid = document.getElementById('procGrid');
+  if (!grid) return;   // dashboard not mounted
+  const now = serverNow();
+
+  // ── process cards ──
+  const procs = Object.values(state.st.procs).sort((a, b) => a.name.localeCompare(b.name));
+  grid.innerHTML = procs.length ? procs.map(p => {
+    const st = procState(p, now);
+    const uptime = st === 'stopped' ? '—' : fmtDur(now - (p.started_at || now));
+    const beat = Math.round(now - (p.last_beat || p.started_at || now));
+    return `
+      <div class="proc-card ${st}">
+        <div class="pname"><span class="sdot ${st}"></span>${escapeHtml(p.name)}</div>
+        <div class="pmeta">
+          <div>${t('運行', 'uptime')} <span class="up">${uptime}</span></div>
+          <div>${t('心跳', 'beat')} ${st === 'stopped' ? '—' : beat + 's ' + t('前', 'ago')}${
+            p.error_count ? ` · <span class="perr">✗ ${p.error_count}</span>` : ''}</div>
+        </div>
+        <div class="pact" title="${escapeHtml(p.activity || '')}">${escapeHtml(p.activity || '—')}</div>
+      </div>`;
+  }).join('') : `<div class="empty">${t('尚無處理程序回報', 'no processes reporting yet')}</div>`;
+
+  // ── to-do list, grouped by process ──
+  const tasks = Object.values(state.st.tasks);
+  const groups = {};
+  for (const tk of tasks) (groups[tk.group || tk.process] = groups[tk.group || tk.process] || []).push(tk);
+  const order = { running: 0, pending: 1, done: 2, error: 2 };
+  const todo = document.getElementById('todoList');
+  const groupKeys = Object.keys(groups).sort();
+  todo.innerHTML = groupKeys.length ? groupKeys.map(g => {
+    const rows = groups[g].sort((a, b) =>
+      (order[a.state] - order[b.state]) || ((b.finished_at || b.started_at || 0) - (a.finished_at || a.started_at || 0)));
+    return `<div class="todo-group"><div class="ghdr">${escapeHtml(g)}</div>${
+      rows.map(tk => renderTodoRow(tk, now)).join('')}</div>`;
+  }).join('') : `<div class="empty">${t('目前沒有任務', 'no tasks right now')}</div>`;
+
+  // ── errors panel ──
+  const errPanel = document.getElementById('errPanel');
+  const errList = document.getElementById('errList');
+  if (state.st.errors.length) {
+    errPanel.style.display = '';
+    errList.innerHTML = state.st.errors.map(e =>
+      `<div class="err-row"><span class="ewhen">${fmtClock(e.when)}</span>${
+        escapeHtml(e.process)} · ${escapeHtml(e.title)} — ${escapeHtml(e.error)}</div>`).join('');
+  } else {
+    errPanel.style.display = 'none';
+  }
+}
+
+function renderTodoRow(tk, now) {
+  const v = taskView(tk, now);
+  const mark = { running: '<span class="spin">◐</span>', done: '✓', error: '✗', pending: '○' }[tk.state] || '○';
+  // For scraper tasks, surface the bilingual description from the catalog.
+  const slug = (tk.process === 'scraper' && /^scraper:\s*(.+)$/.exec(tk.title || ''));
+  const desc = slug ? descForSlug(slug[1].trim()) : null;
+  const titleHtml = escapeHtml(tk.title) + (desc ? ` <span style="color:var(--muted);font-size:11px">— ${escapeHtml(desc)}</span>` : '');
+  let middle;
+  if (tk.state === 'running' && v.total) {
+    const eta = v.eta_s != null ? `~${fmtDur(v.eta_s)} ${t('剩餘', 'left')} (~${fmtClock(v.eta_ts)})` : '…';
+    middle = `<div class="pbar"><i style="width:${Math.round((v.pct || 0) * 100)}%"></i></div>`
+           + `<span class="teta">${v.done}/${v.total} · ${eta}</span>`;
+  } else if (tk.state === 'running') {
+    middle = `<span class="tmsg">${escapeHtml(tk.msg || t('進行中…', 'working…'))}</span>`
+           + `<span class="teta">${fmtDur(v.elapsed)}</span>`;
+  } else if (tk.state === 'error') {
+    middle = `<span class="tmsg">${escapeHtml(tk.error || tk.msg || '')}</span>`;
+  } else { // done
+    middle = `<span class="tmsg">${escapeHtml(tk.msg || '')}</span>`
+           + `<span class="teta">${fmtDur(v.elapsed)}</span>`;
+  }
+  return `<div class="todo ${tk.state}">
+    <span class="mark">${mark}</span>
+    <span class="ttitle">${titleHtml}</span>
+    ${middle}
+  </div>`;
+}
+
+// Data-sources panel: each scraper's bilingual description, record count, and
+// date range spanned. Refreshed on dashboard load and when a scraper finishes.
+function renderCoverage() {
+  const el = document.getElementById('coverageList');
+  if (!el) return;
+  const rows = state.coverage || [];
+  if (!rows.length) { el.innerHTML = `<div class="empty">${t('沒有資料', 'no data')}</div>`; return; }
+  const fmtN = n => n == null ? '—' : Number(n).toLocaleString();
+  el.innerHTML = `
+    <table><thead><tr>
+      <th>${t('來源', 'source')}</th>
+      <th>${t('說明', 'description')}</th>
+      <th style="text-align:right">${t('記錄數', 'records')}</th>
+      <th>${t('日期範圍', 'date range')}</th>
+    </tr></thead><tbody>
+    ${rows.map(r => {
+      const desc = state.lang === 'zh' ? r.zh : r.en;
+      const range = r.date_min ? `${r.date_min} → ${r.date_max}` : '—';
+      const empty = (r.records || 0) === 0;
+      return `<tr${empty ? ' style="opacity:0.5"' : ''}>
+        <td><code style="font-size:11.5px">${escapeHtml(r.slug)}</code></td>
+        <td style="color:var(--muted)">${escapeHtml(desc || '')}</td>
+        <td class="num" style="text-align:right">${fmtN(r.records)}</td>
+        <td style="font-family:var(--mono);font-size:11.5px;color:var(--muted)">${range}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
 }
 
 function renderLog(el) {
@@ -3448,6 +3827,10 @@ function escapeHtml(s) {
   render();
   if (getToken()) {
     connectWs();
+    // Seed the live status model + start the global ticker so the header
+    // processes badge stays current on every tab, not just the dashboard.
+    loadStatus().then(() => { updateProcsBadge(); }).catch(() => {});
+    startStatusTicker();
     // Re-enter the user's last tab so they land where they left off after a
     // server restart / auto-login round-trip — not always on the Dashboard.
     switchTab(state.tab || 'dashboard');

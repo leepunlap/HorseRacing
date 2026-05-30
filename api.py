@@ -192,6 +192,20 @@ def list_scrapers() -> dict:
     return {slug: {"script": s, "default_argv": d} for slug, (s, d) in SCRAPERS.items()}
 
 
+@router.get("/scrapers/coverage")
+def scrapers_coverage() -> dict:
+    """Per-scraper bilingual description + record count + date range spanned.
+    Powers the dashboard 'Data sources' panel."""
+    from scrapers.catalog import coverage
+    if not DB_PATH.exists():
+        return {"sources": []}
+    conn = _connect()
+    try:
+        return {"sources": coverage(conn)}
+    finally:
+        conn.close()
+
+
 # ─── Data-integrity dashboard endpoint ───────────────────────────────────────
 @router.get("/integrity")
 def integrity_summary(limit: int = 10) -> dict:
