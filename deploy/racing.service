@@ -24,7 +24,7 @@ SyslogIdentifier=horseracing
 StandardOutput=journal
 StandardError=journal
 
-ExecStart=/usr/bin/python3 /var/www/horseracing/app.py --port 8005
+ExecStart=/usr/bin/python3 /var/www/horseracing/app.py --port 8006
 
 # Reload: send SIGHUP. The Python signal handler in app.py re-parses the
 # hypothesis catalogue from disk. Doesn't restart the process — useful when
