@@ -540,6 +540,12 @@ def upcoming_race(strategy_id: int = 1) -> dict:
         n_bets = one(f"SELECT COUNT(*) FROM bet_ledger WHERE race_id IN ({ph})")
         post = conn.execute(f"SELECT MIN(post_time) FROM races WHERE id IN ({ph})", rids).fetchone()[0]
         stage = 2 if n_odds > 0 else 1
+        # Prediction provenance: the dominant method across the meeting's
+        # predictions (market_blended / fundamental_no_odds / fundamental).
+        _methods = conn.execute(
+            f"SELECT method, COUNT(*) FROM predictions WHERE strategy_id={int(strategy_id)} "
+            f"AND race_id IN ({ph}) AND method IS NOT NULL GROUP BY method ORDER BY 2 DESC", rids).fetchall()
+        pred_method = _methods[0][0] if _methods else None
 
         def step(key, zh, en, done, total, *, gate_stage2=False):
             if gate_stage2 and stage == 1:
@@ -566,6 +572,7 @@ def upcoming_race(strategy_id: int = 1) -> dict:
             "has_meeting": True, "date": d, "course": course,
             "n_races": n_races, "n_runners": n_runners, "post_time": post,
             "stage": stage, "core_ready": core_ready, "steps": steps,
+            "pred_method": pred_method,
         }
     finally:
         conn.close()

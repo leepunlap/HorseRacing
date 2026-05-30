@@ -1373,6 +1373,12 @@ function renderUpcoming() {
   const readyBadge = u.core_ready
     ? `<span class="pill good">${t('已就緒', 'ready')}</span>`
     : `<span class="pill bad">${t('未就緒', 'not ready')}</span>`;
+  // How the current predictions were made (provenance).
+  const methodBadge = ({
+    market_blended: `<span class="pill good">${t('預測：市場混合', 'preds: market-blended')}</span>`,
+    fundamental_no_odds: `<span class="pill warn">${t('預測：基本面（待賠率）', 'preds: fundamental (awaiting odds)')}</span>`,
+    fundamental: `<span class="pill muted">${t('預測：基本面', 'preds: fundamental')}</span>`,
+  })[u.pred_method] || '';
 
   const steps = u.steps.map((s, i) => {
     const label = state.lang === 'zh' ? s.zh : s.en;
@@ -1391,7 +1397,7 @@ function renderUpcoming() {
     <h2>${t('即將舉行的賽事', 'Upcoming Race')}
       <span class="muted" style="font-weight:400;font-size:13px"> · ${u.date} ${u.course}
         · ${u.n_races} ${t('場', 'races')} · ${u.n_runners} ${t('匹', 'runners')}${post}</span>
-      <span style="float:right">${stageBadge} ${readyBadge}</span>
+      <span style="float:right">${methodBadge} ${stageBadge} ${readyBadge}</span>
     </h2>
     <div class="up-pipeline">${steps}</div>`;
 }

@@ -420,6 +420,13 @@ CREATE TABLE IF NOT EXISTS predictions (
     recommendation TEXT,                   -- bet | skip | blocked
     decision_reason TEXT,
     snapshot_basis TEXT,
+    -- how this prediction was produced (provenance):
+    --   'market_blended'      = Stage-2 Benter applied with real odds (π)
+    --   'fundamental_no_odds' = Stage-2 on but no market for this runner -> fell
+    --                           back to fundamental (e.g. odds not open yet)
+    --   'fundamental'         = Stage-2 disabled for the strategy
+    method TEXT,
+    stage2_beta REAL,                      -- blend weight used (when blended)
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(strategy_id, race_id, brand, snapshot_basis)
 );

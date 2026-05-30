@@ -504,24 +504,35 @@ def run_strategy(strategy_id: int, date_from: str, date_to: str) -> dict:
         for (race_id, brand), fp, mp, bp, cp in zip(keys_te, f_probs, pi_te, blended, cal_probs):
             odds_v, position = _odds_for(conn, race_id, brand, snapshot_basis)
             edge = (cp * odds_v) if odds_v is not None else None
+            # Provenance: record HOW this prediction was produced.
+            has_mkt = not math.isnan(float(mp))
+            if not stage2_on:
+                method = "fundamental"               # Stage-2 disabled
+            elif has_mkt:
+                method = "market_blended"            # Stage-2 + real odds (π)
+            else:
+                method = "fundamental_no_odds"       # Stage-2 on but no market yet
+            beta_used = float(beta) if (stage2_on and has_mkt) else None
             conn.execute(
                 """
                 INSERT INTO predictions
                   (strategy_id, race_id, horse_id, brand, fundamental_prob,
                    market_implied_prob, blended_prob, calibrated_prob, odds_at_prediction,
-                   edge, recommendation, snapshot_basis)
-                VALUES (?, ?, (SELECT id FROM horses WHERE brand = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   edge, recommendation, snapshot_basis, method, stage2_beta)
+                VALUES (?, ?, (SELECT id FROM horses WHERE brand = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(strategy_id, race_id, brand, snapshot_basis) DO UPDATE SET
                   fundamental_prob = excluded.fundamental_prob,
                   market_implied_prob = excluded.market_implied_prob,
                   blended_prob = excluded.blended_prob,
                   calibrated_prob = excluded.calibrated_prob,
-                  edge = excluded.edge
+                  edge = excluded.edge,
+                  method = excluded.method,
+                  stage2_beta = excluded.stage2_beta
                 """,
                 (strategy_id, race_id, brand, brand,
-                 float(fp), float(mp) if not math.isnan(float(mp)) else None,
+                 float(fp), float(mp) if has_mkt else None,
                  float(bp), float(cp), odds_v,
-                 edge, "pending", snapshot_basis),
+                 edge, "pending", snapshot_basis, method, beta_used),
             )
             won = 1 if _coerce_position(position) == 1 else 0
             overall.append((float(cp), won))
