@@ -2959,10 +2959,12 @@ function renderBetsSummary(data, strat) {
       : `<span title="${escapeHtml(String(reason).replace(/<[^>]+>/g, ''))}">${reason}</span>`;
     return `
       <tr class="${cls}">
+        <td class="num">${isCombo ? '—' : (h.horse_no ?? '—')}</td>
         <td class="num"><b>${escapeHtml(r.course)} R${r.race_no}</b></td>
         <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
         <td class="h-name">${horseLabel}</td>
         <td>${escapeHtml(i18n.jockey(h, lang))}</td>
+        <td>${escapeHtml(i18n.trainer(h, lang))}</td>
         <td class="num">${h.draw ?? '—'}</td>
         <td class="num" style="white-space:nowrap">${fmtNum(h.odds, 2)}${_renderOddsSparkline(h.odds_history, 'win_odds')}</td>
         <td class="num" style="white-space:nowrap">${fmtNum(h.place_odds, 2)}${_renderOddsSparkline(h.odds_history, 'place_odds')}</td>
@@ -2998,10 +3000,12 @@ function renderBetsSummary(data, strat) {
       <div class="race-body">
         <table>
           <thead><tr>
+            <th class="num">${t('馬號', 'no.')}</th>
             <th>${t('場次', 'race')}</th>
             <th>${t('實際', 'actual')}</th>
             <th>${t('馬', 'horse')}</th>
             <th>${t('騎師', 'jockey')}</th>
+            <th>${t('練馬師', 'trainer')}</th>
             <th>${t('閘', 'dr')}</th>
             <th>${t('獨贏', 'win')}</th>
             <th>${t('位置', 'place')}</th>
@@ -3393,6 +3397,7 @@ function renderRaceBlock(r, data, sid) {
       <div class="race-body">
         <table class="race-table compact">
           <thead><tr>
+            <th class="num">${t('馬號', 'no.')}</th>
             <th class="num">${t('實際', 'actual')}</th>
             <th class="num">${t('預測', 'pred')}</th>
             <th>${t('馬', 'horse')}</th>
@@ -3429,6 +3434,7 @@ function renderRaceBlock(r, data, sid) {
             const runTxt = escapeHtml(String(h.running_style || h.running || '').trim() || '');
             return `
               <tr class="${cls}">
+                <td class="num">${h.horse_no ?? '—'}</td>
                 <td class="num">${h.position == null ? '—' : escapeHtml(String(h.position))}</td>
                 <td class="num ${predCls}">${pr == null ? '—' : pr}</td>
                 <td class="h-name">${escapeHtml(i18n.horse(h, lang))} <code style="color:var(--muted);font-size:10px">${escapeHtml(h.brand || '')}</code>${dataBadge(h)}</td>
