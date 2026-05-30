@@ -3087,7 +3087,7 @@ function renderBetsSummary(data, strat) {
             <th>${t('時間', 'time')}</th>
             <th>${t('決策', 'bet')}</th>
             <th>${t('深度評估', 'Eval')}</th>
-            <th>${t('賽後 RCA', 'RCA')}</th>
+            <th>${t('賽後檢討', 'RCA')}</th>
             <th class="num">${t('投注', 'stake')}</th>
             <th class="num">${t('盈虧', 'pnl')}</th>
           </tr></thead>
@@ -3334,34 +3334,47 @@ async function _autoLoadEvalCells() {
   await Promise.all(Array.from({length: CONCURRENCY}, () => worker()));
 }
 
-// Auto-load the two assessment columns in the race tables: kind 'an' = deep
-// pre-race ranking analysis (/api/horse_analysis), kind 'rca' = post-race RCA
-// (/api/horse_eval). We fetch with cached_only=1 so PRE-WARMED / cached rows
-// appear instantly and never trigger an expensive generation on page load;
-// anything not cached renders a click-to-generate button instead.
-async function _autoLoadLazyCells() {
-  const cells = Array.from(document.querySelectorAll('.lazy-cell[data-rid]'))
-    .filter(c => !c.dataset.loaded);
-  if (!cells.length) return;
-  const lang = state.lang || 'zh';
-  const CONCURRENCY = 4;
-  let i = 0;
-  async function worker() {
-    while (i < cells.length) {
-      const cell = cells[i++];
-      cell.dataset.loaded = '1';
-      const kind = cell.dataset.lazyKind;
-      const ep = kind === 'an' ? 'horse_analysis' : 'horse_eval';
-      try {
-        const r = await api(`/api/${ep}/${cell.dataset.rid}/${encodeURIComponent(cell.dataset.brand)}?lang=${lang}&cached_only=1`);
-        _fillLazyCell(cell, r);
-      } catch (e) {
-        cell.style.color = 'var(--muted)';
-        cell.textContent = '—';
-      }
-    }
+// Lazy-load the two assessment columns (kind 'an' = deep pre-race ranking
+// analysis /api/horse_analysis, kind 'rca' = post-race /api/horse_eval) via an
+// IntersectionObserver: each cell loads only when it scrolls into view. Cached
+// / pre-warmed rows return instantly; anything not cached is generated
+// automatically (no click), throttled to a small concurrency so the reasoner
+// isn't hammered when a big table comes into view.
+let _lazyObserver = null;
+const _lazyQueue = [];
+let _lazyActive = 0;
+const _LAZY_CONCURRENCY = 2;
+
+function _lazyPump() {
+  while (_lazyActive < _LAZY_CONCURRENCY && _lazyQueue.length) {
+    const cell = _lazyQueue.shift();
+    _lazyActive++;
+    _loadLazyCell(cell).finally(() => { _lazyActive--; _lazyPump(); });
   }
-  await Promise.all(Array.from({length: CONCURRENCY}, () => worker()));
+}
+
+async function _loadLazyCell(cell) {
+  const kind = cell.dataset.lazyKind;
+  const ep = kind === 'an' ? 'horse_analysis' : 'horse_eval';
+  const lang = state.lang || 'zh';
+  const url = (cachedOnly) =>
+    `/api/${ep}/${cell.dataset.rid}/${encodeURIComponent(cell.dataset.brand)}?lang=${lang}${cachedOnly ? '&cached_only=1' : ''}`;
+  try {
+    // Cheap cache probe first so pre-warmed cells never spin.
+    let r = await api(url(true));
+    if (r.source === 'absent') {
+      // Not cached → generate (this is the expensive reasoner / DeepSeek call).
+      cell.style.color = 'var(--muted)';
+      cell.textContent = kind === 'an'
+        ? t('深度分析中…（約 20 秒）', 'analysing… (~20s)')
+        : t('生成 RCA 中…', 'generating RCA…');
+      r = await api(url(false));
+    }
+    _fillLazyCell(cell, r);
+  } catch (e) {
+    cell.style.color = 'var(--muted)';
+    cell.textContent = '—';
+  }
 }
 
 function _fillLazyCell(cell, r) {
@@ -3372,42 +3385,35 @@ function _fillLazyCell(cell, r) {
     cell.textContent = r.text;
     return;
   }
-  if (r.source === 'pending') {
-    // No prediction yet (an) / race not run yet (rca).
-    cell.style.color = 'var(--muted)';
-    cell.textContent = kind === 'rca' ? t('（賽後提供）', '(after race)') : '—';
-    return;
-  }
-  // 'absent' — generatable but not cached. Offer click-to-generate.
-  const label = kind === 'an' ? t('🔍 生成深度評估', '🔍 Generate') : t('🔍 生成 RCA', '🔍 Generate RCA');
-  cell.innerHTML = `<button class="gen-lazy" data-gen-kind="${kind}"
-      data-rid="${cell.dataset.rid}" data-brand="${escapeHtml(cell.dataset.brand)}">${label}</button>`;
+  // pending = no prediction yet (an) / race not run yet (rca); absent after a
+  // failed generate falls here too.
+  cell.style.color = 'var(--muted)';
+  cell.textContent = (r.source === 'pending' && kind === 'rca')
+    ? t('（賽後提供）', '(after race)') : '—';
 }
 
-// One delegated handler for every click-to-generate button (wired once).
-if (!window.__genLazyWired) {
-  window.__genLazyWired = true;
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.gen-lazy');
-    if (!btn) return;
-    const kind = btn.dataset.genKind, rid = btn.dataset.rid, brand = btn.dataset.brand;
-    const lang = state.lang || 'zh';
-    const cell = btn.closest('.lazy-cell');
-    cell.style.color = 'var(--muted)';
-    cell.textContent = kind === 'an'
-      ? t('深度分析中…（約 20 秒）', 'analysing… (~20s)')
-      : t('生成 RCA 中…', 'generating RCA…');
-    const ep = kind === 'an' ? 'horse_analysis' : 'horse_eval';
-    try {
-      const r = await api(`/api/${ep}/${rid}/${encodeURIComponent(brand)}?lang=${lang}`);
-      cell.style.color = 'var(--text)';
-      cell.dataset.source = r.source || '';
-      cell.textContent = r.text || '—';
-    } catch (err) {
-      cell.style.color = 'var(--muted)';
-      cell.textContent = '(' + (err.message || 'failed') + ')';
-    }
-  });
+function _observeLazyCells() {
+  if (!('IntersectionObserver' in window)) {
+    // Fallback: load everything now (older browsers).
+    document.querySelectorAll('.lazy-cell[data-rid]:not([data-loaded])').forEach(c => {
+      c.dataset.loaded = '1'; _lazyQueue.push(c);
+    });
+    _lazyPump();
+    return;
+  }
+  if (!_lazyObserver) {
+    _lazyObserver = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        const cell = en.target;
+        _lazyObserver.unobserve(cell);
+        if (!cell.dataset.loaded) { cell.dataset.loaded = '1'; _lazyQueue.push(cell); }
+      }
+      _lazyPump();
+    }, { rootMargin: '300px' });   // start loading a little before they're visible
+  }
+  document.querySelectorAll('.lazy-cell[data-rid]:not([data-loaded])')
+    .forEach(c => _lazyObserver.observe(c));
 }
 
 function renderRaceBlock(r, data, sid) {
@@ -3487,7 +3493,7 @@ function renderRaceBlock(r, data, sid) {
             <th class="num" title="${t('完成時間 / 頭馬距離', 'finish time / lengths behind')}">${t('時間', 'time')}</th>
             <th class="small">${t('沿途走位', 'running')}</th>
             <th>${t('深度評估', 'Eval')}</th>
-            <th>${t('賽後 RCA', 'RCA')}</th>
+            <th>${t('賽後檢討', 'RCA')}</th>
             <th class="num">${t('投注/盈虧', 'stake/pnl')}</th>
           </tr></thead>
           <tbody>${(r.horses || []).map(h => {
@@ -3569,7 +3575,7 @@ function wireRaceControls() {
   // DeepSeek is configured server-side, /api/horse_eval upgrades it
   // automatically (silent — no badge, no button per user request).
   _autoLoadEvalCells();
-  _autoLoadLazyCells();   // Eval + RCA columns in the race tables (cached/pre-warmed only)
+  _observeLazyCells();   // Eval + RCA columns lazy-load on scroll into view
   // Year click: clear month + date so the user makes a fresh choice; render
   // only (no API call) since the month list comes from data we already have.
   document.querySelectorAll('[data-race-year]').forEach(el => {
