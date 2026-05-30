@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sqlite3
 from pathlib import Path
 
@@ -65,10 +66,15 @@ def _conn() -> sqlite3.Connection:
 def _coerce_position(raw) -> int | None:
     if raw is None:
         return None
+    s = str(raw).strip()
     try:
-        return int(str(raw).strip())
+        return int(s)
     except (TypeError, ValueError):
-        return None
+        # Annotated finishes like "1 DH" / "2DH" (dead heat) → leading number,
+        # so a dead-heat winner still settles as a win (full-odds payout; HKJC
+        # would split the dividend, a minor overstatement on rare dead heats).
+        m = re.match(r"(\d+)", s)
+        return int(m.group(1)) if m else None
 
 
 def _coerce_odds(raw) -> float | None:
@@ -557,6 +563,30 @@ def run_for_bet_strategy(conn: sqlite3.Connection, bet_strategy_id: int,
             "odds": _coerce_odds(odds),
             "position": position,
         })
+
+    # Odds fallback: results.odds is sometimes NULL (settled meetings whose tote
+    # SP was never backfilled). Without a price, _settle_bet voids the bet
+    # (won=-1) — so an actual WINNER gets recorded as a non-result. Recover the
+    # price from the latest odds_snapshots win_odds, mapped brand→horse_no via
+    # results (odds_snapshots is keyed by horse_no, brand NULL).
+    _missing_rids = list({rid for rid, info in by_race.items()
+                          if any(r["odds"] is None for r in info["rows"])})
+    if _missing_rids:
+        _ph = ",".join("?" * len(_missing_rids))
+        _hn = {(rid, b): h for rid, b, h in conn.execute(
+            f"SELECT race_id, brand, horse_no FROM results "
+            f"WHERE race_id IN ({_ph}) AND horse_no IS NOT NULL", _missing_rids)}
+        _snap: dict[tuple, float] = {}
+        for rid, h, wo in conn.execute(
+            f"SELECT race_id, horse_no, win_odds FROM odds_snapshots "
+            f"WHERE race_id IN ({_ph}) AND win_odds IS NOT NULL ORDER BY ts", _missing_rids):
+            _snap[(rid, h)] = wo            # ORDER BY ts → last write wins = latest
+        for rid, info in by_race.items():
+            for r in info["rows"]:
+                if r["odds"] is None:
+                    h = _hn.get((rid, r["brand"]))
+                    if h is not None and (rid, h) in _snap:
+                        r["odds"] = _coerce_odds(_snap[(rid, h)])
 
     # ─── Optional: feature pre-fetch for feature_filters strategies ──────
     # When the strategy uses params.feature_filters (e.g. RCA-as-filter
